@@ -224,6 +224,7 @@ This flow demonstrates **real-time inference**, **ethical design**, and **long-t
 ## 📄 License
 
 This project is intended for educational and research purposes.
+👉 For detailed system rationale, see [DESIGN.md](DESIGN.md)
 
 ---
 
