@@ -1,0 +1,529 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+:root {
+  --bg-main: #0b0b0b;
+  --bg-card: rgba(255, 255, 255, 0.05);
+  --bg-panel: rgba(255, 255, 255, 0.03);
+  --bg-input: #111;
+  --text-main: #fff;
+  --text-sub: #888;
+  --border-color: #333;
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --accent-color: #e1ff5e;
+  --accent-text: black;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+}
+
+body.light-mode {
+  --bg-main: #f4f6f8;
+  --bg-card: rgba(255, 255, 255, 0.8);
+  --bg-panel: rgba(255, 255, 255, 0.6);
+  --bg-input: #fff;
+  --text-main: #1a1a1a;
+  --text-sub: #555;
+  --border-color: #ddd;
+  --glass-border: rgba(0, 0, 0, 0.05);
+  --accent-color: #4CAF50;
+  /* Darker green for light mode contrast */
+  --accent-text: white;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+body {
+  background: var(--bg-main);
+  color: var(--text-main);
+  font-family: Inter, system-ui, sans-serif;
+  transition: background 0.3s, color 0.3s;
+}
+
+.dashboard {
+  width: 100%;
+  height: 100vh;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.frozen {
+  opacity: 0.5;
+  pointer-events: none;
+  filter: grayscale(100%);
+  transition: all 0.3s ease;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.bell {
+  font-size: 1.6rem;
+  cursor: pointer;
+  position: relative;
+}
+
+.dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  background: red;
+  border-radius: 50%;
+}
+
+.monitor-toggle {
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: none;
+}
+
+.monitor-toggle.on {
+  background: #1b5e20;
+  color: #a5ffb0;
+}
+
+.monitor-toggle.off {
+  background: var(--bg-input);
+  color: var(--text-sub);
+}
+
+.alert-popup {
+  position: fixed;
+  top: 80px;
+  right: 24px;
+  background: var(--bg-input);
+  padding: 16px;
+  border-radius: 12px;
+  width: 300px;
+  z-index: 100;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  border: 1px solid var(--border-color);
+}
+
+.alert-item {
+  padding: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.alert-empty {
+  color: var(--text-sub);
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.input-card {
+  display: flex;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+input {
+  flex: 1;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+}
+
+button {
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: none;
+  background: #00e5ff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.card {
+  background: var(--bg-card);
+  /* slightly transparent */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 32px 0 var(--shadow-color);
+}
+
+.full {
+  margin-top: 24px;
+}
+
+.empty {
+  color: var(--text-sub);
+  font-size: 0.9rem;
+  margin-top: 12px;
+}
+
+/* ... existing styles ... */
+
+/* Sentia Login Theme */
+.login-screen {
+  background: var(--bg-main);
+  /* Or radial gradient if needed */
+  /* background: radial-gradient(circle at top center, #1a2e05 0%, #000000 60%); */
+  display: flex;
+  height: 100vh;
+  /* Full viewport height */
+  overflow-y: auto;
+  /* Enable vertical scrolling */
+  padding: 24px;
+}
+
+.login-box {
+  margin: auto;
+  /* Center vertically and horizontally, safe for overflow */
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: transparent;
+  border: none;
+  backdrop-filter: none;
+}
+
+/* Energy Sphere Logo - Sharp Electric Style */
+.logo-container {
+  width: 140px;
+  height: 140px;
+  margin: 0 auto 20px;
+  position: relative;
+  perspective: 1000px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.energy-sphere {
+  width: 100px;
+  height: 100px;
+  position: relative;
+  transform-style: preserve-3d;
+  animation: sphere-levitate 3s ease-in-out infinite;
+}
+
+/* Base Orb Glow */
+.energy-sphere::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(225, 255, 94, 0.2), transparent 60%);
+  box-shadow:
+    0 0 20px rgba(225, 255, 94, 0.3),
+    inset 0 0 20px rgba(225, 255, 94, 0.1);
+  filter: blur(2px);
+}
+
+/* Electric Filaments */
+.filament {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: rgba(225, 255, 94, 0.8);
+  border-bottom-color: rgba(225, 255, 94, 0.3);
+  box-shadow: 0 0 10px rgba(225, 255, 94, 0.5);
+  mix-blend-mode: screen;
+}
+
+.f1 {
+  animation: spin-f1 2s linear infinite;
+}
+
+.f2 {
+  width: 90%;
+  height: 90%;
+  top: 5%;
+  left: 5%;
+  border-left-color: rgba(180, 255, 50, 0.8);
+  border-right-color: transparent;
+  animation: spin-f2 3s linear infinite;
+}
+
+.f3 {
+  width: 110%;
+  height: 110%;
+  top: -5%;
+  left: -5%;
+  border: 1px solid rgba(225, 255, 94, 0.1);
+  border-right-color: rgba(225, 255, 94, 0.9);
+  animation: spin-f3 4s linear infinite;
+}
+
+.f4 {
+  width: 80%;
+  height: 80%;
+  top: 10%;
+  left: 10%;
+  border: 1px dashed rgba(225, 255, 94, 0.4);
+  animation: spin-f4 5s linear infinite reverse;
+}
+
+@keyframes sphere-levitate {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes spin-f1 {
+  0% {
+    transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+  }
+
+  100% {
+    transform: rotateX(360deg) rotateY(180deg) rotateZ(360deg);
+  }
+}
+
+@keyframes spin-f2 {
+  0% {
+    transform: rotateX(60deg) rotateY(0deg) rotateZ(0deg);
+  }
+
+  100% {
+    transform: rotateX(60deg) rotateY(360deg) rotateZ(180deg);
+  }
+}
+
+@keyframes spin-f3 {
+  0% {
+    transform: rotateZ(0deg) rotateX(45deg);
+  }
+
+  100% {
+    transform: rotateZ(360deg) rotateX(45deg);
+  }
+}
+
+@keyframes spin-f4 {
+  0% {
+    transform: rotateY(0deg) rotateZ(0deg);
+  }
+
+  100% {
+    transform: rotateY(360deg) rotateZ(360deg);
+  }
+}
+
+/* Reset old classes */
+.ring-1,
+.ring-2,
+.ring-3,
+.logo-core,
+.logo-ring,
+.plasma-orb,
+.outer-orbit {
+  display: none;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.login-header h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: var(--text-main);
+}
+
+.login-header p {
+  font-size: 0.9rem;
+  color: var(--text-sub);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-group label {
+  font-size: 0.8rem;
+  color: var(--text-sub);
+  font-weight: 500;
+}
+
+.sentia-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  padding: 16px;
+  border-radius: 12px;
+  color: var(--text-main);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.sentia-input:focus {
+  border-color: var(--accent-color);
+}
+
+.sentia-btn {
+  background: #e1ff5e;
+  /* Neon Lime */
+  color: black;
+  font-weight: 600;
+  padding: 16px;
+  border-radius: 30px;
+  font-size: 1rem;
+  margin-top: 10px;
+  transition: transform 0.1s, filter 0.2s;
+}
+
+.sentia-btn:hover {
+  filter: brightness(1.1);
+  transform: scale(1.02);
+  border-color: transparent;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  color: #444;
+  font-size: 0.8rem;
+  margin: 20px 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #333;
+}
+
+.divider span {
+  padding: 0 10px;
+}
+
+.social-btns {
+  display: flex;
+  gap: 12px;
+}
+
+.social-btn {
+  flex: 1;
+  background: #111;
+  border: 1px solid #333;
+  padding: 12px;
+  border-radius: 30px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.signup-link {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-sub);
+  margin-top: 20px;
+}
+
+.signup-link span {
+  color: var(--text-main);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Missing utility classes */
+.glass-panel {
+  background: var(--bg-panel);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  box-shadow: 0 4px 24px -1px var(--shadow-color);
+}
+
+.range-selector {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 1rem;
+}
+
+.range-selector button {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-sub);
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.range-selector button:hover {
+  background: #222;
+  color: #ccc;
+}
+
+.range-selector button.active {
+  background: #e1ff5e;
+  color: black;
+  border-color: #e1ff5e;
+  font-weight: 600;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  /* fallback */
+  padding: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}

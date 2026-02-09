@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial; }
+        h1 { text-align: center; }
+        img { width: 400px; }
+    </style>
+</head>
+<body>
+
+<h1>Emotion Analysis Report</h1>
+
+<p><strong>User:</strong> {{ user_id }}</p>
+<p><strong>Date Range:</strong> {{ from_date }} → {{ to_date }}</p>
+
+<h2>Dominant Emotion</h2>
+<p>{{ charts.dominant_emotion }}</p>
+
+<h2>Emotion Distribution</h2>
+<img src="{{ charts.distribution_chart }}"/>
+
+<p style="margin-top:40px;font-size:12px;">
+Generated automatically by Emotion Analytics System
+</p>
+
+</body>
+</html>

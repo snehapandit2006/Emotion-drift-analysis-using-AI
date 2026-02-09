@@ -1,0 +1,8 @@
+{
+  "model": "LogisticRegression",
+  "features": "TF-IDF",
+  "trained_on": "Emotion_final.csv",
+  "labels": "Emotion column",
+  "version": "1.0",
+  "date": "2026-01-22"
+}
