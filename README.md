@@ -182,7 +182,7 @@ This avoids false certainty and ethical overreach.
    * Upload or paste a conversation
    * System analyzes text-based emotions
    * Results are logged for trend analysis
-   * ![Chat Analysis](screenshot/Screenshot 2026-02-09 142941.png)
+   * ![Chat Analysis](screenshots/Screenshot 2026-02-09 142941)
 
 2. **Self Emotion Monitoring**
 
