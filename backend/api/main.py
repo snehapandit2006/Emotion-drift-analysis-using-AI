@@ -25,6 +25,8 @@ from api.routes import chat_routes
 app.include_router(chat_routes.router)
 from routes import self_emotion_routes
 app.include_router(self_emotion_routes.router)
+from routes import fusion_routes
+app.include_router(fusion_routes.router)
 
 app.add_middleware(
     CORSMiddleware,

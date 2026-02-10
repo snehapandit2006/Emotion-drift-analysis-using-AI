@@ -63,3 +63,18 @@ export const resetPassword = (token, newPassword) =>
 export const postSelfEmotionCapture = (base64Image) =>
   API.post("/self-emotion/capture", { image: base64Image });
 
+export const getSelfEmotionHistory = (range) =>
+  API.get("/self-emotion/history", {
+    params: { range },
+  });
+
+export const getSelfEmotionDistribution = (range) =>
+  API.get("/self-emotion/distribution", {
+    params: { range },
+  });
+
+export const getFusionAnalytics = (range_days) =>
+  API.get("/analysis/fusion", {
+    params: { range_days }
+  });
+

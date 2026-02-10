@@ -67,6 +67,9 @@ def capture_emotion(
         "timestamp": new_log.timestamp
     }
 
+from datetime import datetime, timedelta
+from sqlalchemy import func
+
 @router.get("/history", response_model=list[HistoryResponse])
 def get_history(
     range: str = "7d",
@@ -75,15 +78,67 @@ def get_history(
 ):
     """
     Returns the user's emotion history (face only) for the requested range.
+    Range options: "1h", "24h", "7d", "30d", "all"
     """
-    # Simple range logic (default to returning all or last N for now if range parsing is complex)
-    # For now, let's just return the last 100 entries to correspond with "recent history"
-    # Detailed range filtering can be added in Phase 3 if needed.
-    
+    now = datetime.utcnow()
+    cutoff_date = now - timedelta(days=7) # Default
+
+    if range == "1h":
+        cutoff_date = now - timedelta(hours=1)
+    elif range == "24h":
+        cutoff_date = now - timedelta(hours=24)
+    elif range == "30d":
+        cutoff_date = now - timedelta(days=30)
+    elif range == "all":
+        cutoff_date = datetime.min
+
     logs = db.query(FaceEmotionLog)\
-        .filter(FaceEmotionLog.user_id == current_user.id)\
-        .order_by(FaceEmotionLog.timestamp.desc())\
-        .limit(100)\
+        .filter(
+            FaceEmotionLog.user_id == current_user.id,
+            FaceEmotionLog.timestamp >= cutoff_date
+        )\
+        .order_by(FaceEmotionLog.timestamp.asc())\
         .all()
     
     return logs
+
+@router.get("/distribution")
+def get_distribution(
+    range: str = "7d",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Returns the percentage distribution of emotions for the given timeframe.
+    """
+    now = datetime.utcnow()
+    cutoff_date = now - timedelta(days=7) # Default
+
+    if range == "1h":
+        cutoff_date = now - timedelta(hours=1)
+    elif range == "24h":
+        cutoff_date = now - timedelta(hours=24)
+    elif range == "30d":
+        cutoff_date = now - timedelta(days=30)
+    elif range == "all":
+        cutoff_date = datetime.min
+
+    # Query for distribution
+    # We can do this with a group_by query for efficiency
+    results = db.query(
+        FaceEmotionLog.emotion, 
+        func.count(FaceEmotionLog.emotion)
+    ).filter(
+        FaceEmotionLog.user_id == current_user.id,
+        FaceEmotionLog.timestamp >= cutoff_date
+    ).group_by(FaceEmotionLog.emotion).all()
+
+    # Convert to dictionary and calculate percentages
+    counts = {r[0]: r[1] for r in results}
+    total = sum(counts.values())
+    
+    distribution = {}
+    if total > 0:
+        distribution = {k: v / total for k, v in counts.items()}
+    
+    return distribution

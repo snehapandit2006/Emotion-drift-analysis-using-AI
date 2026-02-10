@@ -23,7 +23,10 @@ import {
   getTimeline,
   getDistribution,
   getDrift,
-  API
+  API,
+  getSelfEmotionHistory,
+  getSelfEmotionDistribution,
+  getFusionAnalytics
 } from "./api";
 import logo from './assets/logo.jpg';
 import robotMascot from './assets/robot_mascot.png';
@@ -88,6 +91,9 @@ function Dashboard() {
   const [alerts, setAlerts] = useState([]);
   const [showAlerts, setShowAlerts] = useState(false);
   const [comparison, setComparison] = useState(null);
+  const [selfHistory, setSelfHistory] = useState([]);
+  const [selfDistribution, setSelfDistribution] = useState({});
+  const [fusion, setFusion] = useState(null);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [monitoring, setMonitoring] = useState(true);
@@ -97,12 +103,15 @@ function Dashboard() {
 
   const load = useCallback(async () => {
     try {
-      const [t, d, dr, a, c] = await Promise.all([
+      const [t, d, dr, a, c, sh, sd, f] = await Promise.all([
         getTimeline(range),
         getDistribution(),
         getDrift(),
         getAlerts(),
         getComparison(range),
+        getSelfEmotionHistory(range),
+        getSelfEmotionDistribution(range),
+        getFusionAnalytics(range === '1h' ? 0 : range === '24h' ? 1 : 7)
       ]);
 
       setTimeline(t.data);
@@ -110,6 +119,9 @@ function Dashboard() {
       setDrift(dr.data);
       setAlerts(a.data);
       setComparison(c.data);
+      setSelfHistory(sh.data);
+      setSelfDistribution(sd.data);
+      setFusion(f.data);
     } catch (e) {
       console.error("API error", e);
     }
@@ -209,6 +221,17 @@ function Dashboard() {
       current: comparison.current?.[emotion] ?? 0,
     }))
     : [];
+
+  const selfHistoryData = selfHistory.map(h => ({
+    time: new Date(h.timestamp).toLocaleString(),
+    confidence: h.confidence,
+    emotion: h.emotion
+  }));
+
+  const selfDistData = Object.entries(selfDistribution).map(([e, c]) => ({
+    emotion: e,
+    count: c * 100, // It's a percentage (0-1) from backend, let's keep it normalized or displaying as is? Backend returns 0.25 for 25%. Wait, backend implementation returns { emotion: count/total }. So it is 0.0-1.0. Let's multiply by 100 for chart if needed, or just display as percent.
+  }));
 
   const lastEmotion =
     timeline?.emotions?.[timeline.emotions.length - 1] || null;
@@ -438,6 +461,67 @@ function Dashboard() {
                     </ResponsiveContainer>
                   )}
                 </motion.div>
+
+                <motion.div className="card full" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                  <h2>Face Emotion Trend</h2>
+                  <ResponsiveContainer height={300}>
+                    <LineChart data={selfHistoryData}>
+                      <CartesianGrid stroke="rgba(255,255,255,0.1)" />
+                      <XAxis dataKey="time" stroke="#aaa" hide />
+                      <YAxis domain={[0, 1]} stroke="#aaa" />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Line type="monotone" dataKey="confidence" stroke="#007bff" strokeWidth={3} dot={{ r: 4 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </motion.div>
+
+                <motion.div className="card full" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                  <h2>Face Emotion Distribution</h2>
+                  <ResponsiveContainer height={260}>
+                    <BarChart data={selfDistData}>
+                      <XAxis dataKey="emotion" stroke="#aaa" />
+                      <YAxis stroke="#aaa" tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} />
+                      <Tooltip contentStyle={{ background: '#333', border: 'none' }} formatter={(v) => `${(v * 100).toFixed(1)}%`} />
+                      <Bar dataKey="count">
+                        {selfDistData.map((d, i) => (
+                          <Cell key={i} fill={emotionColors[d.emotion] || '#888'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </motion.div>
+
+
+                <motion.div className="card full" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                  <h2>Fusion Insights</h2>
+                  {fusion ? (
+                    <div className="fusion-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', textAlign: 'center' }}>
+                      <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                        <h3>Alignment Score</h3>
+                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: fusion.alignment_score > 0.7 ? '#e1ff5e' : '#f44336' }}>
+                          {(fusion.alignment_score * 100).toFixed(0)}%
+                        </div>
+                        <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>Face vs Text Consistency</p>
+                      </div>
+                      <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                        <h3>Stability Index</h3>
+                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: fusion.stability_score > 0.7 ? '#e1ff5e' : '#ffc107' }}>
+                          {(fusion.stability_score * 100).toFixed(0)}%
+                        </div>
+                        <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>Emotional Volatility</p>
+                      </div>
+                      <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                        <h3>Masking Alert</h3>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: fusion.masking_detected ? '#f44336' : '#4caf50' }}>
+                          {fusion.masking_detected ? "DETECTED" : "None"}
+                        </div>
+                        {fusion.masking_detected && <p style={{ fontSize: '0.8rem', color: '#f44336' }}>Possible emotional suppression</p>}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="empty">Loading insights...</p>
+                  )}
+                </motion.div>
               </>
             )}
           </>
@@ -459,7 +543,7 @@ function Dashboard() {
       }}>
         Logged in as: <span style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}>{user.email}</span>
       </div>
-    </div>
+    </div >
   );
 }
 
