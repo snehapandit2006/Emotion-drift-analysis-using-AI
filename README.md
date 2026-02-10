@@ -190,15 +190,16 @@ This avoids false certainty and ethical overreach.
    * Snapshot-based facial emotion capture
    * Emotion and confidence displayed instantly
    * Data stored for historical analysis
-   * *![Self Emotion Detetction](screenshots/Screenshot%2026-02-09%142855.png)
+   * ![Self Emotion Detection](screenshots/Screenshot%2026-02-09%20142855.png)
+
 
 3. **Dashboard & Insights**
 
    * Emotion timeline and distribution graphs
    * Drift and stability indicators
    * High-level fused emotional insights
-   * ![Dashboard](screenshots/Screenshot%2026-02-09%142827.png)
-   * ![Timeline](screenshots/Screenshot%2026-02-09%142839.png)
+   * ![Dashboard](screenshots/Screenshot%2026-02-09%20142827.png)
+   * ![Timeline](screenshots/Screenshot%2026-02-09%20142839.png)
 
 This flow demonstrates **real-time inference**, **ethical design**, and **long-term analytics** in under three minutes.
 
