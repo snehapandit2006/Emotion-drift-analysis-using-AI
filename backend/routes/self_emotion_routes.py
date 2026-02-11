@@ -100,7 +100,29 @@ def get_history(
         .order_by(FaceEmotionLog.timestamp.asc())\
         .all()
     
-    return logs
+    # Normalize
+    EMOTION_MAP = {
+        "angry": "anger",
+        "disgust": "anger", 
+        "sad": "sadness",
+        "joy": "happy",
+        "happines": "happy"
+    }
+    
+    normalized_logs = []
+    for log in logs:
+        # Create a dict or copy to avoiding mutation issues if attached to session
+        # Pydantic response model will handle dict conversion
+        raw_e = log.emotion
+        if raw_e: raw_e = raw_e.lower()
+        
+        normalized_logs.append({
+            "timestamp": log.timestamp,
+            "emotion": EMOTION_MAP.get(raw_e, raw_e),
+            "confidence": log.confidence
+        })
+
+    return normalized_logs
 
 @router.get("/distribution")
 def get_distribution(
@@ -134,7 +156,23 @@ def get_distribution(
     ).group_by(FaceEmotionLog.emotion).all()
 
     # Convert to dictionary and calculate percentages
-    counts = {r[0]: r[1] for r in results}
+    # Normalize keys while aggregating
+    EMOTION_MAP = {
+        "angry": "anger",
+        "disgust": "anger", 
+        "sad": "sadness",
+        "joy": "happy",
+        "happines": "happy"
+    }
+
+    counts = {}
+    for emotion, count in results:
+        raw_e = emotion
+        if raw_e: raw_e = raw_e.lower()
+        
+        norm_e = EMOTION_MAP.get(raw_e, raw_e)
+        counts[norm_e] = counts.get(norm_e, 0) + count
+
     total = sum(counts.values())
     
     distribution = {}

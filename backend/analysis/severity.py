@@ -20,7 +20,8 @@ def analyze_severity(drift_result, volatility_score, time_window_days=7):
 
     # Factors
     has_drift = drift_result.get("drift", False)
-    drift_severity = drift_result.get("details", {}).get("severity", 0.0)
+    # Drift result from drift.py returns top-level severity key
+    drift_severity = drift_result.get("severity", 0.0)
     
     # 1. Base Score calculation (0.0 to 1.0)
     # Drift contributes 0.6 max, Volatility 0.4 max

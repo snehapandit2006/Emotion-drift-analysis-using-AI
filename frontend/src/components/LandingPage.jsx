@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Activity, MessageSquare, Zap, Shield } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 import './LandingPage.css';
 import robotMascot from '../assets/robot_mascot.png';
 import logoFinal from '../assets/logo_final.png';
 import VideoBackground from './VideoBackground';
 
 export default function LandingPage() {
+    const { theme } = useTheme();
+
     const containerVariants = {
         hidden: { opacity: 0 },
         visible: {
@@ -42,7 +45,7 @@ export default function LandingPage() {
                             clipPath: 'inset(0 0 27% 0)'
                         }}
                     />
-                    {/* Bottom Layer: Text (White Filter) - Shows bottom 27% */}
+                    {/* Bottom Layer: Text (Adaptive Color) - Shows bottom 27% */}
                     <img
                         src={logoFinal}
                         alt="Sentia Text"
@@ -54,7 +57,7 @@ export default function LandingPage() {
                             width: '100%',
                             objectFit: 'contain',
                             clipPath: 'inset(73% 0 0 0)',
-                            filter: 'brightness(0) invert(1)'
+                            filter: theme === 'dark' ? 'brightness(0) invert(1)' : 'brightness(0)'
                         }}
                     />
                 </div>

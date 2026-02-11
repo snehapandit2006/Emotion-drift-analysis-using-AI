@@ -4,13 +4,13 @@ import { Upload, FileText, AlertCircle, MessageSquare } from 'lucide-react';
 import { API } from '../api';
 
 const emotionColors = {
-    happy: "#e1ff5e",
-    fear: "#9C27B0",
-    sadness: "#2196F3",
-    anger: "#F44336",
-    surprise: "#FFC107",
-    neutral: "#777",
-    love: "#FF69B4"
+    happy: "var(--emotion-happy)",
+    fear: "var(--emotion-fear)",
+    sadness: "var(--emotion-sadness)",
+    anger: "var(--emotion-anger)",
+    surprise: "var(--emotion-surprise)",
+    neutral: "var(--emotion-neutral)",
+    love: "var(--emotion-love)"
 };
 
 const ChatAnalyzer = () => {
@@ -151,7 +151,7 @@ const ChatAnalyzer = () => {
             </div>
 
             {error && (
-                <div style={{ background: 'rgba(244, 67, 54, 0.1)', border: '1px solid #F44336', padding: '1rem', borderRadius: '8px', color: '#F44336', display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                <div style={{ background: 'rgba(244, 67, 54, 0.1)', border: '1px solid var(--emotion-anger)', padding: '1rem', borderRadius: '8px', color: 'var(--emotion-anger)', display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                     <AlertCircle /> {error}
                 </div>
             )}
@@ -162,7 +162,7 @@ const ChatAnalyzer = () => {
 
                     {/* Left: Stats */}
                     <div className="glass-panel" style={{ padding: '2rem' }}>
-                        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><div className="dot" style={{ background: emotionColors[results.dominant_emotion] || '#fff' }}></div> Dominant Emotion: {results.dominant_emotion.toUpperCase()}</h2>
+                        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><div className="dot" style={{ background: emotionColors[results.dominant_emotion] || 'var(--text-main)' }}></div> Dominant Emotion: {results.dominant_emotion.toUpperCase()}</h2>
 
                         <div style={{ height: '300px', marginTop: '1rem' }}>
                             <ResponsiveContainer width="100%" height="100%">
@@ -180,7 +180,7 @@ const ChatAnalyzer = () => {
                                             <Cell key={`cell-${index}`} fill={emotionColors[entry.name] || '#777'} />
                                         ))}
                                     </Pie>
-                                    <Tooltip contentStyle={{ background: '#333', border: 'none', borderRadius: '4px' }} formatter={(value) => `${(value * 100).toFixed(1)}%`} />
+                                    <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '4px' }} itemStyle={{ color: 'var(--text-main)' }} formatter={(value) => `${(value * 100).toFixed(1)}%`} />
                                     <Legend />
                                 </PieChart>
                             </ResponsiveContainer>
@@ -190,9 +190,9 @@ const ChatAnalyzer = () => {
                             <h3>Recent Context (Last 5 Messages)</h3>
                             <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 {results.recent_context && results.recent_context.map((msg, i) => (
-                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.2rem' }}>
-                                        <span style={{ fontStyle: 'italic', color: '#ccc', flex: 1, marginRight: '1rem' }}>"{msg.text}"</span>
-                                        <span style={{ color: emotionColors[msg.emotion] || '#fff', fontWeight: 'bold' }}>{msg.emotion.toUpperCase()}</span>
+                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.2rem' }}>
+                                        <span style={{ fontStyle: 'italic', color: 'var(--text-secondary)', flex: 1, marginRight: '1rem' }}>"{msg.text}"</span>
+                                        <span style={{ color: emotionColors[msg.emotion] || 'var(--text-main)', fontWeight: 'bold' }}>{msg.emotion.toUpperCase()}</span>
                                     </div>
                                 ))}
                             </div>
@@ -205,19 +205,19 @@ const ChatAnalyzer = () => {
                             <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}><MessageSquare /> Advice</h2>
 
                             <div style={{ marginBottom: '2rem' }}>
-                                <h3 style={{ color: '#e1ff5e' }}>{results.advice.strategy_title}</h3>
+                                <h3 style={{ color: 'var(--accent-color)' }}>{results.advice.strategy_title}</h3>
                                 <p style={{ lineHeight: '1.6' }}>{results.advice.strategy_content}</p>
                             </div>
 
                             <div style={{ marginBottom: '2rem' }}>
                                 <h4>Suggested Tone</h4>
-                                <div style={{ display: 'inline-block', padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.1)', borderRadius: '20px', marginTop: '0.5rem' }}>
+                                <div style={{ display: 'inline-block', padding: '0.5rem 1rem', background: 'var(--bg-input)', borderRadius: '20px', marginTop: '0.5rem' }}>
                                     {results.advice.suggested_tone}
                                 </div>
                             </div>
 
-                            <div style={{ background: 'rgba(33, 150, 243, 0.1)', padding: '1.5rem', borderRadius: '8px', borderLeft: '4px solid #2196F3' }}>
-                                <h4 style={{ margin: '0 0 0.5rem 0', color: '#2196F3' }}>Reply Tip</h4>
+                            <div style={{ background: 'var(--bg-panel)', padding: '1.5rem', borderRadius: '8px', borderLeft: '4px solid var(--primary-blue)' }}>
+                                <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--primary-blue)' }}>Reply Tip</h4>
                                 <p style={{ margin: 0 }}>{results.advice.reply_tip}</p>
                             </div>
                         </div>

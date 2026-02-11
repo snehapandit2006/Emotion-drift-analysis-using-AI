@@ -10,41 +10,7 @@ body {
   overflow: hidden;
 }
 
-:root {
-  --bg-main: #0b0b0b;
-  --bg-card: rgba(255, 255, 255, 0.05);
-  --bg-panel: rgba(255, 255, 255, 0.03);
-  --bg-input: #111;
-  --text-main: #fff;
-  --text-sub: #888;
-  --border-color: #333;
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --accent-color: #e1ff5e;
-  --accent-text: black;
-  --shadow-color: rgba(0, 0, 0, 0.3);
-}
-
-body.light-mode {
-  --bg-main: #f4f6f8;
-  --bg-card: rgba(255, 255, 255, 0.8);
-  --bg-panel: rgba(255, 255, 255, 0.6);
-  --bg-input: #fff;
-  --text-main: #1a1a1a;
-  --text-sub: #555;
-  --border-color: #ddd;
-  --glass-border: rgba(0, 0, 0, 0.05);
-  --accent-color: #4CAF50;
-  /* Darker green for light mode contrast */
-  --accent-text: white;
-  --shadow-color: rgba(0, 0, 0, 0.1);
-}
-
-body {
-  background: var(--bg-main);
-  color: var(--text-main);
-  font-family: Inter, system-ui, sans-serif;
-  transition: background 0.3s, color 0.3s;
-}
+/* Theme variables are now managed in index.css */
 
 .dashboard {
   width: 100%;
@@ -402,9 +368,9 @@ button:disabled {
 }
 
 .sentia-btn {
-  background: #e1ff5e;
-  /* Neon Lime */
-  color: black;
+  background: var(--accent-color);
+  /* Neon Lime or Green */
+  color: var(--accent-text);
   font-weight: 600;
   padding: 16px;
   border-radius: 30px;
@@ -446,16 +412,21 @@ button:disabled {
 
 .social-btn {
   flex: 1;
-  background: #111;
-  border: 1px solid #333;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
   padding: 12px;
   border-radius: 30px;
-  color: white;
+  color: var(--text-main);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.social-btn:hover {
+  background: var(--bg-card);
 }
 
 .signup-link {

@@ -23,7 +23,26 @@ def analyze_fusion(text_logs, face_logs, range_days=7):
     cutoff = datetime.utcnow() - timedelta(days=range_days)
     recent_text = [l for l in text_logs if l.created_at >= cutoff]
     recent_face = [l for l in face_logs if l.timestamp >= cutoff]
+
+    # Normalize logic
+    EMOTION_MAP = {
+        "angry": "anger",
+        "disgust": "anger", 
+        "sad": "sadness",
+        "joy": "happy",
+        "happines": "happy"
+    }
     
+    # In-place normalization for analysis (create copies if needed to avoid mutating objects? 
+    # Actually modifying the objects in memory for this scope is fine or just map when extracting)
+    # Better to map when extracting attributes.
+    
+    # Helper to get emotion
+    def get_norm_emotion(log):
+        e = log.emotion
+        if e: e = e.lower()
+        return EMOTION_MAP.get(e, e)
+        
     if not recent_text or not recent_face:
         return {
             "alignment_score": 0.0,
@@ -34,8 +53,8 @@ def analyze_fusion(text_logs, face_logs, range_days=7):
         
     # 2. Emotional Alignment Score
     # Compare the top emotions in both modalities
-    text_emotions = [l.emotion for l in recent_text if l.emotion != 'neutral'] # Exclude neutral for alignment check? Or keep?
-    face_emotions = [l.emotion for l in recent_face if l.emotion != 'neutral']
+    text_emotions = [get_norm_emotion(l) for l in recent_text if get_norm_emotion(l) != 'neutral']
+    face_emotions = [get_norm_emotion(l) for l in recent_face if get_norm_emotion(l) != 'neutral']
     
     # Fallback if only neutral
     if not text_emotions: text_emotions = ['neutral']
@@ -80,10 +99,11 @@ def analyze_fusion(text_logs, face_logs, range_days=7):
     # We can measure how often the dominant emotion switches in the combined stream
     
     all_events = []
+    all_events = []
     for l in recent_text:
-        all_events.append({'t': l.created_at, 'e': l.emotion})
+        all_events.append({'t': l.created_at, 'e': get_norm_emotion(l)})
     for l in recent_face:
-        all_events.append({'t': l.timestamp, 'e': l.emotion})
+        all_events.append({'t': l.timestamp, 'e': get_norm_emotion(l)})
     
     all_events.sort(key=lambda x: x['t'])
     
@@ -100,8 +120,8 @@ def analyze_fusion(text_logs, face_logs, range_days=7):
     # ... (existing imports) ...
     
     # 5. Severity & Risk Analysis
-    # Combine streams for drift analysis
-    combined_emotions = [l.emotion for l in recent_text] + [l.emotion for l in recent_face]
+    # Combine streams for drift analysis (Already normalized in all_events, but for clarity let's use list)
+    combined_emotions = [get_norm_emotion(l) for l in recent_text] + [get_norm_emotion(l) for l in recent_face]
     # To do a proper drift, we ideally need time-ordered, but for now we'll just split the combined set
     # Better: use the timestamps from all_events
     sorted_emotions = [x['e'] for x in all_events]

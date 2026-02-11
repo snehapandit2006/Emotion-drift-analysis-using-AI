@@ -49,13 +49,13 @@ import AuthContext, { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 
 const emotionColors = {
-  happy: "#e1ff5e",
-  fear: "#9C27B0",
-  sadness: "#2196F3",
-  anger: "#F44336",
-  surprise: "#FFC107",
-  neutral: "#777",
-  love: "#FF69B4"
+  happy: "var(--emotion-happy)",
+  fear: "var(--emotion-fear)",
+  sadness: "var(--emotion-sadness)",
+  anger: "var(--emotion-anger)",
+  surprise: "var(--emotion-surprise)",
+  neutral: "var(--emotion-neutral)",
+  love: "var(--emotion-love)"
 };
 
 const severityText = (s = 0) =>
@@ -194,15 +194,15 @@ function Dashboard() {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div style={{ background: '#333', padding: '10px', borderRadius: '5px', border: '1px solid #555' }}>
-          <p style={{ margin: 0, fontWeight: 'bold', color: '#fff' }}>{label}</p>
+        <div style={{ background: 'var(--bg-card)', padding: '10px', borderRadius: '5px', border: '1px solid var(--border-color)' }}>
+          <p style={{ margin: 0, fontWeight: 'bold', color: 'var(--text-main)' }}>{label}</p>
           <p style={{ margin: '5px 0', color: emotionColors[data.emotion] || '#fff' }}>
             {data.emotion.toUpperCase()}
           </p>
-          <p style={{ margin: 0, fontSize: '0.8em', color: '#ccc' }}>
+          <p style={{ margin: 0, fontSize: '0.8em', color: 'var(--text-secondary)' }}>
             Confidence: {(data.confidence * 100).toFixed(1)}%
           </p>
-          <p style={{ margin: 0, fontSize: '0.8em', color: data.source === 'face' ? '#007bff' : '#e1ff5e' }}>
+          <p style={{ margin: 0, fontSize: '0.8em', color: data.source === 'face' ? 'var(--primary-blue)' : 'var(--accent-color)' }}>
             Source: {data.source === 'face' ? '📷 Face' : '💬 Chat'}
           </p>
         </div>
@@ -289,7 +289,7 @@ function Dashboard() {
             className="icon-btn"
             onClick={() => window.location.href = '/support-dashboard'}
             title="Support & Safety"
-            style={{ color: '#4caf50', border: '1px solid #4caf50' }}
+            style={{ color: 'var(--accent-color)', border: '1px solid var(--accent-color)' }}
           >
             <Shield size={20} />
           </button>
@@ -299,7 +299,7 @@ function Dashboard() {
             onClick={() => setViewMode('chat')}
             title="Chat Analysis"
             disabled={!monitoring}
-            style={viewMode === 'chat' ? { color: '#e1ff5e', border: '1px solid #e1ff5e' } : {}}
+            style={viewMode === 'chat' ? { color: 'var(--accent-color)', border: '1px solid var(--accent-color)' } : {}}
           >
             <MessageSquare size={20} />
           </button>
@@ -319,7 +319,7 @@ function Dashboard() {
           <button
             className={`monitor-toggle ${monitoring ? "on" : "off"}`}
             onClick={() => setMonitoring(!monitoring)}
-            style={monitoring ? { background: '#e1ff5e', color: 'black' } : {}}
+            style={monitoring ? { background: 'var(--accent-color)', color: 'var(--accent-text)' } : {}}
           >
             {monitoring ? "ON" : "OFF"}
           </button>
@@ -329,7 +329,7 @@ function Dashboard() {
             className="icon-btn"
             onClick={toggleTheme}
             title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            style={{ color: theme === 'light' ? '#333' : 'white' }}
+            style={{ color: 'var(--text-main)' }}
           >
             {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
           </button>
@@ -426,9 +426,9 @@ function Dashboard() {
                   <h2>Emotion Distribution</h2>
                   <ResponsiveContainer height={260}>
                     <BarChart data={distData}>
-                      <XAxis dataKey="emotion" stroke="#aaa" />
-                      <YAxis stroke="#aaa" />
-                      <Tooltip contentStyle={{ background: '#333', border: 'none' }} />
+                      <XAxis dataKey="emotion" stroke="var(--text-secondary)" />
+                      <YAxis stroke="var(--text-secondary)" />
+                      <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px' }} itemStyle={{ color: 'var(--text-main)' }} cursor={{ fill: 'var(--bg-panel)' }} />
                       <Bar dataKey="count">
                         {distData.map((d, i) => (
                           <Cell key={i} fill={emotionColors[d.emotion] || '#888'} />
@@ -446,11 +446,11 @@ function Dashboard() {
                   <h2>Timeline</h2>
                   <ResponsiveContainer height={300}>
                     <LineChart data={timelineData}>
-                      <CartesianGrid stroke="rgba(255,255,255,0.1)" />
-                      <XAxis dataKey="time" stroke="#aaa" />
-                      <YAxis domain={[0, 1]} stroke="#aaa" />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Line type="monotone" dataKey="confidence" stroke="#e1ff5e" strokeWidth={3} dot={false} />
+                      <CartesianGrid stroke="var(--glass-border)" />
+                      <XAxis dataKey="time" stroke="var(--text-secondary)" />
+                      <YAxis domain={[0, 1]} stroke="var(--text-secondary)" />
+                      <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--text-secondary)' }} />
+                      <Line type="monotone" dataKey="confidence" stroke="var(--accent-color)" strokeWidth={3} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </motion.div>
@@ -462,11 +462,11 @@ function Dashboard() {
                   ) : (
                     <ResponsiveContainer height={300}>
                       <BarChart data={comparisonData}>
-                        <XAxis dataKey="emotion" stroke="#aaa" />
-                        <YAxis domain={[0, 1]} stroke="#aaa" />
-                        <Tooltip contentStyle={{ background: '#333', border: 'none' }} />
-                        <Bar dataKey="previous" fill="#555" name="Previous Period" />
-                        <Bar dataKey="current" fill="#e1ff5e" name="Current Period" />
+                        <XAxis dataKey="emotion" stroke="var(--text-secondary)" />
+                        <YAxis domain={[0, 1]} stroke="var(--text-secondary)" />
+                        <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px' }} itemStyle={{ color: 'var(--text-main)' }} cursor={{ fill: 'var(--bg-panel)' }} />
+                        <Bar dataKey="previous" fill="var(--text-secondary)" name="Previous Period" />
+                        <Bar dataKey="current" fill="var(--accent-color)" name="Current Period" />
                       </BarChart>
                     </ResponsiveContainer>
                   )}
@@ -476,11 +476,11 @@ function Dashboard() {
                   <h2>Face Emotion Trend</h2>
                   <ResponsiveContainer height={300}>
                     <LineChart data={selfHistoryData}>
-                      <CartesianGrid stroke="rgba(255,255,255,0.1)" />
-                      <XAxis dataKey="time" stroke="#aaa" hide />
-                      <YAxis domain={[0, 1]} stroke="#aaa" />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Line type="monotone" dataKey="confidence" stroke="#007bff" strokeWidth={3} dot={{ r: 4 }} />
+                      <CartesianGrid stroke="var(--glass-border)" />
+                      <XAxis dataKey="time" stroke="var(--text-secondary)" hide />
+                      <YAxis domain={[0, 1]} stroke="var(--text-secondary)" />
+                      <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--text-secondary)' }} />
+                      <Line type="monotone" dataKey="confidence" stroke="var(--primary-blue)" strokeWidth={3} dot={{ r: 4 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </motion.div>
@@ -489,9 +489,9 @@ function Dashboard() {
                   <h2>Face Emotion Distribution</h2>
                   <ResponsiveContainer height={260}>
                     <BarChart data={selfDistData}>
-                      <XAxis dataKey="emotion" stroke="#aaa" />
-                      <YAxis stroke="#aaa" tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} />
-                      <Tooltip contentStyle={{ background: '#333', border: 'none' }} formatter={(v) => `${(v * 100).toFixed(1)}%`} />
+                      <XAxis dataKey="emotion" stroke="var(--text-secondary)" />
+                      <YAxis stroke="var(--text-secondary)" tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} />
+                      <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px' }} itemStyle={{ color: 'var(--text-main)' }} formatter={(v) => `${(v * 100).toFixed(1)}%`} cursor={{ fill: 'var(--bg-panel)' }} />
                       <Bar dataKey="count">
                         {selfDistData.map((d, i) => (
                           <Cell key={i} fill={emotionColors[d.emotion] || '#888'} />
@@ -506,26 +506,26 @@ function Dashboard() {
                   <h2>Fusion Insights</h2>
                   {fusion ? (
                     <div className="fusion-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', textAlign: 'center' }}>
-                      <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                      <div style={{ padding: '1rem', background: 'var(--bg-panel)', borderRadius: '8px' }}>
                         <h3>Alignment Score</h3>
-                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: fusion.alignment_score > 0.7 ? '#e1ff5e' : '#f44336' }}>
+                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: fusion.alignment_score > 0.7 ? 'var(--accent-color)' : 'var(--emotion-anger)' }}>
                           {(fusion.alignment_score * 100).toFixed(0)}%
                         </div>
                         <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>Face vs Text Consistency</p>
                       </div>
-                      <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                      <div style={{ padding: '1rem', background: 'var(--bg-panel)', borderRadius: '8px' }}>
                         <h3>Stability Index</h3>
-                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: fusion.stability_score > 0.7 ? '#e1ff5e' : '#ffc107' }}>
+                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: fusion.stability_score > 0.7 ? 'var(--accent-color)' : 'var(--emotion-surprise)' }}>
                           {(fusion.stability_score * 100).toFixed(0)}%
                         </div>
                         <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>Emotional Volatility</p>
                       </div>
-                      <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                      <div style={{ padding: '1rem', background: 'var(--bg-panel)', borderRadius: '8px' }}>
                         <h3>Masking Alert</h3>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: fusion.masking_detected ? '#f44336' : '#4caf50' }}>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: fusion.masking_detected ? 'var(--emotion-anger)' : 'var(--emotion-happy)' }}>
                           {fusion.masking_detected ? "DETECTED" : "None"}
                         </div>
-                        {fusion.masking_detected && <p style={{ fontSize: '0.8rem', color: '#f44336' }}>Possible emotional suppression</p>}
+                        {fusion.masking_detected && <p style={{ fontSize: '0.8rem', color: 'var(--emotion-anger)' }}>Possible emotional suppression</p>}
                       </div>
                     </div>
                   ) : (

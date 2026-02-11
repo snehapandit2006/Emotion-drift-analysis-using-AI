@@ -78,8 +78,8 @@ export const getFusionAnalytics = (range_days) =>
     params: { range_days }
   });
 
-export const fetchSupportInsights = (days = 14, include_nearby = false) =>
+export const fetchSupportInsights = (days = 14, include_nearby = false, lat = null, lon = null) =>
   API.get("/support-insights/", {
-    params: { days, include_nearby }
+    params: { days, include_nearby, lat, lon }
   });
 

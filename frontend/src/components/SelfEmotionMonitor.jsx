@@ -102,14 +102,14 @@ const SelfEmotionMonitor = () => {
                     <>
                         <button
                             onClick={captureSnapshot}
-                            style={{ ...styles.button, backgroundColor: "#007bff" }}
+                            style={{ ...styles.button, backgroundColor: "var(--primary-blue)", color: "#fff" }}
                             disabled={loading}
                         >
                             {loading ? "Analyzing..." : "Capture Emotion"}
                         </button>
                         <button
                             onClick={stopStream}
-                            style={{ ...styles.button, backgroundColor: "#dc3545", marginLeft: "10px" }}
+                            style={{ ...styles.button, backgroundColor: "var(--emotion-anger)", color: "#fff", marginLeft: "10px" }}
                         >
                             Stop
                         </button>
@@ -125,9 +125,9 @@ const SelfEmotionMonitor = () => {
 
             {latestEmotion && !errorMsg && (
                 <div style={styles.result}>
-                    <p style={{ margin: "5px 0", color: "#333" }}>Detected: <strong style={{ fontSize: "1.2em", color: "#007bff" }}>{latestEmotion.emotion.toUpperCase()}</strong></p>
-                    <p style={{ margin: "5px 0", color: "#666" }}>Confidence: {(latestEmotion.confidence * 100).toFixed(1)}%</p>
-                    <p style={{ margin: "5px 0", fontSize: "0.8em", color: "#999" }}>Captured at: {new Date().toLocaleTimeString()}</p>
+                    <p style={{ margin: "5px 0", color: "var(--text-main)" }}>Detected: <strong style={{ fontSize: "1.2em", color: "var(--primary-blue)" }}>{latestEmotion.emotion.toUpperCase()}</strong></p>
+                    <p style={{ margin: "5px 0", color: "var(--text-secondary)" }}>Confidence: {(latestEmotion.confidence * 100).toFixed(1)}%</p>
+                    <p style={{ margin: "5px 0", fontSize: "0.8em", color: "var(--text-secondary)", opacity: 0.8 }}>Captured at: {new Date().toLocaleTimeString()}</p>
                 </div>
             )}
         </div>
@@ -137,16 +137,18 @@ const SelfEmotionMonitor = () => {
 const styles = {
     container: {
         padding: "20px",
-        border: "1px solid #ccc",
+        border: "1px solid var(--glass-border)",
         borderRadius: "10px",
         textAlign: "center",
-        backgroundColor: "#fff",
+        backgroundColor: "var(--bg-card)",
         maxWidth: "400px",
         margin: "20px auto",
+        color: "var(--text-main)",
+        backdropFilter: "blur(10px)",
     },
     title: {
         marginBottom: "15px",
-        color: "#333",
+        color: "var(--text-main)",
     },
     videoContainer: {
         marginBottom: "15px",
@@ -160,12 +162,13 @@ const styles = {
     placeholder: {
         width: "320px",
         height: "240px",
-        backgroundColor: "#ccc",
+        backgroundColor: "var(--bg-input)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         borderRadius: "8px",
-        color: "#666",
+        color: "var(--text-secondary)",
+        border: "1px solid var(--border-color)",
     },
     controls: {
         marginBottom: "15px",
@@ -176,14 +179,16 @@ const styles = {
         cursor: "pointer",
         borderRadius: "5px",
         border: "none",
-        backgroundColor: "#28a745",
-        color: "#fff",
+        backgroundColor: "var(--accent-color)",
+        color: "var(--accent-text)",
+        fontWeight: "bold",
     },
     result: {
         marginTop: "10px",
         padding: "10px",
-        backgroundColor: "#f8f9fa",
+        backgroundColor: "var(--bg-input)",
         borderRadius: "5px",
+        border: "1px solid var(--border-color)",
     }
 };
 

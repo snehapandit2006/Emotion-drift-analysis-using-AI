@@ -1,20 +1,73 @@
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+  /* Theme Variables - Dark Mode (Default) */
+  --bg-main: #0b0b0b;
+  --bg-card: rgba(255, 255, 255, 0.05);
+  --bg-panel: rgba(255, 255, 255, 0.03);
+  --bg-input: #111111;
+  --text-main: #ffffff;
+  --text-secondary: #888888;
+  --border-color: #333333;
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --primary-blue: #64b5f6;
+  --accent-color: #4CAF50;
+  --accent-text: #ffffff;
 
-  color-scheme: dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #0a0a1a; /* Match dashboard background */
+  /* Emotion Colors - Dark */
+  --emotion-happy: #e1ff5e;
+  --emotion-fear: #9C27B0;
+  --emotion-sadness: #2196F3;
+  --emotion-anger: #F44336;
+  --emotion-surprise: #FFC107;
+  --emotion-neutral: #777777;
+  --emotion-love: #FF69B4;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Aliases for compatibility */
+  --card-bg: var(--bg-card);
+  --text-sub: var(--text-secondary);
+}
+
+body.light-mode {
+  /* Light Mode Overrides */
+  --bg-main: #f4f6f8;
+  --bg-card: #ffffff;
+  --bg-panel: rgba(255, 255, 255, 0.9);
+  --bg-input: #ffffff;
+  --text-main: #1a1a1a;
+  --text-secondary: #555555;
+  --border-color: #e0e0e0;
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --accent-color: #4CAF50;
+  --accent-text: #ffffff;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --primary-blue: #1976D2;
+
+  /* Emotion Colors - Light */
+  --emotion-happy: #2E7D32;
+  /* Darker Green for visibility on white */
+  --emotion-fear: #7B1FA2;
+  --emotion-sadness: #1565C0;
+  --emotion-anger: #C62828;
+  --emotion-surprise: #EF6C00;
+  /* Darker Orange */
+  --emotion-neutral: #616161;
+  --emotion-love: #AD1457;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color: var(--text-main);
+  background-color: var(--bg-main);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background 0.3s, color 0.3s;
 }

@@ -90,7 +90,7 @@ const Login = () => {
                 className="icon-btn"
                 onClick={toggleTheme}
                 title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-                style={{ position: 'absolute', top: '24px', right: '24px', color: theme === 'light' ? '#333' : 'white' }}
+                style={{ position: 'absolute', top: '24px', right: '24px', color: 'var(--text-main)' }}
             >
                 {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </button>
@@ -191,7 +191,7 @@ const Login = () => {
                                 <input type="checkbox" /> Remember me
                             </label>
                             <span
-                                style={{ cursor: 'pointer', color: '#e1ff5e' }}
+                                style={{ cursor: 'pointer', color: 'var(--accent-color)' }}
                                 onClick={() => setView('forgot')}
                             >
                                 Forgot Password?

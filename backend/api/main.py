@@ -86,6 +86,20 @@ def predict(req: TextRequest, current_user: User = Depends(get_current_user)):
 # -----------------------------
 # Timeline
 # -----------------------------
+# Helper for normalization
+EMOTION_MAP = {
+    "angry": "anger",
+    "disgust": "anger",
+    "sad": "sadness",
+    "joy": "happy",
+    "happines": "happy"
+}
+
+def get_norm_emotion(raw_emotion):
+    if not raw_emotion: return "unknown"
+    e = raw_emotion.lower()
+    return EMOTION_MAP.get(e, e)
+
 @app.get("/visualization/timeline")
 def timeline(range: str = "24h", current_user: User = Depends(get_current_user)):
     db = SessionLocal()
@@ -127,16 +141,18 @@ def timeline(range: str = "24h", current_user: User = Depends(get_current_user))
     # Combine
     combined = []
     for l in text_logs:
+        e = get_norm_emotion(l.emotion)
         combined.append({
             "timestamp": l.created_at,
-            "emotion": l.emotion,
+            "emotion": e,
             "confidence": l.confidence,
             "source": "text"
         })
     for l in face_logs:
+        e = get_norm_emotion(l.emotion)
         combined.append({
             "timestamp": l.timestamp,
-            "emotion": l.emotion,
+            "emotion": e,
             "confidence": l.confidence,
             "source": "face"
         })
@@ -151,7 +167,6 @@ def timeline(range: str = "24h", current_user: User = Depends(get_current_user))
         "sources": [x["source"] for x in combined]
     }
 
-
 # -----------------------------
 # Distribution
 # -----------------------------
@@ -162,7 +177,14 @@ def distribution(current_user: User = Depends(get_current_user)):
     face_logs = db.query(FaceEmotionLog).filter(FaceEmotionLog.user_id == current_user.id, FaceEmotionLog.emotion != "unknown").all()
     db.close()
 
-    all_emotions = [l.emotion for l in text_logs] + [l.emotion for l in face_logs]
+    all_emotions = []
+    
+    for l in text_logs + face_logs:
+        e = l.emotion
+        # Apply normalization
+        norm_e = EMOTION_MAP.get(e, e)
+        all_emotions.append(norm_e)
+    
     return dict(Counter(all_emotions))
 
 
@@ -179,9 +201,11 @@ def drift(window: int = 5, current_user: User = Depends(get_current_user)):
     # Combine and Sort
     combined = []
     for l in text_logs:
-        combined.append({"t": l.created_at, "e": l.emotion})
+        e = EMOTION_MAP.get(l.emotion, l.emotion)
+        combined.append({"t": l.created_at, "e": e})
     for l in face_logs:
-        combined.append({"t": l.timestamp, "e": l.emotion})
+        e = EMOTION_MAP.get(l.emotion, l.emotion)
+        combined.append({"t": l.timestamp, "e": e})
     
     combined.sort(key=lambda x: x["t"])
 

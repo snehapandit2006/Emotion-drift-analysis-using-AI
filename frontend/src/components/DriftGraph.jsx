@@ -15,8 +15,8 @@ export default function DriftGraph({ severity }) {
     const value = Math.min(Math.max(severity || 0, 0), 1) * 100;
 
     const data = [
-        { name: 'A', value: value, color: value > 60 ? '#ff4d4d' : value > 30 ? '#ffc107' : '#4caf50' },
-        { name: 'B', value: 100 - value, color: '#333' },
+        { name: 'A', value: value, color: value > 60 ? 'var(--emotion-anger)' : value > 30 ? 'var(--emotion-surprise)' : 'var(--emotion-happy)' },
+        { name: 'B', value: 100 - value, color: 'var(--bg-input)' },
     ];
 
     const needle = (value, data, cx, cy, iR, oR, color) => {
@@ -63,7 +63,7 @@ export default function DriftGraph({ severity }) {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                 </Pie>
-                {needle(value, data, cx, cy, iR, oR, '#d0d000')}
+                {needle(value, data, cx, cy, iR, oR, 'var(--text-main)')}
             </PieChart>
             <div style={{
                 position: 'absolute',
