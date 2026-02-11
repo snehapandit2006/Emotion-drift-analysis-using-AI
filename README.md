@@ -182,7 +182,7 @@ This avoids false certainty and ethical overreach.
    * Upload or paste a conversation
    * System analyzes text-based emotions
    * Results are logged for trend analysis
-   * ![Chat Analysis](screenshots/Screenshot_202026-02-09_20142941.png)
+   * ![Chat Analysis](chatanalysis.png)
 
 2. **Self Emotion Monitoring**
 
@@ -190,7 +190,7 @@ This avoids false certainty and ethical overreach.
    * Snapshot-based facial emotion capture
    * Emotion and confidence displayed instantly
    * Data stored for historical analysis
-   * ![Self Emotion Detection](screenshots/Screenshot%2026-02-09%20142855.png)
+   * ![Self Emotion Detection](screenshots/selfmonitor.png)
 
 
 3. **Dashboard & Insights**
@@ -198,8 +198,8 @@ This avoids false certainty and ethical overreach.
    * Emotion timeline and distribution graphs
    * Drift and stability indicators
    * High-level fused emotional insights
-   * ![Dashboard](screenshots/Screenshot%2026-02-09%20142827.png)
-   * ![Timeline](screenshots/Screenshot%2026-02-09%20142839.png)
+   * ![Timeline](screenshots/charts.png)
+   * ![Dashboard](screenshots/dashboard.png)
 
 This flow demonstrates **real-time inference**, **ethical design**, and **long-term analytics** in under three minutes.
 
