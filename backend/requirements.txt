@@ -21,3 +21,6 @@ transformers
 scikit-learn
 pillow
 opencv-python
+pydantic-settings
+gunicorn
+psycopg2-binary

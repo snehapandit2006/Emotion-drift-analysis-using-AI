@@ -28,7 +28,7 @@ class HistoryResponse(BaseModel):
     confidence: float
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 @router.post("/capture", response_model=EmotionCaptureResponse)
 def capture_emotion(
