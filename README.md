@@ -201,10 +201,36 @@ This avoids false certainty and ethical overreach.
    * ![Dashboard](screenshots/Screenshot%2026-02-09%20142827.png)
    * ![Timeline](screenshots/Screenshot%2026-02-09%20142839.png)
 
+4. **Support & Safety Insights**
+   
+   * Access via the shield icon 🛡️ in the dashboard
+   * View non-clinical severity assessment (Low/Medium/High)
+   * Access Tele-MANAS helpline details directly
+   * Find nearby psychologists (requires manual consent)
+
 This flow demonstrates **real-time inference**, **ethical design**, and **long-term analytics** in under three minutes.
 
 ---
 
+
+
+## 🛡️ Emotional Risk Awareness & Support
+
+This system includes a **Support & Safety Layer** designed to analyze long-term emotional health indicators without making medical diagnoses.
+
+### Pattern Recognition (Not Diagnosis)
+The system calculates "Severity Levels" based purely on mathematical drift and volatility:
+*   **Low**: Normal emotional fluctuations.
+*   **Medium**: Sustained negative drift.
+*   **High**: Sustained drift + high volatility.
+
+### Support Resources
+If high emotional risk patterns are detected, the system provides:
+*   **Tele-MANAS Helpline**: Direct display of India's 24x7 Mental Health Helpline (14416).
+*   **Psychologist Finder**: (Optional) Consent-based lookup for nearby professionals.
+*   **Coping Guidance**: Static, non-prescriptive suggestions for seeking human support.
+
+---
 
 ## 🚧 Limitations
 

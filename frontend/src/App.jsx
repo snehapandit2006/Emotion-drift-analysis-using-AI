@@ -12,7 +12,9 @@ import {
   Cell,
 } from "recharts";
 import { motion } from "framer-motion";
-import { Download, Table as TableIcon, Activity, LogOut, MessageSquare, Sun, Moon } from 'lucide-react';
+import SupportDashboard from "./components/SupportDashboard";
+import { Download, Table as TableIcon, Activity, LogOut, MessageSquare, Sun, Moon, Shield } from 'lucide-react';
+
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 import {
@@ -283,6 +285,14 @@ function Dashboard() {
         <div style={{ flex: 1 }}></div>
 
         <div className="header-actions">
+          <button
+            className="icon-btn"
+            onClick={() => window.location.href = '/support-dashboard'}
+            title="Support & Safety"
+            style={{ color: '#4caf50', border: '1px solid #4caf50' }}
+          >
+            <Shield size={20} />
+          </button>
           {/* Chat Analysis Toggle */}
           <button
             className="icon-btn"
@@ -557,6 +567,14 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route
+              path="/support-dashboard"
+              element={
+                <RequireAuth>
+                  <SupportDashboard />
+                </RequireAuth>
+              }
+            />
             <Route
               path="/dashboard"
               element={

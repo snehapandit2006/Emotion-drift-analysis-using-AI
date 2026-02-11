@@ -27,6 +27,8 @@ from routes import self_emotion_routes
 app.include_router(self_emotion_routes.router)
 from routes import fusion_routes
 app.include_router(fusion_routes.router)
+from api.routes import support_routes
+app.include_router(support_routes.router)
 
 app.add_middleware(
     CORSMiddleware,

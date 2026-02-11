@@ -97,10 +97,33 @@ def analyze_fusion(text_logs, face_logs, range_days=7):
     switch_rate = switches / (len(all_events) - 1) if len(all_events) > 1 else 0
     stability_score = max(0.0, 1.0 - switch_rate)
     
+    # ... (existing imports) ...
+    
+    # 5. Severity & Risk Analysis
+    # Combine streams for drift analysis
+    combined_emotions = [l.emotion for l in recent_text] + [l.emotion for l in recent_face]
+    # To do a proper drift, we ideally need time-ordered, but for now we'll just split the combined set
+    # Better: use the timestamps from all_events
+    sorted_emotions = [x['e'] for x in all_events]
+    
+    mid_point = len(sorted_emotions) // 2
+    old_emotions = sorted_emotions[:mid_point]
+    new_emotions = sorted_emotions[mid_point:]
+    
+    from analysis.drift import detect_emotion_drift
+    drift_result = detect_emotion_drift(old_emotions, new_emotions)
+    
+    # Volatility is inverse of stability
+    volatility_score = 1.0 - stability_score
+    
+    from analysis.severity import analyze_severity
+    severity_result = analyze_severity(drift_result, volatility_score, range_days)
+    
     return {
         "alignment_score": round(alignment_score, 2),
         "masking_detected": masking_flag,
         "masking_details": details,
         "stability_score": round(stability_score, 2),
-        "dominant_modality": "Face" if len(recent_face) > len(recent_text) else "Text"
+        "dominant_modality": "Face" if len(recent_face) > len(recent_text) else "Text",
+        "severity": severity_result
     }

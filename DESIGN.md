@@ -159,4 +159,33 @@ The goal is not maximum accuracy, but **maximum clarity, correctness, and robust
 
 ---
 
+## 11. Ground Rules (Scope)
+
+To ensure safety and responsibility, the system adheres to strict boundaries:
+
+### ❌ What The System Does NOT Do
+*   **No Diagnosis**: It does not diagnose depression, anxiety, or any mental health condition.
+*   **No Automatic Intervention**: It does not contact emergency services or auto-call helplines.
+*   **No Labelling**: It does not label users as "depressed" or "mentally ill".
+
+### ✅ What The System WILL Do
+*   **Detect Patterns**: Identifies severe emotional drift and volatility patterns.
+*   **Assign Severity**: Uses non-clinical severity levels (Low, Medium, High) based on math and time.
+*   **Offer Support**: Provides static resources (Tele-MANAS) and encourages human connection.
+
+---
+
+## 12. Ethics & Safety
+
+### 12.1 Non-Clinical Language
+All user-facing text is audited to be non-diagnostic.
+*   *Bad*: "You are suffering from severe depression."
+*   *Good*: "The system detected persistent negative emotional patterns over the last 14 days."
+
+### 12.2 Support Routing
+*   **Tele-MANAS Integration**: The system hardcodes the Tele-MANAS helpline (14416) as a verifyable, government-backed support resource.
+*   **Psychologist Lookup**: Optional location-based lookup is gated by explicit user consent. Patterns are never shared with listed professionals.
+
+---
+
 **This system is designed to be understood, critiqued, and extended — not treated as a black box.**
