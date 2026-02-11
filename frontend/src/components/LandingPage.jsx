@@ -25,7 +25,12 @@ export default function LandingPage() {
     };
 
     return (
-        <div className="landing-container">
+        <motion.div
+            className="landing-container"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1, ease: "easeInOut" }}
+        >
             <VideoBackground />
 
             {/* Navigation */}
@@ -124,6 +129,6 @@ export default function LandingPage() {
                     <p>Get immediate insights into the tone and sentiment of your messages.</p>
                 </div>
             </motion.section>
-        </div>
+        </motion.div>
     );
 }

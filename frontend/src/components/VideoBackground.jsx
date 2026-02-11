@@ -58,7 +58,8 @@ export default function VideoBackground() {
             width: '100vw',
             height: '100vh',
             zIndex: -2,
-            background: 'var(--bg-main)' // Fallback
+            background: 'var(--bg-main)', // Fallback while loading
+            transition: 'opacity 1s ease-in-out'
         }}>
             <Canvas camera={{ position: [0, 0, 1.5], fov: 75 }}>
                 <Suspense fallback={null}>

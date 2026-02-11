@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useContext } from "react";
+import { useEffect, useState, useCallback, useRef, useContext, lazy, Suspense } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -12,7 +12,9 @@ import {
   Cell,
 } from "recharts";
 import { motion } from "framer-motion";
+// Eager load critical components
 import SupportDashboard from "./components/SupportDashboard";
+import LandingPage from "./components/LandingPage";
 import { Download, Table as TableIcon, Activity, LogOut, MessageSquare, Sun, Moon, Shield } from 'lucide-react';
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
@@ -30,21 +32,20 @@ import {
   getSelfEmotionDistribution,
   getFusionAnalytics
 } from "./api";
-import logo from './assets/logo.jpg';
-import robotMascot from './assets/robot_mascot.png';
-import logoFull from './assets/logo_full.jpg';
+// Assets
 import logoFinal from './assets/logo_final.png';
 
 import "./App.css";
-import Background3D from "./components/Background3D";
-import DriftGraph from "./components/DriftGraph";
-import LogTable from "./components/LogTable";
-import TransitionArrows from "./components/TransitionArrows";
-import Login from "./components/Login";
-import Signup from "./components/Signup";
-import ChatAnalyzer from "./components/ChatAnalyzer";
-import SelfEmotionMonitor from "./components/SelfEmotionMonitor";
-import LandingPage from "./components/LandingPage";
+// Lazy load non-critical components
+const Background3D = lazy(() => import("./components/Background3D"));
+const DriftGraph = lazy(() => import("./components/DriftGraph"));
+const LogTable = lazy(() => import("./components/LogTable"));
+const TransitionArrows = lazy(() => import("./components/TransitionArrows"));
+const Login = lazy(() => import("./components/Login"));
+const Signup = lazy(() => import("./components/Signup"));
+const ChatAnalyzer = lazy(() => import("./components/ChatAnalyzer"));
+const SelfEmotionMonitor = lazy(() => import("./components/SelfEmotionMonitor"));
+
 import AuthContext, { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 
@@ -405,7 +406,7 @@ function Dashboard() {
               <LogTable logs={timelineData} />
             ) : (
               <div className="grid">
-                <div className="card">
+                <motion.div className="card" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}>
                   <h2>Drift Analysis</h2>
                   {lastEmotion ? (
                     <>
@@ -420,9 +421,9 @@ function Dashboard() {
                   ) : (
                     <p className="empty">No data required</p>
                   )}
-                </div>
+                </motion.div>
 
-                <div className="card">
+                <motion.div className="card" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, delay: 0.1 }}>
                   <h2>Emotion Distribution</h2>
                   <ResponsiveContainer height={260}>
                     <BarChart data={distData}>
@@ -436,13 +437,13 @@ function Dashboard() {
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
-                </div>
+                </motion.div>
               </div>
             )}
 
             {viewMode === 'dashboard' && (
               <>
-                <motion.div className="card full" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                <motion.div className="card full" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
                   <h2>Timeline</h2>
                   <ResponsiveContainer height={300}>
                     <LineChart data={timelineData}>
@@ -455,7 +456,7 @@ function Dashboard() {
                   </ResponsiveContainer>
                 </motion.div>
 
-                <motion.div className="card full" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                <motion.div className="card full" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
                   <h2>Historical Comparison</h2>
                   {comparison?.meta?.current_count === 0 ? (
                     <p className="empty">Not enough data</p>
@@ -472,7 +473,7 @@ function Dashboard() {
                   )}
                 </motion.div>
 
-                <motion.div className="card full" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                <motion.div className="card full" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }}>
                   <h2>Face Emotion Trend</h2>
                   <ResponsiveContainer height={300}>
                     <LineChart data={selfHistoryData}>
@@ -485,7 +486,7 @@ function Dashboard() {
                   </ResponsiveContainer>
                 </motion.div>
 
-                <motion.div className="card full" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                <motion.div className="card full" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.3 }}>
                   <h2>Face Emotion Distribution</h2>
                   <ResponsiveContainer height={260}>
                     <BarChart data={selfDistData}>
@@ -563,27 +564,35 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <Background3D />
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route
-              path="/support-dashboard"
-              element={
-                <RequireAuth>
-                  <SupportDashboard />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <RequireAuth>
-                  <Dashboard />
-                </RequireAuth>
-              }
-            />
-          </Routes>
+          <Suspense fallback={
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'white', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ width: '40px', height: '40px', border: '3px solid rgba(255,255,255,0.3)', borderRadius: '50%', borderTopColor: '#e1ff5e', animation: 'spin 1s linear infinite' }}></div>
+              <p>Loading Sentia...</p>
+              <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+            </div>
+          }>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route
+                path="/support-dashboard"
+                element={
+                  <RequireAuth>
+                    <SupportDashboard />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <RequireAuth>
+                    <Dashboard />
+                  </RequireAuth>
+                }
+              />
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
