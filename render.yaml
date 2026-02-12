@@ -1,9 +1,14 @@
 services:
+  # Backend Service (Python/FastAPI)
   - type: web
     name: emotion-drift-api
-    env: docker
-    dockerContext: backend
-    dockerfilePath: backend/Dockerfile
+    runtime: python
+    buildCommand: |
+      cd backend
+      pip install -r requirements.txt
+    startCommand: |
+      cd backend
+      gunicorn -w 4 -k uvicorn.workers.UvicornWorker api.main:app
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -13,6 +18,26 @@ services:
         generateValue: true
       - key: WEB_CONCURRENCY
         value: "4"
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
+  # Frontend Service (Node.js/Static Site)
+  - type: web
+    name: emotion-drift-frontend
+    runtime: node
+    buildCommand: |
+      cd frontend
+      npm install
+      npm run build
+    startCommand: |
+      cd frontend
+      npm run preview -- --host --port $PORT
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: emotion-drift-api
+          envVarKey: RENDER_EXTERNAL_URL
 
 databases:
   - name: emotion-drift-db
