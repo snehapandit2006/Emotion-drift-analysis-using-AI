@@ -51,20 +51,6 @@ export const getDrift = () =>
 export const getAlerts = () =>
   API.get("/alerts");
 
-export const getComparison = (range) =>
-  API.get("/compare", {
-    params: { range },
-  });
-
-export const generateReport = (data) =>
-  API.post("/reports/generate", data);
-
-export const forgotPassword = (email) =>
-  API.post("/auth/forgot-password", { email });
-
-export const resetPassword = (token, newPassword) =>
-  API.post("/auth/reset-password", { token, new_password: newPassword });
-
 export const postSelfEmotionCapture = (base64Image) =>
   API.post("/self-emotion/capture", { image: base64Image });
 
@@ -83,8 +69,44 @@ export const getFusionAnalytics = (range_days) =>
     params: { range_days }
   });
 
-export const fetchSupportInsights = (days = 14, include_nearby = false, lat = null, lon = null) =>
+export const getMentalHealthInfo = () => API.get("/support-insights/mental-health-info");
+
+export const fetchSupportInsights = (days = 14, includeNearby = false, lat = null, lon = null) =>
   API.get("/support-insights/", {
-    params: { days, include_nearby, lat, lon }
+    params: { days, include_nearby: includeNearby, lat, lon }
   });
 
+// Auth & Self Emotion
+export const forgotPassword = (email) => API.post("/auth/forgot-password", { email });
+export const resetPassword = (token, newPassword) => API.post("/auth/reset-password", { token, new_password: newPassword });
+
+// Removed duplicates that were here (postSelfEmotionCapture, getSelfEmotionHistory, etc)
+// They are already defined above at lines 54-70
+
+// Visualization
+export const getComparison = (range) => API.get("/compare", { params: { range } });
+export const generateReport = (payload) => API.post("/reports/generate", payload);
+
+// Medical Records
+export const uploadMedicalRecord = (patientId, formData) => API.post("/medical/upload", formData, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+  params: { patient_id: patientId }
+});
+export const getMedicalRecords = (patientId) => API.get(`/medical/patient/${patientId}`);
+
+export const getPatients = () => API.get("/doctor/patients");
+
+export const assignPatient = (email) => API.post("/doctor/assign", { email });
+
+export const getPatientInsights = (id, days = 14) => API.get(`/doctor/patient/${id}/insights?days=${days}`);
+export const getPatientLogs = (id, limit = 50) => API.get(`/doctor/patient/${id}/logs?limit=${limit}`);
+
+export const getChatHistory = (otherUserId) => API.get(`/chat/history/${otherUserId}`);
+
+// Medical Logs (Manual)
+export const getMedicalLogs = () => API.get("/medical/logs");
+export const createMedicalLog = (data) => API.post("/medical/logs", data);
+export const updateMedicalLog = (id, data) => API.put(`/medical/logs/${id}`, data);
+export const deleteMedicalLog = (id) => API.delete(`/medical/logs/${id}`);
+export const getPatientMedicalLogs = (patientId) => API.get(`/medical/patient/${patientId}/logs`);
+export const getAdherence = (patientId, days = 7) => API.get(`/medical/adherence/${patientId}`, { params: { days } });

@@ -60,15 +60,22 @@ def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
     
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
+        data={"sub": user.email, "role": user.role}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer", "user_id": user.id, "email": user.email}
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer", 
+        "user_id": user.id, 
+        "email": user.email,
+        "role": user.role,
+        "doctor_id": user.doctor_id
+    }
 
 class SignupRequest(BaseModel):
     email: str
     password: str
+    role: str = "patient"
 
 @router.post("/signup", response_model=dict)
 def signup(payload: SignupRequest, db: Session = Depends(get_db)):
@@ -77,7 +84,7 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Email already registered")
     
     hashed_password = get_password_hash(payload.password)
-    new_user = User(email=payload.email, hashed_password=hashed_password)
+    new_user = User(email=payload.email, hashed_password=hashed_password, role=payload.role)
     db.add(new_user)
     db.commit()
     return {"msg": "User created successfully"}
@@ -105,11 +112,19 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
+        data={"sub": user.email, "role": user.role}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer", "user_id": user.id, "email": user.email}
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer", 
+        "user_id": user.id, 
+        "email": user.email,
+        "role": user.role,
+        "doctor_id": user.doctor_id
+    }
 
 # --- Forgot Password / Reset Implementation ---
 

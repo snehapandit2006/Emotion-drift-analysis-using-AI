@@ -40,12 +40,14 @@ function Scene({ url }) {
 }
 
 export default function VideoBackground() {
-    const [videoSrc, setVideoSrc] = useState('');
-
-    useEffect(() => {
+    const [videoSrc] = useState(() => {
         const randomIndex = Math.floor(Math.random() * videos.length);
         console.log("Selected video index:", randomIndex);
-        setVideoSrc(videos[randomIndex]);
+        return videos[randomIndex];
+    });
+
+    useEffect(() => {
+        // Log purely for debugging if needed, but state is already set
     }, []);
 
     if (!videoSrc) return null;

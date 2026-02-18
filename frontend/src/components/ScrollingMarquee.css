@@ -1,0 +1,54 @@
+/* ScrollingMarquee.css */
+.marquee-container {
+    width: 100%;
+    overflow: hidden;
+    background: rgba(var(--accent-color-rgb), 0.1);
+    /* Matches accent color opacity */
+    border-top: 1px solid rgba(var(--accent-color-rgb), 0.2);
+    border-bottom: 1px solid rgba(var(--accent-color-rgb), 0.2);
+    padding: 1rem 0;
+    position: relative;
+    z-index: 5;
+    backdrop-filter: blur(5px);
+}
+
+.marquee-content {
+    display: flex;
+    gap: 4rem;
+    white-space: nowrap;
+    animation: scroll 20s linear infinite;
+    min-width: 100%;
+}
+
+.marquee-item {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-main);
+    display: inline-flex;
+    align-items: center;
+}
+
+.marquee-item::before {
+    content: "•";
+    color: var(--accent-color);
+    margin-right: 1rem;
+    font-size: 1.2rem;
+}
+
+@keyframes scroll {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+        /* Adjust based on duplication */
+    }
+}
+
+/* Pause on hover for better UX */
+.marquee-container:hover .marquee-content {
+    animation-play-state: paused;
+}
+
+/* Dark/Light mode adjustments if needed, though using vars handles most */

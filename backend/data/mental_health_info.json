@@ -1,0 +1,119 @@
+[
+    {
+        "condition": "Depression",
+        "description": "A mood disorder that causes a persistent feeling of sadness and loss of interest.",
+        "symptoms": [
+            "Persistent sad, anxious, or 'empty' mood",
+            "Feelings of hopelessness or pessimism",
+            "Irritability",
+            "Feelings of guilt, worthlessness, or helplessness",
+            "Loss of interest or pleasure in hobbies and activities",
+            "Decreased energy or fatigue",
+            "Moving or talking more slowly",
+            "Feeling restless or having trouble sitting still",
+            "Difficulty concentrating, remembering, or making decisions",
+            "Difficulty sleeping, early-morning awakening, or oversleeping",
+            "Appetite and/or weight changes",
+            "Thoughts of death or suicide, or suicide attempts"
+        ],
+        "strategies": [
+            "Reach out to a friend or loved one.",
+            "Engage in physical activity.",
+            "Stick to a routine.",
+            "Eat healthy.",
+            "Avoid alcohol and drugs.",
+            "Challenge negative thoughts."
+        ]
+    },
+    {
+        "condition": "Anxiety Disorders",
+        "description": "A group of mental health disorders characterized by significant feelings of anxiety and fear.",
+        "symptoms": [
+            "Feeling nervous, restless or tense",
+            "Having a sense of impending danger, panic or doom",
+            "Having an increased heart rate",
+            "Breathing rapidly (hyperventilation)",
+            "Sweating",
+            "Trembling",
+            "Feeling weak or tired",
+            "Trouble concentrating or thinking about anything other than the present worry",
+            "Having trouble sleeping",
+            "Experiencing gastrointestinal (GI) problems",
+            "Having difficulty controlling worry",
+            "Having the urge to avoid things that trigger anxiety"
+        ],
+        "strategies": [
+            "Practice deep breathing.",
+            "Limit caffeine and alcohol.",
+            "Get enough sleep.",
+            "Eat well-balanced meals.",
+            "Learn what triggers your anxiety.",
+            "Talk to someone you trust."
+        ]
+    },
+    {
+        "condition": "Bipolar Disorder",
+        "description": "A mental disorder that causes unusual shifts in mood, energy, activity levels, concentration, and the ability to carry out day-to-day tasks.",
+        "symptoms": [
+            "Manic episodes: High energy, reduced need for sleep, loss of touch with reality",
+            "Depressive episodes: Low energy, low motivation, loss of interest in daily activities",
+            "Mood episodes last days to months",
+            "Suicidal thoughts during depressive episodes"
+        ],
+        "strategies": [
+            "Keep a mood chart.",
+            "Maintain a regular sleep schedule.",
+            "Take medication as prescribed.",
+            "Avoid alcohol and drugs.",
+            "Reduce stress."
+        ]
+    },
+    {
+        "condition": "PTSD (Post-Traumatic Stress Disorder)",
+        "description": "A disorder that develops in some people who have experienced a shocking, scary, or dangerous event.",
+        "symptoms": [
+            "Flashbacks",
+            "Nightmares",
+            "Severe anxiety",
+            "Uncontrollable thoughts about the event",
+            "Avoidance of places or people that remind you of the trauma",
+            "Negative changes in thinking and mood",
+            "Changes in physical and emotional reactions"
+        ],
+        "strategies": [
+            "Therapy (Cognitive Processing Therapy, Prolonged Exposure).",
+            "Support groups.",
+            "Mindfulness and relaxation techniques.",
+            "Physical activity.",
+            "Healthy lifestyle."
+        ]
+    },
+    {
+        "condition": "Panic Disorder",
+        "description": "Sudden episodes of intense fear that triggers severe physical reactions when there is no real danger or apparent cause.",
+        "symptoms": [
+            "Sense of impending doom or danger",
+            "Fear of loss of control or death",
+            "Rapid, pounding heart rate",
+            "Sweating",
+            "Trembling or shaking",
+            "Shortness of breath or tightness in your throat",
+            "Chills",
+            "Hot flashes",
+            "Nausea",
+            "Abdominal cramping",
+            "Chest pain",
+            "Headache",
+            "Dizziness, lightheadedness or faintness",
+            "Numbness or tingling sensation",
+            "Feeling of unreality or detachment"
+        ],
+        "strategies": [
+            "Deep breathing.",
+            "Grounding techniques.",
+            "Challenge negative thoughts.",
+            "Relaxation techniques.",
+            "Avoid caffeine."
+        ]
+    }
+]

@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from db.database import get_db
 from db.models import User, EmotionLog, FaceEmotionLog
 from api.deps import get_current_user
 from analysis.fusion import analyze_fusion
+from analysis.condition_detection import detect_conditions
 
 router = APIRouter(prefix="/support-insights", tags=["support"])
 
@@ -16,6 +17,31 @@ TELE_MANAS_INFO = {
     "description": "Free, confidential mental health support from the Govt. of India.",
     "is_emergency": False
 }
+
+def load_mental_health_info():
+    import json
+    import os
+    try:
+        # Assuming run from backend root
+        path = "data/mental_health_info.json"
+        if not os.path.exists(path):
+             # Try relative to this file if needed, but standardizing on root run
+             path = "../data/mental_health_info.json"
+        
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                return json.load(f)
+        return []
+    except Exception as e:
+        print(f"Error loading mental health info: {e}")
+        return []
+
+@router.get("/mental-health-info")
+def get_mental_health_info(current_user: User = Depends(get_current_user)):
+    """
+    Returns text regarding mental health conditions and symptoms.
+    """
+    return load_mental_health_info()
 
 @router.get("/")
 def get_support_insights(
@@ -32,7 +58,7 @@ def get_support_insights(
     """
     
     # ... (existing fetching logic)
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     
     recent_text = (
         db.query(EmotionLog)
@@ -49,6 +75,10 @@ def get_support_insights(
     # 2. Run Analysis
     fusion_result = analyze_fusion(recent_text, recent_face, range_days=days)
     severity_info = fusion_result.get("severity", {})
+    
+    # Run Condition Detection
+    stability = fusion_result.get("stability_score", 1.0)
+    detected_conditions = detect_conditions(recent_text, recent_face, stability)
     
     nearby_help = []
     if include_nearby:
@@ -82,6 +112,7 @@ def get_support_insights(
     response = {
         "analysis_period_days": days,
         "severity": severity_info,
+        "detected_conditions": detected_conditions,
         "resources": {
             "tele_manas": TELE_MANAS_INFO,
             "nearby_help": nearby_help,

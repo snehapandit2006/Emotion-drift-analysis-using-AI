@@ -12,23 +12,15 @@ from db.models import EmotionLog, FaceEmotionLog, DriftAlert, User
 from db.init_db import init_db
 from analysis.drift import detect_emotion_drift
 from api.deps import get_current_user
+from api.routes import auth, chat_routes, support_routes, doctor_routes, medical_routes
+from routes import report_routes, self_emotion_routes, fusion_routes
 
 
 # -----------------------------
 # SINGLE FastAPI APP
 # -----------------------------
 app = FastAPI(title="Emotion Drift API")
-
-app.include_router(report_router)
-app.include_router(auth.router)
-from api.routes import chat_routes
-app.include_router(chat_routes.router)
-from routes import self_emotion_routes
-app.include_router(self_emotion_routes.router)
-from routes import fusion_routes
-app.include_router(fusion_routes.router)
-from api.routes import support_routes
-app.include_router(support_routes.router)
+# Force Reload Check
 
 from core.config import settings
 
@@ -39,6 +31,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(report_routes.router)
+app.include_router(auth.router)
+app.include_router(chat_routes.router)
+app.include_router(self_emotion_routes.router)
+app.include_router(fusion_routes.router)
+app.include_router(support_routes.router)
+app.include_router(doctor_routes.router)
+app.include_router(medical_routes.router)
+
+from fastapi.staticfiles import StaticFiles
+import os
+os.makedirs("storage", exist_ok=True)
+app.mount("/storage", StaticFiles(directory="storage"), name="storage")
 
 
 # -----------------------------
@@ -80,6 +86,14 @@ def predict(req: TextRequest, current_user: User = Depends(get_current_user)):
     )
     db.add(log)
     db.commit()
+    
+    # Check for alerts
+    try:
+        from analysis.drift import check_and_create_alert
+        check_and_create_alert(db, current_user.id)
+    except Exception as e:
+        print(f"Error checking alerts: {e}")
+        
     db.close()
 
     return result
@@ -271,6 +285,7 @@ def get_alerts(current_user: User = Depends(get_current_user)):
 # -----------------------------
 @app.get("/compare")
 def compare(range: str = "24h", current_user: User = Depends(get_current_user)):
+
     db = SessionLocal()
     now = datetime.utcnow()
     

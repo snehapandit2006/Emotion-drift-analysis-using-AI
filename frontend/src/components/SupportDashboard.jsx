@@ -1,8 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Phone, MapPin, Info, ArrowLeft } from 'lucide-react';
+
+import { Shield, Phone, MapPin, Info, ArrowLeft, Upload, FileText, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { fetchSupportInsights } from '../api';
+import { fetchSupportInsights, getMentalHealthInfo, getAlerts, getMedicalRecords, uploadMedicalRecord } from '../api';
+import MedicalLogTable from './MedicalLogTable';
+import AuthContext from '../context/AuthContext';
+import { useContext } from 'react';
+
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -29,11 +34,42 @@ const SupportDashboard = () => {
     const [locationError, setLocationError] = useState(null);
     const [nearbyHelp, setNearbyHelp] = useState([]);
 
-    const loadData = async (lat = null, lon = null) => {
+    const [conditions, setConditions] = useState([]);
+    const [detectedPatterns, setDetectedPatterns] = useState([]);
+    const [expandedSymptoms, setExpandedSymptoms] = useState({});
+
+    const toggleSymptoms = (index) => {
+        setExpandedSymptoms(prev => ({
+            ...prev,
+            [index]: !prev[index]
+        }));
+    };
+
+    const { user } = useContext(AuthContext);
+    const [alerts, setAlerts] = useState([]);
+    const [records, setRecords] = useState([]);
+    const [uploading, setUploading] = useState(false);
+
+    const loadData = useCallback(async (lat = null, lon = null) => {
         try {
             setLoading(true);
-            const res = await fetchSupportInsights(14, consentGiven, lat, lon);
+            const [res, conditionsRes, alertsRes, recordsRes] = await Promise.all([
+                fetchSupportInsights(14, consentGiven, lat, lon),
+                getMentalHealthInfo(),
+                getAlerts(),
+                getMedicalRecords(user.id) // Fetch own records
+            ]);
+
             setData(res.data);
+            setConditions(conditionsRes.data);
+            setAlerts(alertsRes.data || []);
+            setRecords(recordsRes.data || []);
+
+            // New: Set detected pattern conditions
+            if (res.data.detected_conditions) {
+                setDetectedPatterns(res.data.detected_conditions);
+            }
+
             if (consentGiven && res.data.resources?.nearby_help) {
                 setNearbyHelp(res.data.resources.nearby_help);
             }
@@ -42,12 +78,12 @@ const SupportDashboard = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [consentGiven]);
 
     useEffect(() => {
         // Initial load without location
         loadData();
-    }, []);
+    }, [loadData]);
 
     const handleGrantConsent = () => {
         if (!navigator.geolocation) {
@@ -80,6 +116,38 @@ const SupportDashboard = () => {
         loadData(null, null);
     };
 
+    const handleFileUpload = async (e) => {
+        if (e.target.files[0]) {
+            const formData = new FormData();
+            formData.append('file', e.target.files[0]);
+            formData.append('description', 'Uploaded from Support Dashboard');
+
+            setUploading(true);
+            try {
+                await uploadMedicalRecord(user.id, formData);
+                // Refresh records
+                const res = await getMedicalRecords(user.id);
+                setRecords(res.data || []);
+                alert("File uploaded successfully.");
+            } catch (err) {
+                console.error("Upload failed", err);
+                alert("Failed to upload file.");
+            } finally {
+                setUploading(false);
+            }
+        }
+    };
+
+    // Helper to get download URL
+    const getDownloadUrl = (filePath) => {
+        // Assume API is on localhost:8000 for now or use env if available in context
+        // Ideally this should use the same base URL as Axios
+        const API_BASE = "http://127.0.0.1:8000";
+        // Remove backslashes
+        const relativePath = filePath.replace(/\\/g, '/');
+        return `${API_BASE}/${relativePath}`;
+    };
+
     if (loading && !data) {
         return (
             <div className="flex items-center justify-center min-h-screen text-white">
@@ -110,8 +178,17 @@ const SupportDashboard = () => {
     const color = getSeverityColor(severityLevel);
 
     return (
-        <div style={{ width: '100%', height: '100vh', overflowY: 'auto', background: 'var(--bg-main)' }}>
-            <div className="dashboard-container" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', color: 'var(--text-main)', minHeight: '100%' }}>
+        <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            overflowY: 'auto',
+            background: 'var(--bg-main)',
+            zIndex: 1000
+        }}>
+            <div className="dashboard-container" style={{ padding: '2rem', width: '100%', color: 'var(--text-main)', minHeight: '100%' }}>
                 <button
                     onClick={() => navigate('/dashboard')}
                     style={{
@@ -213,6 +290,239 @@ const SupportDashboard = () => {
                                 </div>
                             ))}
                         </div>
+                    </motion.div>
+                </div>
+
+                {/* Personalized Analysis */}
+                {detectedPatterns.length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        style={{
+                            marginBottom: '3rem',
+                            padding: '2.5rem',
+                            background: 'var(--card-bg)',
+                            borderRadius: '16px',
+                            border: '1px solid var(--border-color)',
+                            borderLeft: '6px solid var(--accent-color)'
+                        }}
+                    >
+                        <h2 style={{ fontSize: '2rem', marginBottom: '1.5rem', color: 'var(--text-main)' }}>Personal Pattern Analysis (Beta)</h2>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {detectedPatterns.map((p, i) => {
+                                let badgeColor = '#4caf50'; // Low
+                                if (p.level === 'Moderate') badgeColor = '#ff9800';
+                                if (p.level === 'High') badgeColor = '#f44336';
+
+                                return (
+                                    <div key={i} style={{ background: 'var(--bg-panel)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                            <h3 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-main)' }}>{p.name}</h3>
+                                            <span style={{ background: badgeColor, color: 'white', padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                                                {p.level} Risk
+                                            </span>
+                                        </div>
+
+                                        {/* Recent Alerts Section */}
+                                        {alerts.length > 0 && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: 0.15 }}
+                                                style={{
+                                                    marginBottom: '3rem',
+                                                    padding: '2rem',
+                                                    background: 'rgba(244, 67, 54, 0.1)',
+                                                    borderRadius: '16px',
+                                                    border: '1px solid rgba(244, 67, 54, 0.3)'
+                                                }}
+                                            >
+                                                <h2 style={{ fontSize: '2rem', marginBottom: '1.5rem', color: '#e53935' }}>Recent Alerts</h2>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                                    {alerts.map((alert, i) => (
+                                                        <div key={i} style={{
+                                                            background: 'var(--bg-card)',
+                                                            padding: '1rem',
+                                                            borderRadius: '8px',
+                                                            borderLeft: '4px solid #e53935',
+                                                            display: 'flex',
+                                                            justifyContent: 'space-between',
+                                                            alignItems: 'center'
+                                                        }}>
+                                                            <span style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{alert.message || "Drift Detected"}</span>
+                                                            <span style={{ opacity: 0.7, fontSize: '0.9rem' }}>{new Date(alert.created_at).toLocaleDateString()}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                        <p style={{ fontSize: '1.05rem', margin: '0 0 1rem 0', opacity: 0.9 }}>{p.description}</p>
+                                        <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '1rem', borderRadius: '8px' }}>
+                                            <strong style={{ color: 'var(--accent-color)' }}>Recommendation:</strong> {p.recommendation}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* Mental Health Conditions Reference */}
+                {conditions.length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.25 }}
+                        style={{
+                            marginBottom: '3rem',
+                            padding: '2rem',
+                            background: 'var(--card-bg)',
+                            borderRadius: '16px',
+                            border: '1px solid var(--border-color)'
+                        }}
+                    >
+                        <h2 style={{ fontSize: '2rem', marginBottom: '1.5rem', color: 'var(--text-main)' }}>Mental Health Conditions & Symptoms</h2>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                            {conditions.map((c, i) => (
+                                <div key={i} style={{ background: 'var(--bg-panel)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                    <h3 style={{ color: 'var(--accent-color)', marginTop: 0 }}>{c.condition}</h3>
+                                    <p style={{ fontSize: '0.9rem', opacity: 0.8, marginBottom: '1rem' }}>{c.description}</p>
+
+                                    <h4 style={{ fontSize: '0.9rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>Symptoms:</h4>
+                                    <ul style={{ paddingLeft: '1.2rem', marginBottom: '1rem', fontSize: '0.85rem', opacity: 0.8 }}>
+                                        {(expandedSymptoms[i] ? c.symptoms : c.symptoms.slice(0, 4)).map((s, j) => <li key={j}>{s}</li>)}
+                                        {c.symptoms.length > 4 && (
+                                            <li
+                                                onClick={() => toggleSymptoms(i)}
+                                                style={{
+                                                    color: 'var(--accent-color)',
+                                                    cursor: 'pointer',
+                                                    fontWeight: 'bold',
+                                                    marginTop: '0.5rem',
+                                                    listStyle: 'none'
+                                                }}
+                                                onMouseOver={(e) => e.target.style.textDecoration = 'underline'}
+                                                onMouseOut={(e) => e.target.style.textDecoration = 'none'}
+                                            >
+                                                {expandedSymptoms[i] ? "Show less" : `+ ${c.symptoms.length - 4} more`}
+                                            </li>
+                                        )}
+                                    </ul>
+
+                                    <h4 style={{ fontSize: '0.9rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>Helpful Strategies:</h4>
+                                    <ul style={{ paddingLeft: '1.2rem', fontSize: '0.85rem', opacity: 0.8 }}>
+                                        {c.strategies.slice(0, 3).map((s, j) => <li key={j}>{s}</li>)}
+                                    </ul>
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* Medical Records Section */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
+                    {/* Medical Records Upload */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.28 }}
+                        style={{
+                            padding: '2.5rem',
+                            background: 'var(--card-bg)',
+                            borderRadius: '16px',
+                            border: '1px solid var(--border-color)',
+                            height: '100%'
+                        }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h2 style={{ fontSize: '2rem', margin: 0, color: 'var(--text-main)' }}>Medical Files</h2>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <input
+                                    type="file"
+                                    id="support-upload"
+                                    style={{ display: 'none' }}
+                                    onChange={handleFileUpload}
+                                    disabled={uploading}
+                                />
+                                <label
+                                    htmlFor="support-upload"
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                        padding: '0.6rem 1.2rem',
+                                        background: 'var(--accent-color)', color: 'var(--accent-text)',
+                                        borderRadius: '8px', cursor: uploading ? 'not-allowed' : 'pointer',
+                                        fontWeight: 'bold', fontSize: '0.9rem',
+                                        opacity: uploading ? 0.7 : 1
+                                    }}
+                                >
+                                    {uploading ? "Uploading..." : <><Upload size={16} /> Upload New</>}
+                                </label>
+                            </div>
+                        </div>
+
+                        {records.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '2rem', opacity: 0.6, border: '1px dashed var(--border-color)', borderRadius: '12px' }}>
+                                <FileText size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                                <p>No medical records uploaded yet.</p>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                                {records.map((rec) => (
+                                    <div key={rec.id} style={{
+                                        background: 'var(--bg-panel)', padding: '1rem',
+                                        borderRadius: '10px', border: '1px solid var(--border-color)',
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', overflow: 'hidden' }}>
+                                            <FileText size={20} color="var(--text-secondary)" />
+                                            <div style={{ overflow: 'hidden' }}>
+                                                <p style={{ margin: 0, fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-main)' }} title={rec.filename}>
+                                                    {rec.filename}
+                                                </p>
+                                                <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6 }}>
+                                                    {new Date(rec.uploaded_at).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <a
+                                            href={getDownloadUrl(rec.file_path)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{
+                                                color: 'var(--text-secondary)',
+                                                padding: '0.5rem',
+                                                borderRadius: '50%',
+                                                transition: 'background 0.2s',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                            }}
+                                            title="Download"
+                                            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'var(--text-main)'; }}
+                                            onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                                        >
+                                            <Download size={18} />
+                                        </a>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </motion.div>
+
+                    {/* Medical Log Table */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        style={{
+                            padding: '2.5rem',
+                            background: 'var(--card-bg)',
+                            borderRadius: '16px',
+                            border: '1px solid var(--border-color)',
+                            height: '100%'
+                        }}
+                    >
+                        <h2 style={{ fontSize: '2rem', marginBottom: '1.5rem', color: 'var(--text-main)' }}>Medicine Tracker</h2>
+                        <MedicalLogTable />
                     </motion.div>
                 </div>
 
@@ -379,7 +689,7 @@ const SupportDashboard = () => {
                     )}
                 </motion.div>
             </div>
-        </div>
+        </div >
     );
 };
 

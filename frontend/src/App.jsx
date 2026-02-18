@@ -11,11 +11,11 @@ import {
   CartesianGrid,
   Cell,
 } from "recharts";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from 'framer-motion';
 // Eager load critical components
 import SupportDashboard from "./components/SupportDashboard";
 import LandingPage from "./components/LandingPage";
-import { Download, Table as TableIcon, Activity, LogOut, MessageSquare, Sun, Moon, Shield } from 'lucide-react';
+import { Download, Table as TableIcon, Activity, LogOut, MessageSquare, Sun, Moon, Shield, Menu, X } from 'lucide-react';
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
@@ -43,8 +43,13 @@ const LogTable = lazy(() => import("./components/LogTable"));
 const TransitionArrows = lazy(() => import("./components/TransitionArrows"));
 const Login = lazy(() => import("./components/Login"));
 const Signup = lazy(() => import("./components/Signup"));
+const WelcomeScreen = lazy(() => import("./components/WelcomeScreen"));
 const ChatAnalyzer = lazy(() => import("./components/ChatAnalyzer"));
 const SelfEmotionMonitor = lazy(() => import("./components/SelfEmotionMonitor"));
+const PsychiatristDashboard = lazy(() => import("./components/PsychiatristDashboard"));
+const PatientDetailView = lazy(() => import("./components/PatientDetailView"));
+import ChatInterface from "./components/ChatInterface";
+
 
 import AuthContext, { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
@@ -70,18 +75,52 @@ const severityText = (s = 0) =>
 
 function RequireAuth({ children }) {
   const { user, loading } = useContext(AuthContext);
-  const location = useLocation();
+
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen text-white">Loading...</div>;
   }
 
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return children;
 }
+
+function RequireDoctorAuth({ children }) {
+  const { user, loading } = useContext(AuthContext);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user || user.role !== 'psychiatrist') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return children;
+}
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div style={{ background: 'var(--bg-card)', padding: '10px', borderRadius: '5px', border: '1px solid var(--border-color)' }}>
+        <p style={{ margin: 0, fontWeight: 'bold', color: 'var(--text-main)' }}>{label}</p>
+        <p style={{ margin: '5px 0', color: emotionColors[data.emotion] || '#fff' }}>
+          {data.emotion.toUpperCase()}
+        </p>
+        <p style={{ margin: 0, fontSize: '0.8em', color: 'var(--text-secondary)' }}>
+          Confidence: {(data.confidence * 100).toFixed(1)}%
+        </p>
+        <p style={{ margin: 0, fontSize: '0.8em', color: data.source === 'face' ? 'var(--primary-blue)' : 'var(--accent-color)' }}>
+          Source: {data.source === 'face' ? '📷 Face' : '💬 Chat'}
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
 
 function Dashboard() {
   const { user, logout } = useContext(AuthContext);
@@ -101,6 +140,8 @@ function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [monitoring, setMonitoring] = useState(true);
   const [viewMode, setViewMode] = useState('dashboard'); // 'dashboard', 'table', 'chat'
+  const [showDoctorChat, setShowDoctorChat] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const dashboardRef = useRef(null);
 
@@ -133,6 +174,17 @@ function Dashboard() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Click outside to close alerts
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showAlerts && !event.target.closest('.alert-popup') && !event.target.closest('.bell')) {
+        setShowAlerts(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showAlerts]);
 
   const submit = async () => {
     if (!text.trim() || !monitoring) return;
@@ -191,26 +243,7 @@ function Dashboard() {
       source: timeline.sources ? timeline.sources[i] : "text"
     })) || [];
 
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div style={{ background: 'var(--bg-card)', padding: '10px', borderRadius: '5px', border: '1px solid var(--border-color)' }}>
-          <p style={{ margin: 0, fontWeight: 'bold', color: 'var(--text-main)' }}>{label}</p>
-          <p style={{ margin: '5px 0', color: emotionColors[data.emotion] || '#fff' }}>
-            {data.emotion.toUpperCase()}
-          </p>
-          <p style={{ margin: 0, fontSize: '0.8em', color: 'var(--text-secondary)' }}>
-            Confidence: {(data.confidence * 100).toFixed(1)}%
-          </p>
-          <p style={{ margin: 0, fontSize: '0.8em', color: data.source === 'face' ? 'var(--primary-blue)' : 'var(--accent-color)' }}>
-            Source: {data.source === 'face' ? '📷 Face' : '💬 Chat'}
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
+
 
   const distData = Object.entries(distribution).map(([e, c]) => ({
     emotion: e,
@@ -286,46 +319,7 @@ function Dashboard() {
         <div style={{ flex: 1 }}></div>
 
         <div className="header-actions">
-          <button
-            className="icon-btn"
-            onClick={() => window.location.href = '/support-dashboard'}
-            title="Support & Safety"
-            style={{ color: 'var(--accent-color)', border: '1px solid var(--accent-color)' }}
-          >
-            <Shield size={20} />
-          </button>
-          {/* Chat Analysis Toggle */}
-          <button
-            className="icon-btn"
-            onClick={() => setViewMode('chat')}
-            title="Chat Analysis"
-            disabled={!monitoring}
-            style={viewMode === 'chat' ? { color: 'var(--accent-color)', border: '1px solid var(--accent-color)' } : {}}
-          >
-            <MessageSquare size={20} />
-          </button>
-
-          <button className="icon-btn" disabled={!monitoring} onClick={() => setViewMode(viewMode === 'dashboard' ? 'table' : 'dashboard')} title="Toggle Dashboard/Table">
-            {viewMode === 'table' ? <Activity /> : <TableIcon />}
-          </button>
-
-          <button className="icon-btn" disabled={!monitoring} onClick={handleExportPDF} title="Export PDF">
-            <Download />
-          </button>
-
-          <button className="icon-btn" onClick={logout} title="Logout">
-            <LogOut />
-          </button>
-
-          <button
-            className={`monitor-toggle ${monitoring ? "on" : "off"}`}
-            onClick={() => setMonitoring(!monitoring)}
-            style={monitoring ? { background: 'var(--accent-color)', color: 'var(--accent-text)' } : {}}
-          >
-            {monitoring ? "ON" : "OFF"}
-          </button>
-
-
+          {/* Always visible: Theme & Alerts */}
           <button
             className="icon-btn"
             onClick={toggleTheme}
@@ -338,6 +332,101 @@ function Dashboard() {
           <div className="bell" onClick={() => setShowAlerts(!showAlerts)}>
             🔔{alerts.length > 0 && <span className="dot" />}
           </div>
+
+          {/* Hamburger Menu */}
+          <div style={{ position: 'relative' }}>
+            <button
+              className="icon-btn"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              style={{ color: 'var(--text-main)' }}
+            >
+              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+
+            {/* Dropdown Menu */}
+            {isMenuOpen && (
+              <div className="glass-panel" style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: '10px',
+                padding: '1rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem',
+                minWidth: '200px',
+                zIndex: 1000,
+                background: 'var(--bg-card)',
+                border: '1px solid var(--glass-border)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+              }}>
+                <button
+                  className="icon-btn"
+                  onClick={() => { window.location.href = '/support-dashboard'; setIsMenuOpen(false); }}
+                  title="Support & Safety"
+                  style={{ justifyContent: 'flex-start', width: '100%', borderRadius: '8px', padding: '10px', gap: '10px' }}
+                >
+                  <Shield size={20} style={{ color: 'var(--accent-color)' }} /> <span>Support & Safety</span>
+                </button>
+
+                <button
+                  className="icon-btn"
+                  onClick={() => { setViewMode('chat'); setIsMenuOpen(false); }}
+                  disabled={!monitoring}
+                  style={{ justifyContent: 'flex-start', width: '100%', borderRadius: '8px', padding: '10px', gap: '10px' }}
+                >
+                  <MessageSquare size={20} style={{ color: 'var(--accent-color)' }} /> <span>Chat Analysis</span>
+                </button>
+
+                {user.doctor_id && (
+                  <button
+                    className="icon-btn"
+                    onClick={() => { setShowDoctorChat(true); setIsMenuOpen(false); }}
+                    style={{ justifyContent: 'flex-start', width: '100%', borderRadius: '8px', padding: '10px', gap: '10px' }}
+                  >
+                    <MessageSquare size={20} style={{ color: 'var(--primary-blue)' }} /> <span>Chat with Dr</span>
+                  </button>
+                )}
+
+                <button
+                  className="icon-btn"
+                  disabled={!monitoring}
+                  onClick={() => { setViewMode(viewMode === 'dashboard' ? 'table' : 'dashboard'); setIsMenuOpen(false); }}
+                  style={{ justifyContent: 'flex-start', width: '100%', borderRadius: '8px', padding: '10px', gap: '10px' }}
+                >
+                  {viewMode === 'table' ? <Activity size={20} /> : <TableIcon size={20} />}
+                  <span>{viewMode === 'table' ? "Show Dashboard" : "Show Table"}</span>
+                </button>
+
+                <button
+                  className="icon-btn"
+                  disabled={!monitoring}
+                  onClick={() => { handleExportPDF(); setIsMenuOpen(false); }}
+                  style={{ justifyContent: 'flex-start', width: '100%', borderRadius: '8px', padding: '10px', gap: '10px' }}
+                >
+                  <Download size={20} /> <span>Export PDF</span>
+                </button>
+
+                <button
+                  className={`monitor-toggle ${monitoring ? "on" : "off"}`}
+                  onClick={() => setMonitoring(!monitoring)}
+                  style={{ justifyContent: 'center', width: '100%' }}
+                >
+                  {monitoring ? "Monitoring ON" : "Monitoring OFF"}
+                </button>
+
+                <div style={{ height: '1px', background: 'var(--border-color)', margin: '0.5rem 0' }}></div>
+
+                <button
+                  className="icon-btn"
+                  onClick={logout}
+                  style={{ justifyContent: 'flex-start', width: '100%', borderRadius: '8px', padding: '10px', gap: '10px', color: 'var(--emotion-anger)' }}
+                >
+                  <LogOut size={20} /> <span>Logout</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -345,7 +434,7 @@ function Dashboard() {
       <div className={!monitoring ? "frozen" : ""}>
         {viewMode === 'chat' ? (
           <div style={{ marginTop: '2rem' }}>
-            <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: '#e1ff5e', background: 'none', border: 'none', cursor: 'pointer' }}>
+            <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
               &larr; Back to Dashboard
             </button>
             <ChatAnalyzer />
@@ -360,7 +449,7 @@ function Dashboard() {
                   alerts.slice(0, 5).map((a, i) => {
                     const [t, d] = severityText(a.severity);
                     return (
-                      <div key={i} className="alert-item">
+                      <div key={i} className="alert-item" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <strong>{t}</strong>
                         <small>{d}</small>
                       </div>
@@ -554,6 +643,16 @@ function Dashboard() {
       }}>
         Logged in as: <span style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}>{user.email}</span>
       </div>
+
+      {
+        showDoctorChat && user.doctor_id && (
+          <ChatInterface
+            otherUserId={user.doctor_id}
+            otherUserEmail="Doctor" // We might not have doc email, just say Doctor for now
+            onClose={() => setShowDoctorChat(false)}
+          />
+        )
+      }
     </div >
   );
 }
@@ -563,7 +662,6 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
-          <Background3D />
           <Suspense fallback={
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'white', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ width: '40px', height: '40px', border: '3px solid rgba(255,255,255,0.3)', borderRadius: '50%', borderTopColor: '#e1ff5e', animation: 'spin 1s linear infinite' }}></div>
@@ -571,10 +669,12 @@ export default function App() {
               <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
             </div>
           }>
+            <Background3D />
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/welcome" element={<RequireAuth><WelcomeScreen /></RequireAuth>} />
               <Route
                 path="/support-dashboard"
                 element={
@@ -591,10 +691,68 @@ export default function App() {
                   </RequireAuth>
                 }
               />
+              <Route
+                path="/doctor-dashboard"
+                element={
+                  <RequireDoctorAuth>
+                    <PsychiatristDashboard />
+                  </RequireDoctorAuth>
+                }
+              />
+              <Route
+                path="/doctor/patient/:id"
+                element={
+                  <RequireDoctorAuth>
+                    <PatientDetailView />
+                  </RequireDoctorAuth>
+                }
+              />
             </Routes>
+            <GlobalThemeToggle />
           </Suspense>
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
+  );
+}
+
+function GlobalThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  const location = useLocation();
+
+  // Hide on pages that likely already have a header with settings
+  // (Dashboard, Support Dashboard, Doctor Dashboard, Patient View)
+  const hideOnRoutes = ['/dashboard', '/support-dashboard', '/doctor-dashboard', '/doctor/patient', '/'];
+  const shouldHide = hideOnRoutes.some(route => location.pathname === '/' ? route === '/' : location.pathname.startsWith(route) && route !== '/');
+
+  if (shouldHide) return null;
+
+  return (
+    <button
+      onClick={toggleTheme}
+      style={{
+        position: 'fixed',
+        top: '2rem',
+        right: '2rem',
+        zIndex: 9999,
+        background: 'var(--bg-card)',
+        border: '1px solid var(--glass-border)',
+        borderRadius: '50%',
+        width: '50px',
+        height: '50px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+        color: 'var(--text-main)',
+        transition: 'all 0.3s ease'
+      }}
+      title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.borderColor = 'var(--accent-color)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.borderColor = 'var(--glass-border)'; }}
+    >
+      {theme === 'dark' ? <Sun size={24} /> : <Moon size={24} />}
+    </button>
   );
 }

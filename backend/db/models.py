@@ -12,10 +12,17 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    role = Column(String, default="patient") # 'patient' or 'psychiatrist'
+    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
     logs = relationship("EmotionLog", back_populates="user")
     alerts = relationship("DriftAlert", back_populates="user")
     reports = relationship("Report", back_populates="user")
     face_logs = relationship("FaceEmotionLog", back_populates="user")
+    
+    # Self-referential relationship
+    doctor = relationship("User", remote_side=[id], backref="patients")
+
 
 
 class EmotionLog(Base):
@@ -49,6 +56,7 @@ class DriftAlert(Base):
     from_emotion = Column(String)
     to_emotion = Column(String)
     severity = Column(Float)
+    message = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="alerts")
@@ -65,3 +73,45 @@ class Report(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="reports")
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sender_id = Column(Integer, ForeignKey("users.id"), index=True)
+    receiver_id = Column(Integer, ForeignKey("users.id"), index=True)
+    message = Column(String)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    is_read = Column(Boolean, default=False)
+
+class MedicalRecord(Base):
+    __tablename__ = "medical_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    filename = Column(String)
+    file_path = Column(String)
+    file_type = Column(String) # pdf, image, etc.
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    description = Column(String, nullable=True)
+
+    user = relationship("User", back_populates="medical_records")
+
+# Update User relationship
+User.medical_records = relationship("MedicalRecord", back_populates="user")
+User.medical_logs = relationship("MedicalEntry", back_populates="user")
+
+class MedicalEntry(Base):
+    __tablename__ = "medical_entries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    medicine = Column(String)
+    dosage = Column(String)
+    time = Column(String)
+    taken = Column(Boolean, default=False)
+    notes = Column(String, nullable=True)
+    frequency = Column(String, default="daily")  # daily, twice_daily, weekly, as_needed
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="medical_logs")

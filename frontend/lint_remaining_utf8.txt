@@ -1,0 +1,116 @@
+﻿
+> frontend@0.0.0 lint
+> eslint .
+
+
+E:\emotion-drift\frontend\src\App.jsx
+   93:9   error  'location' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  no-unused-vars
+  154:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  152 |
+  153 |   useEffect(() => {
+> 154 |     load();
+      |     ^^^^ Avoid calling setState() directly within an effect
+  155 |   }, [load]);
+  156 |
+  157 |   // Click outside to close alerts                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   react-hooks/set-state-in-effect
+  495:42  error  Error: Cannot create components during render
+
+Components created during render will reset their state each time they are created. Declare components outside of render.
+
+  493 |                       <XAxis dataKey="time" stroke="var(--text-secondary)" />
+  494 |                       <YAxis domain={[0, 1]} stroke="var(--text-secondary)" />
+> 495 |                       <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--text-secondary)' }} />
+      |                                          ^^^^^^^^^^^^^ This component is created during render
+  496 |                       <Line type="monotone" dataKey="confidence" stroke="var(--accent-color)" strokeWidth={3} dot={false} />
+  497 |                     </LineChart>
+  498 |                   </ResponsiveContainer>
+
+  223 |     })) || [];
+  224 |
+> 225 |   const CustomTooltip = ({ active, payload, label }) => {
+      |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 226 |     if (active && payload && payload.length) {
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 227 |       const data = payload[0].payload;
+      ΓÇª
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 243 |     return null;
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 244 |   };
+      | ^^^^ The component is created during render here
+  245 |
+  246 |   const distData = Object.entries(distribution).map(([e, c]) => ({
+  247 |     emotion: e,          react-hooks/static-components
+  525:42  error  Error: Cannot create components during render
+
+Components created during render will reset their state each time they are created. Declare components outside of render.
+
+  523 |                       <XAxis dataKey="time" stroke="var(--text-secondary)" hide />
+  524 |                       <YAxis domain={[0, 1]} stroke="var(--text-secondary)" />
+> 525 |                       <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--text-secondary)' }} />
+      |                                          ^^^^^^^^^^^^^ This component is created during render
+  526 |                       <Line type="monotone" dataKey="confidence" stroke="var(--primary-blue)" strokeWidth={3} dot={{ r: 4 }} />
+  527 |                     </LineChart>
+  528 |                   </ResponsiveContainer>
+
+  223 |     })) || [];
+  224 |
+> 225 |   const CustomTooltip = ({ active, payload, label }) => {
+      |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 226 |     if (active && payload && payload.length) {
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 227 |       const data = payload[0].payload;
+      ΓÇª
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 243 |     return null;
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 244 |   };
+      | ^^^^ The component is created during render here
+  245 |
+  246 |   const distData = Object.entries(distribution).map(([e, c]) => ({
+  247 |     emotion: e,  react-hooks/static-components
+
+E:\emotion-drift\frontend\src\components\Background3D.jsx
+  7:13  error  'state' is defined but never used  no-unused-vars
+
+E:\emotion-drift\frontend\src\components\ChatInterface.jsx
+  112:1  error  Parsing error: 'return' outside of function
+
+E:\emotion-drift\frontend\src\components\LandingPage.jsx
+  1:17  error  'useContext' is defined but never used. Allowed unused vars must match /^[A-Z_]/u   no-unused-vars
+  3:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u       no-unused-vars
+  7:8   error  'robotMascot' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+E:\emotion-drift\frontend\src\components\Login.jsx
+  50:18  error  'e' is defined but never used                                                                        no-unused-vars
+  66:18  error  'e' is defined but never used                                                                        no-unused-vars
+  97:11  error  'handleAppleResponse' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+E:\emotion-drift\frontend\src\components\PatientDetailView.jsx
+  278:50  error  'err' is defined but never used  no-unused-vars
+
+E:\emotion-drift\frontend\src\components\PsychiatristDashboard.jsx
+  3:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+E:\emotion-drift\frontend\src\components\SupportDashboard.jsx
+  2:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+E:\emotion-drift\frontend\src\components\VideoBackground.jsx
+  43:22  error  'setVideoSrc' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+E:\emotion-drift\frontend\src\components\WelcomeScreen.jsx
+  1:21  error  'useState' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  4:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u    no-unused-vars
+
+E:\emotion-drift\frontend\src\context\ThemeContext.jsx
+  28:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+Γ£û 19 problems (19 errors, 0 warnings)
+

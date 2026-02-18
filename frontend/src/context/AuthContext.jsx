@@ -1,4 +1,5 @@
 import { createContext, useState, useEffect } from 'react';
+import { API } from '../api';
 
 const AuthContext = createContext();
 
@@ -15,8 +16,10 @@ export const AuthProvider = ({ children }) => {
             // For this implementation, we just restore state:
             const email = localStorage.getItem('user_email');
             const userId = localStorage.getItem('user_id');
+            const role = localStorage.getItem('user_role');
+            const doctorId = localStorage.getItem('user_doctor_id');
             if (email && userId) {
-                setUser({ email, id: userId });
+                setUser({ email, id: userId, role: role || 'patient', doctor_id: doctorId });
             }
         }
         setLoading(false);
@@ -25,10 +28,12 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, password) => {
         try {
             const params = new URLSearchParams();
-            params.append('username', email.trim()); // Trim whitespace
-            params.append('password', password.trim()); // Trim whitespace
+            params.append('username', email.trim());
+            params.append('password', password.trim());
 
-            const response = await fetch('http://127.0.0.1:8000/auth/token', {
+            // Use fetch directly to avoid interceptors adding Auth header
+            const apiUrl = API.defaults.baseURL || "http://127.0.0.1:8000";
+            const response = await fetch(`${apiUrl}/auth/token`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -45,33 +50,11 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('token', data.access_token);
             localStorage.setItem('user_email', data.email);
             localStorage.setItem('user_id', data.user_id);
+            localStorage.setItem('user_role', data.role);
+            if (data.doctor_id) localStorage.setItem('user_doctor_id', data.doctor_id);
 
             setToken(data.access_token);
-            setUser({ email: data.email, id: data.user_id });
-            return true;
-        } catch (error) {
-            console.error(error);
-            // Re-throw so component can display it
-            throw error; 
-        }
-    };
-
-    const signup = async (email, password) => {
-        try {
-            const response = await fetch('http://127.0.0.1:8000/auth/signup', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email, password }),
-            });
-            if (!response.ok) {
-                const err = await response.json();
-                const errorMessage = Array.isArray(err.detail)
-                    ? err.detail.map(e => e.msg).join(', ')
-                    : (err.detail || 'Signup failed');
-                throw new Error(errorMessage);
-            }
+            setUser({ email: data.email, id: data.user_id, role: data.role, doctor_id: data.doctor_id });
             return true;
         } catch (error) {
             console.error(error);
@@ -79,29 +62,34 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const signup = async (email, password, role = 'patient') => {
+        try {
+            await API.post('/auth/signup', { email, password, role });
+            return true;
+        } catch (error) {
+            console.error(error);
+            const errorMessage = error.response?.data?.detail
+                ? (Array.isArray(error.response.data.detail)
+                    ? error.response.data.detail.map(e => e.msg).join(', ')
+                    : error.response.data.detail)
+                : 'Signup failed';
+            throw new Error(errorMessage);
+        }
+    };
+
     const googleLogin = async (accessToken) => {
         try {
-            const response = await fetch('http://127.0.0.1:8000/auth/google', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ access_token: accessToken }),
-            });
+            const response = await API.post('/auth/google', { access_token: accessToken });
+            const data = response.data;
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error("Backend Error:", errorText);
-                throw new Error(`Google login failed: ${errorText}`);
-            }
-
-            const data = await response.json();
             localStorage.setItem('token', data.access_token);
             localStorage.setItem('user_email', data.email);
             localStorage.setItem('user_id', data.user_id);
+            localStorage.setItem('user_role', data.role);
+            if (data.doctor_id) localStorage.setItem('user_doctor_id', data.doctor_id);
 
             setToken(data.access_token);
-            setUser({ email: data.email, id: data.user_id });
+            setUser({ email: data.email, id: data.user_id, role: data.role, doctor_id: data.doctor_id });
             return true;
         } catch (error) {
             console.error(error);
@@ -113,6 +101,8 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('token');
         localStorage.removeItem('user_email');
         localStorage.removeItem('user_id');
+        localStorage.removeItem('user_role');
+        localStorage.removeItem('user_doctor_id');
         setToken(null);
         setUser(null);
     };

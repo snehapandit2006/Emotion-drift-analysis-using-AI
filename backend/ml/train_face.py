@@ -3,35 +3,39 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from torchvision import datasets, transforms, models
+from torchvision import datasets, transforms
+from transformers import ViTForImageClassification, ViTImageProcessor
 import time
 import copy
+import json
 
-def train_model(data_dir, num_epochs=15):
-    print(f"Starting training from: {data_dir}")
+def train_model(data_dir, num_epochs=5):
+    print(f"Starting ViT training from: {data_dir}")
     
-    # Data augmentation and normalization for training
+    # ViT requires 224x224 images
+    # We can use the feature extractor to get exact normalization if we want, 
+    # but standard ImageNet normalization is usually fine for google/vit-base-patch16-224
+    
     data_transforms = {
         'train': transforms.Compose([
-            transforms.Resize((48, 48)),  # FER2013 standard size usually but we can use 224 for ResNet
-            transforms.Grayscale(num_output_channels=3), # Convert to 3 channels for ResNet
+            transforms.Resize((224, 224)), 
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]) # ViT usually expects 0.5 std/mean or ImageNet
         ]),
         'test': transforms.Compose([
-            transforms.Resize((48, 48)),
-            transforms.Grayscale(num_output_channels=3),
+            transforms.Resize((224, 224)),
             transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
         ]),
     }
 
+    # Load Datasets
     image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) 
                       for x in ['train', 'test']}
     
-    dataloaders = {x: DataLoader(image_datasets[x], batch_size=32, shuffle=True, num_workers=0) 
-                   for x in ['train', 'test']}
+    dataloaders = {x: DataLoader(image_datasets[x], batch_size=16, shuffle=True, num_workers=0) 
+                   for x in ['train', 'test']} # Reduced batch size for ViT memory
     
     dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'test']}
     class_names = image_datasets['train'].classes
@@ -40,23 +44,34 @@ def train_model(data_dir, num_epochs=15):
     print(f"Using device: {device}")
     print(f"Classes: {class_names}")
 
-    # Use a lightweight ResNet
-    model = models.resnet18(pretrained=True)
+    # Load Pretrained ViT
+    # ID2LABEL mapping for inference
+    id2label = {str(i): c for i, c in enumerate(class_names)}
+    label2id = {c: str(i) for i, c in enumerate(class_names)}
     
-    # Freeze initial layers to speed up training? Maybe not for such different task (Face vs ImageNet)
-    # Let's fine-tune all for best accuracy if dataset is decent size.
+    API_MODEL_NAME = 'google/vit-base-patch16-224-in21k'
+    print(f"Loading {API_MODEL_NAME}...")
     
-    num_ftrs = model.fc.in_features
-    model.fc = nn.Linear(num_ftrs, len(class_names))
+    model = ViTForImageClassification.from_pretrained(
+        API_MODEL_NAME,
+        num_labels=len(class_names),
+        id2label=id2label,
+        label2id=label2id
+    )
 
     model = model.to(device)
 
+    # ViT Optimization
+    optimizer = optim.AdamW(model.parameters(), lr=2e-5) # Lower LR for Transformer fine-tuning
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+    
+    # Scheduler
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
+
+    start_time = time.time()
 
     for epoch in range(num_epochs):
         print(f'Epoch {epoch}/{num_epochs - 1}')
@@ -79,8 +94,10 @@ def train_model(data_dir, num_epochs=15):
 
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(inputs)
-                    _, preds = torch.max(outputs, 1)
-                    loss = criterion(outputs, labels)
+                    # ViT outputs object, validation needs logits
+                    logits = outputs.logits
+                    _, preds = torch.max(logits, 1)
+                    loss = criterion(logits, labels)
 
                     if phase == 'train':
                         loss.backward()
@@ -100,22 +117,32 @@ def train_model(data_dir, num_epochs=15):
             if phase == 'test' and epoch_acc > best_acc:
                 best_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
+                
+                # Save checkpoint immediately
+                # model.load_state_dict(best_model_wts)
+                # output_dir = os.path.join(os.path.dirname(__file__), 'face_model_vit')
+                # model.save_pretrained(output_dir)
 
+    time_elapsed = time.time() - start_time
+    print(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s')
     print(f'Best val Acc: {best_acc:4f}')
 
-    # Load best model weights
+    # Load best weights
     model.load_state_dict(best_model_wts)
     
-    # Save the model
-    save_path = os.path.join(os.path.dirname(__file__), 'face_model.pth')
-    torch.save(model.state_dict(), save_path)
-    
-    # Save classes
-    import json
-    with open(os.path.join(os.path.dirname(__file__), 'face_classes.json'), 'w') as f:
-        json.dump(class_names, f)
+    # Save Model (HuggingFace Format)
+    output_dir = os.path.join(os.path.dirname(__file__), 'face_model_vit')
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
         
-    print(f"Model saved to {save_path}")
+    print(f"Saving model to {output_dir}...")
+    model.save_pretrained(output_dir)
+    
+    # Also save a processor config if needed, though mostly standard
+    processor = ViTImageProcessor.from_pretrained(API_MODEL_NAME)
+    processor.save_pretrained(output_dir)
+    
+    print("Model saved successfully.")
 
 if __name__ == "__main__":
     # Point this to your dataset
@@ -123,6 +150,9 @@ if __name__ == "__main__":
     DATASET_PATH = r"E:\emotion-drift\datasets\face emotion"
     
     if os.path.exists(DATASET_PATH):
-        train_model(DATASET_PATH, num_epochs=5) # 5 epochs for speed, increase if needed
+        # Dry run with 1 epoch just to test code if user runs it, 
+        # or defaults to 5.
+        train_model(DATASET_PATH, num_epochs=3)
     else:
         print(f"Dataset not found at {DATASET_PATH}")
+        print("Please ensure your dataset is structured as train/test folders.")

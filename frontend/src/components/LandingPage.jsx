@@ -1,15 +1,14 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Activity, MessageSquare, Zap, Shield } from 'lucide-react';
+import { Activity, MessageSquare, Zap, Shield, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import './LandingPage.css';
-import robotMascot from '../assets/robot_mascot.png';
 import logoFinal from '../assets/logo_final.png';
 import VideoBackground from './VideoBackground';
 
 export default function LandingPage() {
-    const { theme } = useTheme();
+    const { theme, toggleTheme } = useTheme();
 
     const containerVariants = {
         hidden: { opacity: 0 },
@@ -62,7 +61,9 @@ export default function LandingPage() {
                             width: '100%',
                             objectFit: 'contain',
                             clipPath: 'inset(73% 0 0 0)',
-                            filter: theme === 'dark' ? 'brightness(0) invert(1)' : 'brightness(0)'
+                            filter: theme === 'dark' ? 'brightness(0) invert(1)' : 'brightness(0)',
+                            transition: 'filter 0.3s ease',
+                            opacity: 0.9
                         }}
                     />
                 </div>
@@ -71,6 +72,28 @@ export default function LandingPage() {
                     <Link to="/signup" className="btn-primary" style={{ padding: '0.6rem 1.5rem', fontSize: '0.9rem' }}>
                         Get Started
                     </Link>
+                    <button
+                        className="icon-btn"
+                        onClick={toggleTheme}
+                        title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                        style={{
+                            color: 'var(--text-main)',
+                            marginLeft: '1rem',
+                            background: 'transparent',
+                            border: '1px solid var(--border-color)',
+                            padding: '8px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-color)'; e.currentTarget.style.color = 'var(--accent-color)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.color = 'var(--text-main)'; }}
+                    >
+                        {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                    </button>
                 </div>
             </nav>
 
@@ -103,6 +126,7 @@ export default function LandingPage() {
                 </motion.div>
             </main>
 
+
             {/* Features Grid */}
             <motion.section
                 className="features-section"
@@ -129,6 +153,6 @@ export default function LandingPage() {
                     <p>Get immediate insights into the tone and sentiment of your messages.</p>
                 </div>
             </motion.section>
-        </motion.div>
+        </motion.div >
     );
 }

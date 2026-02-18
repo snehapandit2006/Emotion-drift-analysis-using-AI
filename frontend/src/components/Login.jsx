@@ -25,13 +25,17 @@ const Login = () => {
     const handleLogin = async () => {
         setLoading(true);
         setError('');
-        const success = await login(email, password);
-        setLoading(false);
-
-        if (success) {
-            navigate('/dashboard');
-        } else {
-            setError('Invalid email or password');
+        try {
+            const success = await login(email, password);
+            if (success) {
+                navigate('/welcome');
+            } else {
+                setError('Invalid email or password');
+            }
+        } catch (err) {
+            setError(err.message || 'Login failed');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -43,7 +47,7 @@ const Login = () => {
             await forgotPassword(email);
             setMessage('If the account exists, a reset code has been sent (check console).');
             setView('reset');
-        } catch (e) {
+        } catch {
             setError('Failed to process request.');
         } finally {
             setLoading(false);
@@ -59,7 +63,7 @@ const Login = () => {
             setMessage('Password reset successfully! Please login.');
             setView('login');
             setPassword('');
-        } catch (e) {
+        } catch {
             setError('Failed to reset password. Invalid or expired token.');
         } finally {
             setLoading(false);
@@ -68,90 +72,42 @@ const Login = () => {
 
     const loginGoogle = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
-            const success = await googleLogin(tokenResponse.access_token);
-            if (success) {
-                navigate('/dashboard');
-            } else {
-                setError('Google login failed');
+            console.log("Google Login Success, Token:", tokenResponse);
+            try {
+                const success = await googleLogin(tokenResponse.access_token);
+                if (success) {
+                    navigate('/dashboard');
+                } else {
+                    alert("Backend Google Login Failed. Check console.");
+                    setError('Google login failed at backend');
+                }
+            } catch (err) {
+                console.error("Backend Google Login Error:", err);
+                alert(`Backend Error: ${err.message || 'Unknown'}`);
+                setError(err.message || 'Google login failed');
             }
         },
-        onError: error => console.log("Google Login Failed:", error)
+        onError: error => {
+            console.error("Google Popup/Auth Failed:", error);
+            alert(`Google Auth Failed: ${error.error_description || error.type || JSON.stringify(error)}`);
+            setError(`Google Auth Failed: ${error.error_description || 'Unknown error'}`);
+        }
     });
 
-    const handleAppleResponse = (response) => {
-        if (!response.error) {
-            console.log("Apple Login Success:", response);
-        }
-    };
+
 
     return (
         <div className="login-screen">
-            <button
-                className="icon-btn"
-                onClick={toggleTheme}
-                title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-                style={{ position: 'absolute', top: '24px', right: '24px', color: 'var(--text-main)' }}
-            >
-                {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-
             <div className="login-box">
                 {/* Logo Replacement */}
-                <div className="logo-container" style={{
-                    border: 'none',
-                    background: 'transparent',
-                    boxShadow: 'none',
-                    width: '250px',
-                    height: '250px',
-                    position: 'relative',
-                    animation: 'sphere-levitate 3s ease-in-out infinite'
-                }}>
-                    {/* Top Layer: Robot (Original Colors) - Shows top 73% */}
-                    <img
-                        src={logoFinal}
-                        alt="Sentia Robot"
-                        style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain',
-                            clipPath: 'inset(0 0 27% 0)',
-                            zIndex: 2
-                        }}
-                    />
-
-                    {/* Bottom Layer: Text (Adaptive Color) - Shows bottom 27% */}
-                    <img
-                        src={logoFinal}
-                        alt="Sentia Text"
-                        style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain',
-                            clipPath: 'inset(73% 0 0 0)',
-                            filter: theme === 'dark' ? 'brightness(0) invert(1)' : 'brightness(0)',
-                            transition: 'filter 0.3s ease',
-                            zIndex: 1
-                        }}
-                    />
-
-                    {/* Shadow Element */}
-                    <div style={{
-                        position: 'absolute',
-                        bottom: '20px', // Adjust to place below text
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        width: '60%',
-                        height: '15px',
-                        background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 70%)',
-                        zIndex: 0,
-                        filter: 'blur(4px)'
-                    }}></div>
+                {/* Logo - Styles moved to App.css for theme consistency */}
+                <div className="logo-container">
+                    <div className="energy-sphere">
+                        <div className="filament f1"></div>
+                        <div className="filament f2"></div>
+                        <div className="filament f3"></div>
+                        <div className="filament f4"></div>
+                    </div>
                 </div>
 
                 {view === 'login' && (

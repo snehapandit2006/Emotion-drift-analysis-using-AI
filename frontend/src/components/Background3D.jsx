@@ -4,7 +4,7 @@ import { Stars, Cloud } from '@react-three/drei';
 
 function MovingStars() {
   const ref = useRef();
-  useFrame((state) => {
+  useFrame(() => {
     if (ref.current) {
       ref.current.rotation.y += 0.0005;
       ref.current.rotation.x += 0.0002;

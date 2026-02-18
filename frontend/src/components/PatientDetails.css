@@ -1,0 +1,272 @@
+/* PatientDetails.css */
+:root {
+    /* Kept for reference, but overrides are handled in index.css */
+    --pd-olive-deep: #2A3325;
+    --pd-olive-medium: #4A5D45;
+    --pd-sage: #8F9E8B;
+    --pd-beige-light: #F2F0E9;
+    --pd-card-bg: #EAE8DF;
+    --pd-text-dark: #1D261B;
+    --pd-text-muted: #5C6B58;
+    --pd-accent-alert: #D32F2F;
+    --pd-accent-warn: #F57C00;
+    --pd-border: #D1D1C6;
+}
+
+.pd-container {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding: 2rem;
+    box-sizing: border-box;
+}
+
+/* Header Section */
+.pd-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px dashed var(--border-color);
+}
+
+.pd-title h1 {
+    font-size: 3rem;
+    font-weight: 400;
+    color: var(--text-main);
+    margin: 0;
+    line-height: 1.1;
+    letter-spacing: -1px;
+}
+
+.pd-title p {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin: 0.5rem 0 0;
+}
+
+/* Controls (Top Right) */
+.pd-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.pd-btn {
+    background: var(--accent-color);
+    color: var(--accent-text);
+    /* Use accent text color */
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background 0.2s;
+}
+
+.pd-btn:hover {
+    background: var(--primary-blue);
+    /* Slightly different hover? Or opacity */
+    opacity: 0.9;
+}
+
+.pd-btn.secondary {
+    background: var(--pd-sage);
+    /* Keep sage or use secondary? Sage is fine if defined */
+    color: var(--pd-olive-deep);
+}
+
+.pd-btn.outline {
+    background: transparent;
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
+}
+
+/* Grid Layout */
+.pd-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    grid-template-rows: auto 1fr;
+    height: 100%;
+}
+
+/* Cards generic style */
+.pd-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    position: relative;
+    box-shadow: 2px 2px 0px var(--shadow-color);
+}
+
+.pd-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--glass-border);
+    padding-bottom: 0.5rem;
+}
+
+.pd-card-title {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--accent-color);
+    letter-spacing: 1px;
+    margin: 0;
+}
+
+.pd-big-number {
+    font-size: 4rem;
+    font-weight: 300;
+    line-height: 1;
+    color: var(--text-main);
+    text-align: right;
+    margin: 0.5rem 0;
+}
+
+/* Sidebar Specifics */
+.pd-sidebar {
+    grid-column: 1 / 2;
+    grid-row: 1 / span 2;
+    background: var(--bg-panel);
+    /* Use panel bg or specific heavy color? */
+    /* Let's keep it distinct if intended to be dark sidebar always? 
+       Actually user wanted "Olive/Beige". 
+       Let's use --bg-panel but maybe add a class for specific sidebar styling if needed.
+       For now, let's use var(--bg-panel) and invert text if needed, or stick to --accent-color background?
+       Original was --pd-olive-deep (Dark Olive).
+       If we want Dark Mode compatibility, maybe just use var(--card-bg) or var(--bg-panel)?
+       Let's stick to var(--bg-panel) which is dark in dark mode, white in light mode?
+       Wait, original was Dark Olive (Contrast).
+       Let's use a variable that flips correctly.
+       In Dark Mode: bg-panel is dark grey.
+       In Light Mode: bg-panel is white.
+       If we want "Sidebar" look, maybe var(--card-bg) with accent border?
+       Let's try var(--bg-card) for now.
+    */
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+}
+
+.pd-sidebar .pd-card-title {
+    color: var(--accent-color);
+    border-bottom-color: var(--border-color);
+}
+
+.pd-sidebar-menu {
+    list-style: none;
+    padding: 0;
+    margin-top: 2rem;
+}
+
+.pd-sidebar-menu li {
+    padding: 0.8rem 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: color 0.2s;
+    color: var(--text-secondary);
+}
+
+.pd-sidebar-menu li:hover {
+    color: var(--accent-color);
+}
+
+.pd-sidebar-menu li.active {
+    color: var(--text-main);
+    font-weight: bold;
+    border-left: 3px solid var(--accent-color);
+    padding-left: 0.5rem;
+}
+
+/* Alerts List */
+.pd-alert-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.pd-alert-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--glass-border);
+    font-size: 0.9rem;
+}
+
+.pd-alert-item span.risk-high {
+    color: var(--pd-accent-alert);
+    /* Keep red */
+    font-weight: bold;
+}
+
+/* Date Pills */
+.pd-date-filter {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.pd-pill {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-secondary);
+}
+
+.pd-pill.active {
+    background: var(--accent-color);
+    color: var(--accent-text);
+    border-color: var(--accent-color);
+}
+
+/* Log Table Styles for Grid */
+.pd-log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.pd-log-table th {
+    text-align: left;
+    padding: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.pd-log-table td {
+    padding: 0.8rem 0.5rem;
+    border-bottom: 1px solid var(--glass-border);
+    color: var(--text-main);
+}
+
+.pd-log-emotion {
+    font-weight: 600;
+    text-transform: capitalize;
+    color: var(--accent-color);
+    /* Highlight emotion */
+}
+
+.pd-scroll-container {
+    max-height: 600px;
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}

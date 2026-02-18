@@ -60,6 +60,13 @@ def capture_emotion(
     db.add(new_log)
     db.commit()
     db.refresh(new_log)
+    
+    # Check for alerts
+    try:
+        from analysis.drift import check_and_create_alert
+        check_and_create_alert(db, current_user.id)
+    except Exception as e:
+        print(f"Error checking alerts: {e}")
 
     return {
         "emotion": new_log.emotion,

@@ -43,6 +43,8 @@ def predict_emotion(text: str) -> dict:
         "dying": "sadness", "suicide": "sadness", "kill myself": "sadness",
         "hurt myself": "sadness", "dead": "sadness", "death": "sadness",
         "pain": "sadness", "help me": "fear", 
+        "guilt": "sadness", "ashamed": "sadness", "doubt": "fear",
+        "depressed": "sadness", "useless": "sadness", "worthless": "sadness",
         # Note: HF model has 'joy' not 'happy', 'love' is sometimes 'love' or 'joy'
         # We will map standard HF outputs to our schema if needed.
     }
@@ -85,7 +87,9 @@ def predict_emotion(text: str) -> dict:
         # With return_all_scores=True, likely [[{'label': 'joy', 'score': 0.9}, ...]]
         
         raw_output = classifier(text)
+        # DEBUG HF Output: {raw_output}") 
         # print(f"DEBUG HF Output: {raw_output}") 
+        print(f"DEBUG HF Output: {raw_output}") 
         
         preds = []
         if isinstance(raw_output, list):
@@ -143,10 +147,32 @@ def predict_emotions_batch(texts: list) -> list:
     final_output = [None] * len(texts)
     
     for i, text in enumerate(texts):
-        # ... Safety checks (omitted for brevity, same as above) ...
-        # For prototype, let's just push everything to HF if not empty
         if not text:
             final_output[i] = {"emotion": "neutral", "confidence": 0.0}
+            continue
+            
+        text_lower = text.lower()
+        
+        # Safety / Override Check for batch
+        override = None
+        
+        # We need to replicate the safety map here or make it a shared constant
+        # For now, repeating the critical ones
+        safety_map = {
+            "dying": "sadness", "suicide": "sadness", "kill myself": "sadness",
+            "hurt myself": "sadness", "dead": "sadness", "death": "sadness",
+            "pain": "sadness", "help me": "fear", 
+            "guilt": "sadness", "ashamed": "sadness", "doubt": "fear",
+            "depressed": "sadness", "useless": "sadness", "worthless": "sadness"
+        }
+        
+        for keyword, emotion in safety_map.items():
+            if keyword in text_lower:
+                override = {"emotion": emotion, "confidence": 1.0}
+                break
+        
+        if override:
+            final_output[i] = override
             continue
             
         indices_to_predict.append(i)

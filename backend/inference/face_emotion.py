@@ -14,13 +14,26 @@ class FaceEmotionAnalyzer:
         if cls._pipeline is not None:
             return
 
-        print(f"Loading Face Emotion Model: {cls._model_name}...")
+        import os
+        # Check for locally trained ViT model first
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        local_model_path = os.path.join(base_dir, "ml", "face_model_vit")
+        
+        target_model = cls._model_name
+        if os.path.exists(local_model_path):
+            print(f"Found local ViT model at {local_model_path}")
+            target_model = local_model_path
+        else:
+            print(f"Local model not found. Using HF Hub model: {cls._model_name}")
+
+        print(f"Loading Face Emotion Model: {target_model}...")
         try:
             # Initialize the pipeline for image classification
-            cls._pipeline = pipeline("image-classification", model=cls._model_name)
+            # Transformers pipeline handles resizing automatically based on model config
+            cls._pipeline = pipeline("image-classification", model=target_model)
             print("Face Emotion Model loaded successfully.")
         except Exception as e:
-            print(f"Failed to load Face Emotion Model: {e}")
+            print(f"Failed to load Face Emotion Model ({target_model}): {e}")
             cls._pipeline = None
 
     @staticmethod

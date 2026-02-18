@@ -23,9 +23,17 @@ def analyze_severity(drift_result, volatility_score, time_window_days=7):
     # Drift result from drift.py returns top-level severity key
     drift_severity = drift_result.get("severity", 0.0)
     
+    
     # 1. Base Score calculation (0.0 to 1.0)
-    # Drift contributes 0.6 max, Volatility 0.4 max
-    base_score = (drift_severity * 0.6) + (volatility_score * 0.4)
+    # 1. Base Score calculation (0.0 to 1.0)
+    # Balanced weights for Drift and Volatility
+    base_score = (drift_severity * 0.5) + (volatility_score * 0.5)
+
+    # Override: High Volatility should trigger at least MEDIUM/HIGH severity regardless of drift
+    if volatility_score > 0.6:
+        base_score = max(base_score, 0.65) # Ensure at least HIGH start range
+    elif volatility_score > 0.4:
+        base_score = max(base_score, 0.4) # Ensure at least MEDIUM
     
     # 2. Level Determination
     if base_score < 0.3:

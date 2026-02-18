@@ -1,0 +1,57 @@
+1. AI & Machine Learning Models
+Your project uses a hybrid AI approach, combining pre-trained Transformers for state-of-the-art accuracy with custom logic for safety and drift detection.
+
+Text Emotion Analysis
+Model: j-hartmann/emotion-english-distilroberta-base
+Architecture: DistilRoBERTa (Transformer-based).
+Task: Text Classification (7 classes: joy, sadness, anger, fear, surprise, neutral, disgust).
+Library: Hugging Face transformers (pipeline).
+Preprocessing:
+Translation: Google Translate (deep_translator) converts non-English/Hinglish text to English before inference.
+Safety Layer: A hard-coded Safety Override System intercepts critical keywords (e.g., "suicide", "help me") to force high-confidence sadness or fear labels, ensuring user safety regardless of model output.
+Training: A legacy train_model.py script exists for a custom Logistic Regression model (TF-IDF features), but the active inference pipeline (inference.py) uses the Transformer model.
+Face Emotion Analysis
+Model: dima806/facial_emotions_image_detection
+Architecture: Vision Transformer (ViT) or similar image classifier.
+Library: Hugging Face transformers.
+Input: Base64 encoded image strings.
+Normalization: Raw model outputs are mapped to your standard schema (e.g., "happines" → "happy").
+Drift & Volatility Detection
+Logic: Custom statistical implementation in drift.py.
+Drift: Calculated using distribution distance (sum of absolute differences in emotion probabilities) between two time windows.
+Threshold: Drift is flagged if distance > 0.3 or if the dominant emotion changes.
+Alerts: Stored in the database when significant drift occurs.
+2. Technology Stack
+Frontend
+Framework: React 18 (Functional components, Hooks).
+Build Tool: Vite (Fast HMR and bundling).
+Styling: Vanilla CSS with CSS Variables (Theming).
+Includes a robust Dark/Light Mode system defined in index.css.
+Note: Tailwind CSS is NOT used.
+Visualization:
+Recharts: For emotion timelines and distribution charts.
+React Three Fiber: For 3D elements (if active).
+Maps: Leaflet & React-Leaflet (for finding nearby support).
+Animation: Framer Motion.
+Utilities: axios (API requests), lucide-react (Icons).
+Backend
+Framework: FastAPI (Python 3.11).
+High-performance, async-native REST API.
+Database: PostgreSQL (via psycopg2).
+ORM: SQLAlchemy (Database abstraction).
+Authentication: OAuth2 / JWT (handled via python-jose and passlib).
+Image Processing: Pillow (PIL) and OpenCV (cv2) for face image handling.
+PDF Generation: ReportLab for generating user reports.
+DevOps & Infrastructure
+Deployment: Render.com.
+Service 1: Python Web Service (Gunicorn + Uvicorn worker).
+Service 2: Static Site (Node.js build).
+Database: Managed PostgreSQL on Render.
+3. Database Schema (Key Tables)
+users: Stores credentials and profile status.
+emotion_logs: Stores text-based emotion inference results.
+face_emotion_logs: Stores facial emotion analysis results.
+drift_alerts: Records instances of significant emotional shifts.
+reports: History of generated PDF reports.
+This architecture is deployment-ready, scalable, and uses modern standards for both AI inference and web development.
+

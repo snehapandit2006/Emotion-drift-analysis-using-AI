@@ -1,177 +1,261 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
+from sqlalchemy.orm import Session
 from typing import List, Dict
+import json
+from datetime import datetime
+
+from db.database import get_db, SessionLocal
+from db.models import ChatMessage, User
+from api.deps import get_current_user
+from core.security import SECRET_KEY, ALGORITHM
+from jose import jwt, JWTError
+
+router = APIRouter(tags=["chat"])
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[int, List[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, user_id: int):
+        await websocket.accept()
+        if user_id not in self.active_connections:
+            self.active_connections[user_id] = []
+        self.active_connections[user_id].append(websocket)
+
+    def disconnect(self, websocket: WebSocket, user_id: int):
+        if user_id in self.active_connections:
+            if websocket in self.active_connections[user_id]:
+                self.active_connections[user_id].remove(websocket)
+            if not self.active_connections[user_id]:
+                del self.active_connections[user_id]
+
+    async def send_personal_message(self, message: dict, user_id: int):
+        if user_id in self.active_connections:
+            for connection in self.active_connections[user_id]:
+                try:
+                    await connection.send_json(message)
+                except:
+                    # Stale connection
+                    pass
+
+manager = ConnectionManager()
+
+def get_user_from_token(token: str, db: Session):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            return None
+        user = db.query(User).filter(User.email == email).first()
+        return user
+    except JWTError:
+        return None
+
+@router.websocket("/ws/chat")
+async def websocket_endpoint(websocket: WebSocket, token: str = None):
+    # Depending on how the client connects, db session management in async WS is manual
+    db = SessionLocal()
+    user = None
+    try:
+        if not token:
+            await websocket.close(code=1008)
+            return
+            
+        user = get_user_from_token(token, db)
+        if not user:
+            await websocket.close(code=1008)
+            return
+            
+        await manager.connect(websocket, user.id)
+        
+        while True:
+            data = await websocket.receive_text()
+            try:
+                msg_data = json.loads(data)
+                receiver_id = int(msg_data.get("receiver_id"))
+                content = msg_data.get("message")
+                
+                # Save to DB
+                chat_msg = ChatMessage(
+                    sender_id=user.id,
+                    receiver_id=receiver_id,
+                    message=content,
+                    timestamp=datetime.utcnow()
+                )
+                db.add(chat_msg)
+                db.commit()
+                
+                # Prepare message payload
+                out_msg = {
+                    "sender_id": user.id,
+                    "receiver_id": receiver_id,
+                    "message": content,
+                    "timestamp": chat_msg.timestamp.isoformat(),
+                    "sender_email": user.email # Helpful for UI
+                }
+                
+                # Send to receiver
+                await manager.send_personal_message(out_msg, receiver_id)
+                # Send back to sender (for confirmation/multi-tab sync)
+                await manager.send_personal_message(out_msg, user.id)
+                
+            except Exception as e:
+                print(f"WS Msg Processing Error: {e}")
+                
+    except WebSocketDisconnect:
+        if user:
+            manager.disconnect(websocket, user.id)
+    finally:
+        db.close()
+
+from pydantic import BaseModel
+
+class ChatMessageSchema(BaseModel):
+    id: int
+    sender_id: int
+    receiver_id: int
+    message: str
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True
+
+@router.get("/chat/history/{other_user_id}", response_model=List[ChatMessageSchema])
+def get_chat_history(
+    other_user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    msgs = (
+        db.query(ChatMessage)
+        .filter(
+            ((ChatMessage.sender_id == current_user.id) & (ChatMessage.receiver_id == other_user_id)) |
+            ((ChatMessage.sender_id == other_user_id) & (ChatMessage.receiver_id == current_user.id))
+        )
+        .order_by(ChatMessage.timestamp.asc())
+        .all()
+    )
+    return msgs
+
+
+# ---------------------------------------------------------
+# CHAT ANALYSIS ENDPOINTS (File Upload)
+# ---------------------------------------------------------
+from fastapi import File, UploadFile, BackgroundTasks
 import zipfile
 import io
 import uuid
-import asyncio
 from collections import Counter
-from datetime import datetime
-
-from api.deps import get_current_user
-from db.models import User
-from ml.inference import predict_emotion, predict_emotions_batch
+from ml.inference import predict_emotion
 from ml.advisor import generate_advice
 
-router = APIRouter(prefix="/analyze", tags=["Analysis"])
+# Simple in-memory job store
+analysis_jobs = {}
 
-# In-memory job storage (in production utilize Redis/DB)
-# Structure: { job_id: { status: "queued"|"processing"|"completed"|"failed", progress: int, result: dict, error: str } }
-jobs = {}
-
-def process_chat_job(job_id: str, file_content: bytes):
+def process_chat_analysis(job_id: str, file_bytes: bytes):
     try:
-        jobs[job_id]["status"] = "processing"
-        jobs[job_id]["progress"] = 5
+        analysis_jobs[job_id]["status"] = "processing"
+        analysis_jobs[job_id]["progress"] = 10
         
-        # 1. Parse Zip
-        zip_file = zipfile.ZipFile(io.BytesIO(file_content))
-        all_lines = []
-        import re
+        messages = []
         
-        # Iteration through files
-        file_list = zip_file.namelist()
-        total_files = len(file_list)
+        with zipfile.ZipFile(io.BytesIO(file_bytes)) as z:
+            for filename in z.namelist():
+                if filename.endswith(".txt") and not filename.startswith("__MACOSX"):
+                    with z.open(filename) as f:
+                        content = f.read().decode("utf-8", errors="ignore")
+                        lines = content.splitlines()
+                        for line in lines:
+                            if line.strip():
+                                messages.append(line.strip())
         
-        for i, filename in enumerate(file_list):
-            if filename.endswith(".txt") and not filename.startswith("__MACOSX"):
-                with zip_file.open(filename) as f:
-                    text_content = f.read().decode("utf-8", errors="ignore")
-                    raw_lines = text_content.split('\n')
-                    
-                    for l in raw_lines:
-                        l = l.strip()
-                        if not l: continue
-                        
-                        # WhatsApp Regex: date, time - sender: message
-                        match = re.match(r'^.*? - .*?: (.*)$', l)
-                        if match:
-                            clean_l = match.group(1)
-                            if "<Media omitted>" in clean_l: continue
-                            all_lines.append(clean_l)
-                        else:
-                            if "omitted" not in l and len(l) > 1:
-                                all_lines.append(l)
+        total = len(messages)
+        if total == 0:
+            raise Exception("No text messages found in ZIP")
             
-            # Update progress during parsing (5% to 15%)
-            if total_files > 0:
-                jobs[job_id]["progress"] = 5 + int((i / total_files) * 10)
-
-        jobs[job_id]["progress"] = 15
-
-        if not all_lines:
-             jobs[job_id]["status"] = "failed"
-             jobs[job_id]["error"] = "No valid messages parsed from text files"
-             return
-             
-        # Limit lines if needed but keep high limit
-        if len(all_lines) > 5000:
-            analysis_lines = all_lines[-5000:]
-        else:
-            analysis_lines = all_lines
-            
-        jobs[job_id]["progress"] = 20
+        analysis_jobs[job_id]["progress"] = 20
         
-        # 2. Batch Inference
-        # Process in chunks to update progress smoothly
-        total_lines = len(analysis_lines)
-        chunk_size = 100
-        results = []
+        emotions = []
+        analyzed_msgs = []
         
-        for i in range(0, total_lines, chunk_size):
-            chunk = analysis_lines[i:i+chunk_size]
-            batch_results = predict_emotions_batch(chunk) # Synchronous batch call, but fast
-            results.extend(batch_results)
+        # Analyze each message
+        for i, msg in enumerate(messages):
+            # Simple heuristic to skip timestamps/names if possible, 
+            # but for now we analyze the whole line or just the content if we could parse it.
+            # Let's just analyze the raw line for simplicity as 'text'
+            res = predict_emotion(msg)
+            if res and res["emotion"] and res["emotion"] != "unknown":
+                emotions.append(res["emotion"])
+                analyzed_msgs.append({
+                    "text": msg[:100] + "..." if len(msg) > 100 else msg, # Truncate for display
+                    "emotion": res["emotion"]
+                })
             
-            # Progress from 20% to 90%
-            current_processed = i + len(chunk)
-            progress_percent = 20 + int((current_processed / total_lines) * 70)
-            jobs[job_id]["progress"] = progress_percent
-            
-            # No await sleep needed in sync threadpool execution unless explicitly yielding
-            # await asyncio.sleep(0)  
-
-        jobs[job_id]["progress"] = 90
-
-        # 3. Aggregate Results
-        emotions = [r["emotion"] for r in results if r and r.get("emotion") and r["emotion"] != "unknown"]
+            # Update progress periodically
+            if i % 10 == 0:
+                prog = 20 + int((i / total) * 60) # 20% to 80%
+                analysis_jobs[job_id]["progress"] = prog
+                
         if not emotions:
-             jobs[job_id]["status"] = "failed"
-             jobs[job_id]["error"] = "No emotions detected in text"
-             return
-             
-        counts = Counter(emotions)
-        total = len(emotions)
-        distribution = {k: v/total for k, v in counts.items()}
-        
-        dominant_emotion = counts.most_common(1)[0][0]
-        
-        # Last meaningful message emotion
-        last_results = results[-5:]
-        last_emotions = [r["emotion"] for r in last_results if r and r.get("emotion")]
-        if last_emotions:
-            last_message_emotion = Counter(last_emotions).most_common(1)[0][0]
-        else:
-            last_message_emotion = "neutral"
+            analysis_jobs[job_id]["status"] = "failed"
+            analysis_jobs[job_id]["error"] = "No emotions detected"
+            return
 
-        # Generate Advice
-        advice = generate_advice(dominant_emotion, last_message_emotion)
+        # Statistics
+        counts = Counter(emotions)
+        total_valid = len(emotions)
+        distribution = {k: v / total_valid for k, v in counts.items()}
+        dominant = counts.most_common(1)[0][0]
         
-        # Final Result Construction
-        final_result = {
-            "total_lines_analyzed": len(analysis_lines),
-            "dominant_emotion": dominant_emotion,
-            "last_message_emotion": last_message_emotion,
+        # Advice
+        last_msg_emotion = emotions[-1] if emotions else "neutral"
+        advice = generate_advice(dominant, last_msg_emotion)
+        
+        result = {
             "distribution": distribution,
-            "advice": advice,
-            "recent_context": [
-                {"text": line, "emotion": res["emotion"]} 
-                for line, res in zip(analysis_lines[-5:], last_results) if res
-            ]
+            "dominant_emotion": dominant,
+            "recent_context": analyzed_msgs[-5:], # Last 5
+            "advice": advice
         }
         
-        jobs[job_id]["result"] = final_result
-        jobs[job_id]["status"] = "completed"
-        jobs[job_id]["progress"] = 100
-
+        analysis_jobs[job_id]["result"] = result
+        analysis_jobs[job_id]["status"] = "completed"
+        analysis_jobs[job_id]["progress"] = 100
+        
     except Exception as e:
-        print(f"Job {job_id} failed: {e}")
-        jobs[job_id]["status"] = "failed"
-        jobs[job_id]["error"] = str(e)
+        print(f"Analysis Job Failed: {e}")
+        analysis_jobs[job_id]["status"] = "failed"
+        analysis_jobs[job_id]["error"] = str(e)
 
 
-@router.post("/chat")
-async def analyze_chat_upload(
+@router.post("/analyze/chat")
+async def analyze_chat_logs(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user)
+    file: UploadFile = File(...)
 ):
     if not file.filename.endswith(".zip"):
         raise HTTPException(status_code=400, detail="Only .zip files are allowed")
-
-    content = await file.read()
-    
+        
     job_id = str(uuid.uuid4())
-    jobs[job_id] = {
-        "status": "queued",
+    analysis_jobs[job_id] = {
+        "status": "pending",
         "progress": 0,
-        "submitted_at": datetime.utcnow()
+        "result": None,
+        "error": None
     }
     
-    background_tasks.add_task(process_chat_job, job_id, content)
+    # Read file content safely
+    contents = await file.read()
     
-    return {"job_id": job_id}
+    # Run in background
+    background_tasks.add_task(process_chat_analysis, job_id, contents)
+    
+    return {"job_id": job_id, "status": "pending"}
 
-
-@router.get("/chat/status/{job_id}")
-async def get_chat_analysis_status(job_id: str, current_user: User = Depends(get_current_user)):
-    job = jobs.get(job_id)
+@router.get("/analyze/chat/status/{job_id}")
+def get_analysis_status(job_id: str):
+    job = analysis_jobs.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
         
-    return {
-        "job_id": job_id,
-        "status": job["status"],
-        "progress": job.get("progress", 0),
-        "result": job.get("result"),
-        "error": job.get("error")
-    }
+    return job

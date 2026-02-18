@@ -1,0 +1,62 @@
+﻿
+> frontend@0.0.0 lint
+> eslint .
+
+
+E:\emotion-drift\frontend\src\App.jsx
+  174:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  172 |
+  173 |   useEffect(() => {
+> 174 |     load();
+      |     ^^^^ Avoid calling setState() directly within an effect
+  175 |   }, [load]);
+  176 |
+  177 |   // Click outside to close alerts  react-hooks/set-state-in-effect
+
+E:\emotion-drift\frontend\src\components\Background3D.jsx
+  7:13  error  'state' is defined but never used  no-unused-vars
+
+E:\emotion-drift\frontend\src\components\ChatInterface.jsx
+  85:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  83 |     useEffect(() => {
+  84 |         if (otherUserId) {
+> 85 |             loadHistory();
+     |             ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  86 |             connectWebSocket();
+  87 |         }
+  88 |         return () => {  react-hooks/set-state-in-effect
+
+E:\emotion-drift\frontend\src\components\LandingPage.jsx
+  3:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+E:\emotion-drift\frontend\src\components\PatientDetailView.jsx
+  278:50  error  'err' is defined but never used  no-unused-vars
+
+E:\emotion-drift\frontend\src\components\PsychiatristDashboard.jsx
+  3:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+E:\emotion-drift\frontend\src\components\SupportDashboard.jsx
+  2:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+E:\emotion-drift\frontend\src\components\WelcomeScreen.jsx
+  4:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+E:\emotion-drift\frontend\src\context\ThemeContext.jsx
+  28:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+Γ£û 9 problems (9 errors, 0 warnings)
+
