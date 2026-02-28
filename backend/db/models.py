@@ -115,3 +115,31 @@ class MedicalEntry(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="medical_logs")
+
+class SentiaConversation(Base):
+    __tablename__ = "sentia_conversations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    title = Column(String, default="New Conversation")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="sentia_conversations")
+    messages = relationship("SentiaMessage", back_populates="conversation", cascade="all, delete-orphan")
+
+class SentiaMessage(Base):
+    __tablename__ = "sentia_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    conversation_id = Column(Integer, ForeignKey("sentia_conversations.id"), index=True)
+    role = Column(String) # 'user' or 'bot'
+    content = Column(String)
+    emotion = Column(String, nullable=True)
+    trace = Column(String, nullable=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+    conversation = relationship("SentiaConversation", back_populates="messages")
+
+# Final User relationship updates
+User.sentia_conversations = relationship("SentiaConversation", back_populates="user")

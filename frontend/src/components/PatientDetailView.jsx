@@ -342,7 +342,7 @@ const PatientDetailView = () => {
                         <span className="pd-card-title">Patient Medicine Log</span>
                     </div>
                     <div style={{ marginTop: '1rem' }}>
-                        <MedicalLogTable patientId={id} readOnly={true} />
+                        <MedicalLogTable patientId={id} readOnly={true} allowAdd={true} />
                     </div>
                 </div>
             )

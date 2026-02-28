@@ -20,7 +20,8 @@ class User(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
 class PatientList(User):
-    pass
+    missed_count: int = 0
+    adherence_rate: float = 0.0
 
 class ChatMessageBase(BaseModel):
     message: str
@@ -43,7 +44,7 @@ class MedicalEntryBase(BaseModel):
     frequency: str = "daily"
 
 class MedicalEntryCreate(MedicalEntryBase):
-    pass
+    patient_id: Optional[int] = None
 
 class MedicalEntry(MedicalEntryBase):
     id: int

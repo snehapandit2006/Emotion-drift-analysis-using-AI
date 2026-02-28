@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 
 from db.database import get_db
-from db.models import User, EmotionLog, FaceEmotionLog
+from db.models import User, EmotionLog, FaceEmotionLog, MedicalEntry
 from api.deps import get_current_psychiatrist
 from schemas import PatientList
 from analysis.fusion import analyze_fusion
@@ -22,7 +22,41 @@ def get_patients(
     db: Session = Depends(get_db)
 ):
     patients = db.query(User).filter(User.doctor_id == current_user.id).all()
-    return patients
+    
+    # Enrich with adherence data
+    patient_data = []
+    cutoff = datetime.utcnow() - timedelta(days=7)
+    
+    for p in patients:
+        # Calculate missed meds in last 7 days
+        entries = db.query(MedicalEntry).filter(
+            MedicalEntry.user_id == p.id,
+            MedicalEntry.created_at >= cutoff
+        ).all()
+        
+        total = len(entries)
+        missed = sum(1 for e in entries if not e.taken)
+        taken = total - missed
+        adherence = (taken / total * 100) if total > 0 else 100.0 # Default to 100 if no logs? or 0? Let's say 0 if no logs but that might look bad. 
+        # Actually if no logs, maybe adherence isn't relevant. Let's use 0.0 but missed_count is the key alert.
+        if total == 0:
+            adherence = 0.0
+            
+        # We need to construct a dict/object that matches PatientList schema
+        # Since PatientList inherits from User, we can dump the user model and add fields
+        p_dict = {
+            "id": p.id,
+            "email": p.email,
+            "role": p.role,
+            "is_active": p.is_active,
+            "doctor_id": p.doctor_id,
+            "created_at": p.created_at,
+            "missed_count": missed,
+            "adherence_rate": round(adherence, 1)
+        }
+        patient_data.append(p_dict)
+        
+    return patient_data
 
 @router.post("/assign")
 def assign_patient(

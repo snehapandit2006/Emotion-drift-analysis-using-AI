@@ -146,8 +146,14 @@ import zipfile
 import io
 import uuid
 from collections import Counter
-from ml.inference import predict_emotion
+from ml.inference import predict_emotion, get_bot_response, predict_fused_emotion
 from ml.advisor import generate_advice
+from fastapi import Form
+import shutil
+import os
+
+# Simple state guard to prevent duplicate rapid-fire replies
+last_user_input_cache = {}
 
 # Simple in-memory job store
 analysis_jobs = {}
@@ -259,3 +265,69 @@ def get_analysis_status(job_id: str):
         raise HTTPException(status_code=404, detail="Job not found")
         
     return job
+
+# ---------------------------------------------------------
+# BOT CHAT ENDPOINT
+# ---------------------------------------------------------
+class BotChatRequest(BaseModel):
+    text: str
+    audio_path: str = None
+
+@router.post("/chat/bot")
+def bot_chat(req: BotChatRequest, current_user: User = Depends(get_current_user)):
+    """
+    Standard text-based chat with Sentia.
+    """
+    # 1. Duplication Guard
+    user_key = current_user.id
+    if last_user_input_cache.get(user_key) == req.text.strip():
+        return {"response": "", "duplicate": True}
+    last_user_input_cache[user_key] = req.text.strip()
+    
+    # 2. Atomic Intelligence Hub
+    # Handles: Predict, Map, Fuse, Safety, State, Log
+    from ml.inference import get_sentia_intelligence, get_bot_response
+    intel = get_sentia_intelligence(req.text, user_id=current_user.id)
+    
+    # 3. Generate Response
+    bot_payload = get_bot_response(req.text, intel, user_id=current_user.id)
+    
+    return {
+        "response": bot_payload["response"],
+        "emotion": intel["emotion"],
+        "confidence": intel["confidence"],
+        "trace": bot_payload["trace"]
+    }
+
+@router.post("/chat/bot/audio")
+async def bot_chat_audio(
+    text: str = Form(...),
+    audio: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Multi-modal chat with Sentia.
+    """
+    # 1. Save audio file
+    storage_dir = "storage/audio"
+    os.makedirs(storage_dir, exist_ok=True)
+    audio_filename = f"{uuid.uuid4()}_{audio.filename}"
+    audio_path = os.path.join(storage_dir, audio_filename)
+    
+    with open(audio_path, "wb") as buffer:
+        shutil.copyfileobj(audio.file, buffer)
+
+    # 2. Atomic Intelligence Hub
+    from ml.inference import get_sentia_intelligence, get_bot_response
+    intel = get_sentia_intelligence(text, audio_path=audio_path, user_id=current_user.id)
+    
+    # 3. Generate Response
+    bot_payload = get_bot_response(text, intel, user_id=current_user.id)
+    
+    return {
+        "response": bot_payload["response"],
+        "emotion": intel["emotion"],
+        "confidence": intel["confidence"],
+        "audio_path": audio_path,
+        "trace": bot_payload["trace"]
+    }

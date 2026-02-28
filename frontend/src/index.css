@@ -42,6 +42,8 @@
   /* Slate */
   --emotion-love: #F472B6;
   /* Pink */
+  --emotion-disgust: #FB923C;
+  /* Orange */
 
   /* Aliases */
   --card-bg: var(--bg-card);

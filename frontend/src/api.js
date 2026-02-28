@@ -37,6 +37,14 @@ API.interceptors.response.use(
 export const postPredict = (text) =>
   API.post("/predict", { text });
 
+export const postBotChat = (text) =>
+  API.post("/chat/bot", { text });
+
+export const postBotChatAudio = (formData) =>
+  API.post("/chat/bot/audio", formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+
 export const getTimeline = (range) =>
   API.get("/visualization/timeline", {
     params: { range },
@@ -105,8 +113,16 @@ export const getChatHistory = (otherUserId) => API.get(`/chat/history/${otherUse
 
 // Medical Logs (Manual)
 export const getMedicalLogs = () => API.get("/medical/logs");
-export const createMedicalLog = (data) => API.post("/medical/logs", data);
+export const createMedicalLog = (data, patientId = null) => API.post("/medical/logs", { ...data, patient_id: patientId });
 export const updateMedicalLog = (id, data) => API.put(`/medical/logs/${id}`, data);
 export const deleteMedicalLog = (id) => API.delete(`/medical/logs/${id}`);
 export const getPatientMedicalLogs = (patientId) => API.get(`/medical/patient/${patientId}/logs`);
 export const getAdherence = (patientId, days = 7) => API.get(`/medical/adherence/${patientId}`, { params: { days } });
+
+// Sentia Full-Screen Chat & History
+export const getSentiaConversations = () => API.get("/chat/sentia/conversations");
+export const getSentiaHistory = (id) => API.get(`/chat/sentia/conversations/${id}`);
+export const postSentiaMessage = (formData) => API.post("/chat/sentia/message", formData, {
+  headers: { 'Content-Type': 'multipart/form-data' }
+});
+export const deleteSentiaConversation = (id) => API.delete(`/chat/sentia/conversations/${id}`);

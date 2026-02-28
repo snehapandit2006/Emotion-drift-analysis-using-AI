@@ -1,0 +1,185 @@
+﻿python : C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\s
+ite-packages\sqlalchemy\sql\schema.py:3624: DeprecationWarning: 
+datetime.datetime.utcnow() is deprecated and scheduled for removal in 
+a future version. Use timezone-aware objects to represent datetimes 
+in UTC: datetime.datetime.now(datetime.UTC).
+At line:1 char:1
++ python verify_history.py 2>&1 | Out-File -FilePath debug_verify.txt 
+- ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: 
+(C:\Users\Lenovo...(datetim    e.UTC).:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+E
+======================================================================
+ERROR: test_conversation_persistence 
+(__main__.TestSentiaHistory.test_conversation_persistence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\emotion-drift\backend\verify_history.py", line 50, in 
+tearDown
+    self.db.query(SentiaMessage).filter(SentiaMessage.conversation_id 
+== SentiaConversation.id, SentiaConversation.user_id == 
+self.user.id).delete()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~^^
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\orm\query.py", line 3210, in delete
+    self.session.execute(
+    ~~~~~~~~~~~~~~~~~~~~^
+        delete_,
+        ^^^^^^^^
+    ...<3 lines>...
+        ),
+        ^^
+    ),
+    ^
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\orm\session.py", line 2351, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\orm\session.py", line 2249, in 
+_execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\orm\bulk_persistence.py", line 2033, in 
+orm_execute_statement
+    return super().orm_execute_statement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        session, statement, params, execution_options, 
+bind_arguments, conn
+        
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\orm\context.py", line 306, in 
+orm_execute_statement
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\sql\elements.py", line 527, in 
+_execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\engine\base.py", line 1633, in 
+_execute_clauseelement
+    compiled_sql, extracted_params, cache_hit = elem._compile_w_cache(
+                                                ~~~~~~~~~~~~~~~~~~~~~^
+        dialect=dialect,
+        ^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+        linting=self.dialect.compiler_linting | compiler.WARN_LINTING,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\sql\elements.py", line 716, in _compile_w_cache
+    compiled_sql = self._compiler(
+        dialect,
+    ...<4 lines>...
+        **kw,
+    )
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\sql\elements.py", line 324, in _compiler
+    return dialect.statement_compiler(dialect, self, **kw)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\sql\compiler.py", line 1448, in __init__
+    Compiled.__init__(self, dialect, statement, **kwargs)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\sql\compiler.py", line 888, in __init__
+    self.string = self.process(self.statement, **compile_kwargs)
+                  ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\sql\compiler.py", line 934, in process
+    return obj._compiler_dispatch(self, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\sql\annotation.py", line 344, in 
+_compiler_dispatch
+    return self.__element.__class__._compiler_dispatch(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, visitor, **kw
+        ^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\sql\visitors.py", line 138, in 
+_compiler_dispatch
+    return meth(self, **kw)  # type: ignore  # noqa: E501
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\sql\compiler.py", line 6444, in visit_delete
+    compile_state = delete_stmt._compile_state_factory(
+        delete_stmt, self, **kw
+    )
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\sql\base.py", line 701, in create_for_statement
+    return klass.create_for_statement(statement, compiler, **kw)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\orm\bulk_persistence.py", line 1977, in 
+create_for_statement
+    and self.can_use_returning(
+        ~~~~~~~~~~~~~~~~~~~~~~^
+        compiler.dialect,
+        ^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+        ),
+        ^^
+    )
+    ^
+  File "C:\Users\Lenovo\AppData\Local\Programs\Python\Python314\Lib\si
+te-packages\sqlalchemy\orm\bulk_persistence.py", line 2068, in 
+can_use_returning
+    raise sa_exc.CompileError(
+    ...<5 lines>...
+    )
+sqlalchemy.exc.CompileError: Dialect "sqlite" does not support 
+RETURNING with DELETE..USING; for synchronize_session='fetch', please 
+add the additional execution option 'is_delete_using=True' to the 
+statement to indicate that a separate SELECT should be used for this 
+backend.
+
+----------------------------------------------------------------------
+Ran 1 test in 0.082s
+
+FAILED (errors=1)
+Testing Sentia Conversation Persistence...
+Created Conversation ID: 2
+<sys>:0: ResourceWarning: unclosed database in <sqlite3.Connection 
+object at 0x0000015281B9EA70>
+History Retrieval SUCCESS.

@@ -49,19 +49,22 @@ const SelfEmotionMonitor = lazy(() => import("./components/SelfEmotionMonitor"))
 const PsychiatristDashboard = lazy(() => import("./components/PsychiatristDashboard"));
 const PatientDetailView = lazy(() => import("./components/PatientDetailView"));
 import ChatInterface from "./components/ChatInterface";
+import FloatingRobot from "./components/FloatingRobot";
 
 
 import AuthContext, { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 
 const emotionColors = {
+  joy: "var(--emotion-happy)",
   happy: "var(--emotion-happy)",
   fear: "var(--emotion-fear)",
   sadness: "var(--emotion-sadness)",
   anger: "var(--emotion-anger)",
   surprise: "var(--emotion-surprise)",
   neutral: "var(--emotion-neutral)",
-  love: "var(--emotion-love)"
+  love: "var(--emotion-love)",
+  disgust: "var(--emotion-disgust)"
 };
 
 const severityText = (s = 0) =>
@@ -175,6 +178,16 @@ function Dashboard() {
     load();
   }, [load]);
 
+  // Listen for global refresh events (e.g. from FloatingRobot)
+  useEffect(() => {
+    const handleRefresh = () => {
+      console.log("Refreshing dashboard data...");
+      load();
+    };
+    window.addEventListener('refresh-dashboard', handleRefresh);
+    return () => window.removeEventListener('refresh-dashboard', handleRefresh);
+  }, [load]);
+
   // Click outside to close alerts
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -275,8 +288,17 @@ function Dashboard() {
   const prevEmotion =
     timeline?.emotions?.[timeline.emotions.length - 2] || null;
 
+  console.log("Timeline Data:", timelineData);
+  console.log("Current User ID:", user?.id);
+
   return (
     <div className="dashboard" ref={dashboardRef}>
+      {/* Session Debug Bar */}
+      <div style={{ padding: '4px 12px', background: '#1e293b', color: '#94a3b8', fontSize: '10px', display: 'flex', gap: '20px', borderBottom: '1px solid #334155' }}>
+        <span>User: {user?.email} (ID: {user?.id})</span>
+        <span>Timeline Points: {timelineData.length}</span>
+        <span>API: {import.meta.env.VITE_API_URL || "default"}</span>
+      </div>
       <header className="header glass-panel">
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <div style={{ position: 'relative', height: '245px', display: 'flex', alignItems: 'center' }}>
@@ -320,14 +342,7 @@ function Dashboard() {
 
         <div className="header-actions">
           {/* Always visible: Theme & Alerts */}
-          <button
-            className="icon-btn"
-            onClick={toggleTheme}
-            title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            style={{ color: 'var(--text-main)' }}
-          >
-            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
+
 
           <div className="bell" onClick={() => setShowAlerts(!showAlerts)}>
             🔔{alerts.length > 0 && <span className="dot" />}
@@ -709,6 +724,7 @@ export default function App() {
               />
             </Routes>
             <GlobalThemeToggle />
+            <GlobalFloatingRobot />
           </Suspense>
         </BrowserRouter>
       </AuthProvider>
@@ -755,4 +771,17 @@ function GlobalThemeToggle() {
       {theme === 'dark' ? <Sun size={24} /> : <Moon size={24} />}
     </button>
   );
+}
+
+function GlobalFloatingRobot() {
+  const { user } = useContext(AuthContext);
+  const location = useLocation();
+
+  // Only show on dashboard and related pages, and only for patients
+  const showOnRoutes = ['/dashboard', '/support-dashboard', '/welcome'];
+  const shouldShow = user && user.role === 'patient' && showOnRoutes.some(route => location.pathname.startsWith(route));
+
+  if (!shouldShow) return null;
+
+  return <FloatingRobot />;
 }

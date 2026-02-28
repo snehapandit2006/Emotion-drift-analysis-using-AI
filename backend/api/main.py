@@ -12,15 +12,17 @@ from db.models import EmotionLog, FaceEmotionLog, DriftAlert, User
 from db.init_db import init_db
 from analysis.drift import detect_emotion_drift
 from api.deps import get_current_user
-from api.routes import auth, chat_routes, support_routes, doctor_routes, medical_routes
-from routes import report_routes, self_emotion_routes, fusion_routes
+from api.routes import auth, chat_routes, support_routes, doctor_routes, medical_routes, chat_sentia_routes
+from routes import report_routes, self_emotion_routes, fusion_routes, behavioral_routes
 
 
 # -----------------------------
 # SINGLE FastAPI APP
 # -----------------------------
 app = FastAPI(title="Emotion Drift API")
-# Force Reload Check
+# Force Reload Anchor: 2026-02-26 22:50
+from ml.inference import BOT_MODEL_NAME
+print(f"Sentia AI: Phase 2 Active - Professional AI Voice Therapist (Model: {BOT_MODEL_NAME})")
 
 from core.config import settings
 
@@ -35,8 +37,10 @@ app.add_middleware(
 app.include_router(report_routes.router)
 app.include_router(auth.router)
 app.include_router(chat_routes.router)
+app.include_router(chat_sentia_routes.router)
 app.include_router(self_emotion_routes.router)
 app.include_router(fusion_routes.router)
+app.include_router(behavioral_routes.router)
 app.include_router(support_routes.router)
 app.include_router(doctor_routes.router)
 app.include_router(medical_routes.router)
@@ -75,28 +79,64 @@ def health():
 # -----------------------------
 @app.post("/predict")
 def predict(req: TextRequest, current_user: User = Depends(get_current_user)):
-    result = predict_emotion(req.text)
-
-    db = SessionLocal()
-    log = EmotionLog(
-        user_id=current_user.id,
-        text=req.text,
-        emotion=result["emotion"],
-        confidence=result["confidence"]
-    )
-    db.add(log)
-    db.commit()
+    """
+    Unified prediction endpoint using the Sentia Intelligence Hub.
+    Syncs with Sentia Chat History.
+    """
+    from ml.inference import get_sentia_intelligence
+    from db.models import SentiaConversation, SentiaMessage
     
-    # Check for alerts
+    result = get_sentia_intelligence(req.text, user_id=current_user.id)
+    
+    # SYNC WITH SENTIA HISTORY
+    db = SessionLocal()
+    try:
+        from db.models import SentiaConversation, SentiaMessage
+        conv = db.query(SentiaConversation).filter(
+            SentiaConversation.user_id == current_user.id,
+            SentiaConversation.title == "Dashboard Insights"
+        ).first()
+        
+        if not conv:
+            conv = SentiaConversation(user_id=current_user.id, title="Dashboard Insights")
+            db.add(conv)
+            db.commit()
+            db.refresh(conv)
+            
+        msg = SentiaMessage(
+            conversation_id=conv.id,
+            role="user",
+            content=req.text,
+            emotion=result["emotion"],
+            timestamp=datetime.utcnow()
+        )
+        db.add(msg)
+        # Add automated bot response to history for context
+        bot_msg = SentiaMessage(
+            conversation_id=conv.id,
+            role="bot",
+            content=f"Captured emotional insight: {result['emotion']}",
+            emotion=result["emotion"],
+            timestamp=datetime.utcnow()
+        )
+        db.add(bot_msg)
+        db.commit()
+    except Exception as e:
+        print(f"Sync error: {e}")
+        db.rollback()
+
     try:
         from analysis.drift import check_and_create_alert
         check_and_create_alert(db, current_user.id)
     except Exception as e:
         print(f"Error checking alerts: {e}")
-        
-    db.close()
+    finally:
+        db.close()
 
-    return result
+    return {
+        "emotion": result["emotion"],
+        "confidence": result["confidence"]
+    }
 
 
 # -----------------------------
@@ -105,14 +145,19 @@ def predict(req: TextRequest, current_user: User = Depends(get_current_user)):
 # Helper for normalization
 EMOTION_MAP = {
     "angry": "anger",
-    "disgust": "anger",
+    "disgust": "disgust",
     "sad": "sadness",
-    "joy": "happy",
-    "happines": "happy"
+    "joy": "joy",
+    "happy": "joy",
+    "happines": "joy",
+    "love": "joy",
+    "worry": "fear",
+    "nervousness": "fear",
+    "neutral": "neutral"
 }
 
 def get_norm_emotion(raw_emotion):
-    if not raw_emotion: return "unknown"
+    if not raw_emotion: return "neutral"
     e = raw_emotion.lower()
     return EMOTION_MAP.get(e, e)
 
@@ -152,6 +197,7 @@ def timeline(range: str = "24h", current_user: User = Depends(get_current_user))
         .all()
     )
     
+    print(f"DEBUG: Found {len(text_logs)} text logs and {len(face_logs)} face logs for user {current_user.id} in range {range}")
     db.close()
 
     # Combine
@@ -192,6 +238,7 @@ def distribution(current_user: User = Depends(get_current_user)):
     text_logs = db.query(EmotionLog).filter(EmotionLog.user_id == current_user.id, EmotionLog.emotion != "unknown").all()
     face_logs = db.query(FaceEmotionLog).filter(FaceEmotionLog.user_id == current_user.id, FaceEmotionLog.emotion != "unknown").all()
     db.close()
+    print(f"DEBUG: Distribution found {len(text_logs) + len(face_logs)} total logs for user {current_user.id}")
 
     all_emotions = []
     
@@ -281,11 +328,25 @@ def get_alerts(current_user: User = Depends(get_current_user)):
 
 
 # -----------------------------
+# Volatility
+# -----------------------------
+@app.get("/volatility")
+def get_volatility(current_user: User = Depends(get_current_user)):
+    """
+    Calculates emotional volatility based on the variance of states in the intelligence state.
+    """
+    from ml.dialogue_manager import manager as dm
+    state = dm.get_state(current_user.id)
+    return {
+        "volatility": state.get("volatility", 0.0),
+        "stability_index": 1.0 - state.get("volatility", 0.0)
+    }
+
+# -----------------------------
 # Comparison
 # -----------------------------
 @app.get("/compare")
 def compare(range: str = "24h", current_user: User = Depends(get_current_user)):
-
     db = SessionLocal()
     now = datetime.utcnow()
     
@@ -321,7 +382,9 @@ def compare(range: str = "24h", current_user: User = Depends(get_current_user)):
     def get_dist(data):
         if not data:
             return {}
-        counts = Counter([l.emotion for l in data])
+        # Apply normalization to ensure parity
+        normalized_emotions = [EMOTION_MAP.get(l.emotion.lower(), l.emotion.lower()) for l in data]
+        counts = Counter(normalized_emotions)
         total = len(data)
         return {k: v / total for k, v in counts.items()}
 

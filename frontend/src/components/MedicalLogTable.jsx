@@ -29,7 +29,7 @@ const FrequencyBadge = ({ frequency }) => {
     );
 };
 
-const MedicalLogTable = ({ patientId = null, readOnly = false }) => {
+const MedicalLogTable = ({ patientId = null, readOnly = false, allowAdd = false }) => {
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [newItem, setNewItem] = useState({ medicine: '', dosage: '', time: '', notes: '', frequency: 'daily' });
@@ -56,22 +56,26 @@ const MedicalLogTable = ({ patientId = null, readOnly = false }) => {
             setLoading(false);
         }
     };
-
     const handleAdd = async () => {
         if (!newItem.medicine || !newItem.dosage || !newItem.time) return;
         try {
             setAdding(true);
-            const res = await createMedicalLog(newItem);
+            const res = await createMedicalLog(newItem, patientId);
             setLogs([res.data, ...logs]);
             setNewItem({ medicine: '', dosage: '', time: '', notes: '', frequency: 'daily' });
         } catch (error) {
             console.error("Failed to add log", error);
+            alert("Failed to add log. Ensure you are authorized.");
         } finally {
             setAdding(false);
         }
     };
 
     const handleToggleTaken = async (log) => {
+        if (readOnly && !allowAdd) return; // Allow toggling if allowAdd is true? No, usually not. But let's restrict to owner or if we want doc to toggle.
+        // Actually, doctors probably shouldn't toggle "taken" on behalf of patient, but maybe they should? 
+        // For now, let's keep it readOnly for docs unless explicitly allowed.
+        // But wait, the error is ReferenceError, so I need to define it regardless.
         if (readOnly) return;
         try {
             const updated = { ...log, taken: !log.taken };
@@ -103,7 +107,7 @@ const MedicalLogTable = ({ patientId = null, readOnly = false }) => {
             </div>
 
             <div style={{ padding: '1rem' }}>
-                {!readOnly && (
+                {(!readOnly || allowAdd) && (
                     <div style={{ marginBottom: '1rem' }}>
                         {/* Row 1: Medicine, Dosage, Time, Add button */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 2fr) minmax(80px, 1fr) minmax(80px, 1fr) 40px', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
@@ -162,7 +166,12 @@ const MedicalLogTable = ({ patientId = null, readOnly = false }) => {
                         </div>
                     ) : (
                         logs.map(log => (
-                            <div key={log.id} style={{ borderRadius: '8px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
+                            <div key={log.id} style={{
+                                borderRadius: '8px',
+                                border: !log.taken ? '1px solid #ff4d4d' : '1px solid var(--border-color)', // Red border if not taken
+                                overflow: 'hidden',
+                                position: 'relative'
+                            }}>
                                 {/* Main row */}
                                 <div style={{
                                     display: 'grid',
@@ -178,18 +187,25 @@ const MedicalLogTable = ({ patientId = null, readOnly = false }) => {
                                 >
                                     <div
                                         onClick={(e) => { e.stopPropagation(); handleToggleTaken(log); }}
-                                        style={{ cursor: readOnly ? 'default' : 'pointer', display: 'flex', justifyContent: 'center', color: log.taken ? '#4caf50' : 'var(--text-secondary)' }}
+                                        style={{ cursor: readOnly ? 'default' : 'pointer', display: 'flex', justifyContent: 'center', color: log.taken ? '#4caf50' : '#ff4d4d' }}
                                         title={log.taken ? "Marked as taken" : "Mark as taken"}
                                     >
                                         {log.taken ? <CheckCircle size={20} /> : <Circle size={20} />}
                                     </div>
-                                    <div style={{ fontWeight: '500', textDecoration: log.taken ? 'line-through' : 'none' }}>{log.medicine}</div>
+                                    <div style={{ fontWeight: '500', textDecoration: log.taken ? 'line-through' : 'none', color: !log.taken ? '#ff4d4d' : 'inherit' }}>{log.medicine}</div>
                                     <div style={{ opacity: 0.8, fontSize: '0.9rem' }}>{log.dosage}</div>
                                     <div style={{ opacity: 0.8, fontSize: '0.9rem' }}>{log.time}</div>
-                                    <FrequencyBadge frequency={log.frequency || 'daily'} />
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <FrequencyBadge frequency={log.frequency || 'daily'} />
+                                        {!log.taken && (
+                                            <span style={{ fontSize: '0.7rem', color: '#ff4d4d', fontWeight: 'bold', border: '1px solid #ff4d4d', padding: '1px 4px', borderRadius: '4px' }}>
+                                                MISSED
+                                            </span>
+                                        )}
+                                    </div>
                                     {readOnly ? (
                                         <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                            {log.notes ? (expandedId === log.id ? <ChevronUp size={14} style={{ opacity: 0.5 }} /> : <ChevronDown size={14} style={{ opacity: 0.5 }} />) : <div />}
+                                            {/* Expand icon logic */}
                                         </div>
                                     ) : (
                                         <button

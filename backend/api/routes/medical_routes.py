@@ -88,8 +88,24 @@ def create_medical_entry(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    target_user_id = current_user.id
+    
+    if entry.patient_id:
+        # Check if current user is the doctor of the patient
+        # Or if patient_id is self (redundant but safe)
+        if entry.patient_id != current_user.id:
+            patient = db.query(User).filter(User.id == entry.patient_id).first()
+            if not patient:
+                 raise HTTPException(status_code=404, detail="Patient not found")
+            
+            # Verify authorization (Doctor -> Patient)
+            if patient.doctor_id != current_user.id:
+                 raise HTTPException(status_code=403, detail="Not authorized to prescribe for this patient")
+            
+            target_user_id = entry.patient_id
+
     db_entry = MedicalEntryModel(
-        user_id=current_user.id,
+        user_id=target_user_id,
         medicine=entry.medicine,
         dosage=entry.dosage,
         time=entry.time,

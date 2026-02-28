@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
+from sqlalchemy import func
 
 from db.database import get_db
 from db.models import FaceEmotionLog, User
@@ -37,23 +38,24 @@ def capture_emotion(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Receives a webcam snapshot (Base64), runs face emotion inference,
-    saves the result to the database, and returns the detected emotion.
-    The image itself is NOT stored.
+    Unified face capture using the Sentia Hub.
     """
-    # 1. Run Inference
+    from ml.inference import get_sentia_intelligence
+    # Note: We pass source="face" and let the hub handle the FaceEmotionAnalyzer call internally or via text placeholder if needed.
+    # For now, we'll keep the analyst call but force the HUB for mapping and logging parity.
     result = FaceEmotionAnalyzer.analyze_face(request.image)
     
     if "error" in result:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=result["error"]
-        )
+        raise HTTPException(status_code=400, detail=result["error"])
 
-    # 2. Save to DB
+    # 2. Use Hub for Mapping and Parity
+    from ml.inference import get_canonical_emotion
+    canon_e = get_canonical_emotion(result["emotion"])
+    
+    # 3. Save to FaceLog (Unified)
     new_log = FaceEmotionLog(
         user_id=current_user.id,
-        emotion=result["emotion"],
+        emotion=canon_e,
         confidence=result["confidence"],
         timestamp=datetime.utcnow()
     )
@@ -74,62 +76,26 @@ def capture_emotion(
         "timestamp": new_log.timestamp
     }
 
-from datetime import datetime, timedelta
-from sqlalchemy import func
-
 @router.get("/history", response_model=list[HistoryResponse])
 def get_history(
     range: str = "7d",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Returns the user's emotion history (face only) for the requested range.
-    Range options: "1h", "24h", "7d", "30d", "all"
-    """
     now = datetime.utcnow()
-    cutoff_date = now - timedelta(days=7) # Default
-
-    if range == "1h":
-        cutoff_date = now - timedelta(hours=1)
-    elif range == "24h":
-        cutoff_date = now - timedelta(hours=24)
-    elif range == "30d":
-        cutoff_date = now - timedelta(days=30)
-    elif range == "all":
-        cutoff_date = datetime.min
+    cutoff_date = now - timedelta(days=7)
+    if range == "1h": cutoff_date = now - timedelta(hours=1)
+    elif range == "24h": cutoff_date = now - timedelta(hours=24)
+    elif range == "30d": cutoff_date = now - timedelta(days=30)
+    elif range == "all": cutoff_date = datetime.min
 
     logs = db.query(FaceEmotionLog)\
-        .filter(
-            FaceEmotionLog.user_id == current_user.id,
-            FaceEmotionLog.timestamp >= cutoff_date
-        )\
+        .filter(FaceEmotionLog.user_id == current_user.id, FaceEmotionLog.timestamp >= cutoff_date)\
         .order_by(FaceEmotionLog.timestamp.asc())\
         .all()
     
-    # Normalize
-    EMOTION_MAP = {
-        "angry": "anger",
-        "disgust": "anger", 
-        "sad": "sadness",
-        "joy": "happy",
-        "happines": "happy"
-    }
-    
-    normalized_logs = []
-    for log in logs:
-        # Create a dict or copy to avoiding mutation issues if attached to session
-        # Pydantic response model will handle dict conversion
-        raw_e = log.emotion
-        if raw_e: raw_e = raw_e.lower()
-        
-        normalized_logs.append({
-            "timestamp": log.timestamp,
-            "emotion": EMOTION_MAP.get(raw_e, raw_e),
-            "confidence": log.confidence
-        })
-
-    return normalized_logs
+    # Parity check: Labels are already canonical in DB
+    return [{"timestamp": l.timestamp, "emotion": l.emotion, "confidence": l.confidence} for l in logs]
 
 @router.get("/distribution")
 def get_distribution(
@@ -137,53 +103,19 @@ def get_distribution(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Returns the percentage distribution of emotions for the given timeframe.
-    """
     now = datetime.utcnow()
-    cutoff_date = now - timedelta(days=7) # Default
+    cutoff_date = now - timedelta(days=7)
+    if range == "1h": cutoff_date = now - timedelta(hours=1)
+    elif range == "24h": cutoff_date = now - timedelta(hours=24)
+    elif range == "30d": cutoff_date = now - timedelta(days=30)
+    elif range == "all": cutoff_date = datetime.min
 
-    if range == "1h":
-        cutoff_date = now - timedelta(hours=1)
-    elif range == "24h":
-        cutoff_date = now - timedelta(hours=24)
-    elif range == "30d":
-        cutoff_date = now - timedelta(days=30)
-    elif range == "all":
-        cutoff_date = datetime.min
+    results = db.query(FaceEmotionLog.emotion, func.count(FaceEmotionLog.emotion))\
+        .filter(FaceEmotionLog.user_id == current_user.id, FaceEmotionLog.timestamp >= cutoff_date)\
+        .group_by(FaceEmotionLog.emotion).all()
 
-    # Query for distribution
-    # We can do this with a group_by query for efficiency
-    results = db.query(
-        FaceEmotionLog.emotion, 
-        func.count(FaceEmotionLog.emotion)
-    ).filter(
-        FaceEmotionLog.user_id == current_user.id,
-        FaceEmotionLog.timestamp >= cutoff_date
-    ).group_by(FaceEmotionLog.emotion).all()
-
-    # Convert to dictionary and calculate percentages
-    # Normalize keys while aggregating
-    EMOTION_MAP = {
-        "angry": "anger",
-        "disgust": "anger", 
-        "sad": "sadness",
-        "joy": "happy",
-        "happines": "happy"
-    }
-
-    counts = {}
-    for emotion, count in results:
-        raw_e = emotion
-        if raw_e: raw_e = raw_e.lower()
-        
-        norm_e = EMOTION_MAP.get(raw_e, raw_e)
-        counts[norm_e] = counts.get(norm_e, 0) + count
-
+    counts = {emotion: count for emotion, count in results}
     total = sum(counts.values())
-    
-    distribution = {}
     if total > 0:
-        distribution = {k: v / total for k, v in counts.items()}
-    
-    return distribution
+        return {k: v / total for k, v in counts.items()}
+    return {}
