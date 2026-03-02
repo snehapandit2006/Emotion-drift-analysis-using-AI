@@ -288,7 +288,14 @@ def drift(window: int = 5, current_user: User = Depends(get_current_user)):
     result = detect_emotion_drift(old, new)
 
     db.close()
-    return result
+    return {
+        "drift": result["drift"],
+        "details": {
+            "severity": result["severity"],
+            "from": result["from"],
+            "to": result["to"]
+        }
+    }
 
 
 # -----------------------------

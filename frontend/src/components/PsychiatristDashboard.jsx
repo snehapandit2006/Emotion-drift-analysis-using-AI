@@ -6,6 +6,7 @@ import { User, Activity, AlertCircle, Plus, LogOut, Sun, Moon } from 'lucide-rea
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import DoctorVoiceAssistant from './DoctorVoiceAssistant';
 
 const PsychiatristDashboard = () => {
     const { user, logout } = useContext(AuthContext);
@@ -33,7 +34,7 @@ const PsychiatristDashboard = () => {
     const handleAssign = async (e) => {
         e.preventDefault();
         try {
-            await assignPatient({ email: newPatientEmail }); // Fix payload structure if needed, or check api.js
+            await assignPatient(newPatientEmail);
             setNewPatientEmail("");
             loadPatients();
             alert("Patient assigned successfully!");
@@ -155,6 +156,9 @@ const PsychiatristDashboard = () => {
                     <p>No patients assigned yet.</p>
                 </div>
             )}
+
+            {/* Global Voice Assistant */}
+            <DoctorVoiceAssistant />
         </div>
     );
 };

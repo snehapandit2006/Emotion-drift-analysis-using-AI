@@ -166,29 +166,39 @@
 }
 
 .pd-sidebar-menu {
-    list-style: none;
+    list-style: none !important;
     padding: 0;
-    margin-top: 2rem;
+    margin: 2rem 0 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .pd-sidebar-menu li {
-    padding: 0.8rem 0;
-    border-bottom: 1px solid var(--border-color);
-    font-size: 0.9rem;
+    padding: 0.8rem 1rem;
+    font-size: 0.95rem;
     cursor: pointer;
-    transition: color 0.2s;
+    transition: all 0.2s ease;
     color: var(--text-secondary);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    background: transparent;
+    border: 1px solid transparent;
 }
 
 .pd-sidebar-menu li:hover {
-    color: var(--accent-color);
+    background: var(--bg-main);
+    color: var(--text-main);
+    border-color: var(--border-color);
 }
 
 .pd-sidebar-menu li.active {
-    color: var(--text-main);
-    font-weight: bold;
-    border-left: 3px solid var(--accent-color);
-    padding-left: 0.5rem;
+    background: var(--accent-color);
+    color: var(--accent-text);
+    font-weight: 600;
+    border-color: var(--accent-color);
 }
 
 /* Alerts List */

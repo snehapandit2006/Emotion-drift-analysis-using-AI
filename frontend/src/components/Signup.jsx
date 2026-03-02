@@ -38,12 +38,42 @@ const Signup = () => {
     return (
         <div className="login-screen">
             <div className="login-box">
-                <div className="logo-container">
-                    <div className="energy-sphere">
-                        <div className="filament f1"></div>
-                        <div className="filament f2"></div>
-                        <div className="filament f3"></div>
-                        <div className="filament f4"></div>
+                <div className="logo-container" style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+                    <div style={{ position: 'relative', height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {/* Spacer to establish width */}
+                        <img src={logoFinal} alt="" style={{ height: '120px', opacity: 0 }} />
+
+                        {/* Top Layer: Robot (Original Colors) - Shows top 73% */}
+                        <img
+                            src={logoFinal}
+                            alt="Sentia Robot"
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                height: '100%',
+                                clipPath: 'inset(0 0 27% 0)',
+                                zIndex: 2
+                            }}
+                        />
+
+                        {/* Bottom Layer: Text (White in Dark Mode) - Shows bottom 27% */}
+                        <img
+                            src={logoFinal}
+                            alt="Sentia Text"
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                height: '100%',
+                                clipPath: 'inset(73% 0 0 0)',
+                                filter: theme === 'dark' ? 'brightness(0) invert(1)' : 'brightness(0)',
+                                transition: 'filter 0.3s ease',
+                                zIndex: 1
+                            }}
+                        />
                     </div>
                 </div>
 

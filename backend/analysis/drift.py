@@ -92,68 +92,124 @@ def calculate_stability(emotions):
     return max(0.0, 1.0 - switch_rate)
 
 
-def check_and_create_alert(db: Session, user_id: str, window: int = 20):
+import json
+
+def extract_stress(log) -> float:
     """
-    Checks recent logs for drift/severity and creates a persistent alert if needed.
-    Should be called after adding new logs.
+    Derives a stress score [0-1] from a log's dominant emotion.
+    Maps conceptually to: stress = 0.6*fear + 0.3*nervousness + 0.1*anger
     """
-    # 1. Fetch recent logs
+    conf = min(max(log.confidence, 0.0), 1.0)
+    if log.emotion == 'fear':
+        return conf  # Heavily maps fear to stress
+    elif log.emotion == 'anger':
+        return 0.5 * conf
+    elif log.emotion == 'sadness':
+        return 0.3 * conf
+    elif log.emotion == 'surprise':
+        return 0.4 * conf
+    return 0.0
+
+
+def calculate_instant_risk(stress: float, sadness: float, anger: float) -> float:
+    """
+    Calculates instant emotional risk.
+    Formula: 0.5*stress + 0.3*sadness + 0.2*anger
+    """
+    # Normalization guard
+    stress = min(max(stress, 0.0), 1.0)
+    sadness = min(max(sadness, 0.0), 1.0)
+    anger = min(max(anger, 0.0), 1.0)
+    
+    return 0.5 * stress + 0.3 * sadness + 0.2 * anger
+
+
+def check_and_create_alert(db: Session, user_id: str, window: int = 5):
+    """
+    Checks recent logs for Instant Emotional Risk and Drift-Based Risk (Slope).
+    Creates a structured DriftAlert if threshold is crossed.
+    """
+    # 1. Fetch recent logs (need at least 1 for instant, 5 for drift)
     logs = db.query(EmotionLog).filter(
         EmotionLog.user_id == user_id
     ).order_by(EmotionLog.created_at.desc()).limit(window).all()
     
-    if len(logs) < 5:
-        return None # Not enough data
+    if not logs:
+        return None
         
-    # 2. Split for drift
-    # Sort chronologically for detection
     logs.sort(key=lambda x: x.created_at)
-    emotions = [l.emotion for l in logs]
+    latest_log = logs[-1]
     
-    mid = len(emotions) // 2
-    old = emotions[:mid]
-    new = emotions[mid:]
+    # 2. Instant Emotional Risk
+    stress = extract_stress(latest_log)
+    sadness = latest_log.confidence if latest_log.emotion == 'sadness' else 0.0
+    anger = latest_log.confidence if latest_log.emotion == 'anger' else 0.0
     
-    drift_res = detect_emotion_drift(old, new)
-    
-    # 3. Check Severity
-    stability = calculate_stability(emotions)
-    
-    # Alert Logic
-    # 1. High Drift Severity
-    # 2. Low Stability (High Volatility) - Matching condition_detection.py logic (< 0.4 is High Risk)
+    instant_risk = calculate_instant_risk(stress, sadness, anger)
     
     alert_triggered = False
-    alert_msg = ""
+    alert_type = None
+    level = None
+    score = 0.0
     
-    if drift_res["severity"] > 0.4:
+    # Priority System
+    if instant_risk > 0.85:
         alert_triggered = True
-        alert_msg = f"Significant emotional drift detected (Severity: {drift_res['severity']})"
-        
-    elif stability < 0.4:
+        alert_type = "INSTANT_EMOTIONAL_ALERT"
+        level = "HIGH"
+        score = instant_risk
+    elif instant_risk > 0.7:
         alert_triggered = True
-        alert_msg = f"High emotional volatility detected (Stability: {round(stability, 2)})"
+        alert_type = "INSTANT_EMOTIONAL_ALERT"
+        level = "MODERATE"
+        score = instant_risk
         
+    # 3. Drift-Based Risk (Simple Linear Regression Slope)
+    if not alert_triggered and len(logs) >= 5:
+        # Get last 5 sessions
+        recent_5 = logs[-5:]
+        y1 = extract_stress(recent_5[0])
+        y5 = extract_stress(recent_5[4])
+        
+        slope = (y5 - y1) / 4.0
+        
+        if slope > 0.08:
+            alert_triggered = True
+            alert_type = "DRIFT_EMOTIONAL_ALERT"
+            level = "MODERATE" if slope <= 0.15 else "HIGH"
+            score = slope
+            
     if alert_triggered:
-        # Check if we recently alerted to avoid spam (e.g. last 24h)
+        # Check if we recently alerted to avoid spam
         last_alert = db.query(DriftAlert).filter(
             DriftAlert.user_id == user_id
         ).order_by(DriftAlert.created_at.desc()).first()
         
-        if last_alert and (datetime.utcnow() - last_alert.created_at) < timedelta(hours=24):
-            return None # Already alerted recently
+        if last_alert and (datetime.utcnow() - last_alert.created_at) < timedelta(hours=2):
+            return None # Rate limit alerts
             
-        # Create Alert
+        # Structured Logging
+        alert_payload = {
+            "type": alert_type,
+            "patient_id": user_id,
+            "score": round(score, 3),
+            "level": level,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        print(f"[ALERT ENGINE] {json.dumps(alert_payload)}")
+        
+        # Save to DB
         alert = DriftAlert(
             user_id=user_id,
-            severity=drift_res["severity"], # Keep drift severity as the main metric for now, or use max
-            from_emotion=drift_res["from"],
-            to_emotion=drift_res["to"],
-            message=alert_msg, # Ensure model has this field or we just store severity
+            severity=score,
+            from_emotion=logs[0].emotion,
+            to_emotion=latest_log.emotion,
+            message=json.dumps(alert_payload),
             created_at=datetime.utcnow()
         )
         db.add(alert)
         db.commit()
         return alert
-    
+        
     return None

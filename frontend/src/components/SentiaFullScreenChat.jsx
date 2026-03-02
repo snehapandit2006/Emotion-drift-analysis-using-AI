@@ -244,7 +244,20 @@ const SentiaFullScreenChat = ({ onClose }) => {
                             <div key={i} className={`sentia-msg-wrapper ${msg.isBot ? 'bot' : 'user'}`}>
                                 <div className={`sentia-msg-bubble ${msg.isBot ? 'bot' : 'user'}`}>
                                     <p style={{ margin: '0', fontSize: '15px' }}>{msg.text}</p>
-                                    {msg.isBot && msg.emotion && (<span style={{ fontSize: '9px', fontWeight: 'bold', color: '#3b82f6', display: 'block', marginTop: '5px' }}> EMOTION: {msg.emotion.toUpperCase()} </span>)}
+                                    {msg.isBot && (
+                                        <div style={{ display: 'flex', gap: '8px', marginTop: '5px', opacity: 0.8 }}>
+                                            {msg.emotion && (
+                                                <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#3b82f6' }}>
+                                                    EMOTION: {msg.emotion.toUpperCase()}
+                                                </span>
+                                            )}
+                                            {msg.trace && (
+                                                <span style={{ fontSize: '9px', color: '#6b7280', fontStyle: 'italic' }}>
+                                                    [{msg.trace}]
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}

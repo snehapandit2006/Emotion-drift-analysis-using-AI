@@ -293,12 +293,6 @@ function Dashboard() {
 
   return (
     <div className="dashboard" ref={dashboardRef}>
-      {/* Session Debug Bar */}
-      <div style={{ padding: '4px 12px', background: '#1e293b', color: '#94a3b8', fontSize: '10px', display: 'flex', gap: '20px', borderBottom: '1px solid #334155' }}>
-        <span>User: {user?.email} (ID: {user?.id})</span>
-        <span>Timeline Points: {timelineData.length}</span>
-        <span>API: {import.meta.env.VITE_API_URL || "default"}</span>
-      </div>
       <header className="header glass-panel">
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <div style={{ position: 'relative', height: '245px', display: 'flex', alignItems: 'center' }}>
@@ -342,7 +336,14 @@ function Dashboard() {
 
         <div className="header-actions">
           {/* Always visible: Theme & Alerts */}
-
+          <button
+            className="icon-btn"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            style={{ color: 'var(--text-main)', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            {theme === 'dark' ? <Sun size={24} /> : <Moon size={24} />}
+          </button>
 
           <div className="bell" onClick={() => setShowAlerts(!showAlerts)}>
             🔔{alerts.length > 0 && <span className="dot" />}
@@ -743,6 +744,8 @@ function GlobalThemeToggle() {
 
   if (shouldHide) return null;
 
+  const isDark = theme === 'dark';
+
   return (
     <button
       onClick={toggleTheme}
@@ -751,8 +754,9 @@ function GlobalThemeToggle() {
         top: '2rem',
         right: '2rem',
         zIndex: 9999,
-        background: 'var(--bg-card)',
-        border: '1px solid var(--glass-border)',
+        background: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+        backdropFilter: 'blur(10px)',
+        border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
         borderRadius: '50%',
         width: '50px',
         height: '50px',
@@ -760,15 +764,36 @@ function GlobalThemeToggle() {
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-        color: 'var(--text-main)',
-        transition: 'all 0.3s ease'
+        boxShadow: isDark ? '0 4px 12px rgba(0,0,0,0.5)' : '0 4px 12px rgba(0,0,0,0.1)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
       }}
-      title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-      onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.borderColor = 'var(--accent-color)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.borderColor = 'var(--glass-border)'; }}
+      title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'scale(1.1) rotate(15deg)';
+        e.currentTarget.style.background = isDark ? 'rgba(250, 204, 21, 0.1)' : 'rgba(79, 70, 229, 0.1)';
+        e.currentTarget.style.borderColor = isDark ? '#FACC15' : '#4F46E5';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
+        e.currentTarget.style.background = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+        e.currentTarget.style.borderColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+      }}
     >
-      {theme === 'dark' ? <Sun size={24} /> : <Moon size={24} />}
+      <div style={{
+        position: 'relative',
+        width: '26px',
+        height: '26px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'none'
+      }}>
+        {isDark ? (
+          <Sun size={26} strokeWidth={2.5} stroke="#FACC15" fill="#FACC15" style={{ display: 'block', filter: 'drop-shadow(0 0 5px rgba(250,204,21,0.5))' }} />
+        ) : (
+          <Moon size={26} strokeWidth={2.5} stroke="#4F46E5" fill="#4F46E5" style={{ display: 'block' }} />
+        )}
+      </div>
     </button>
   );
 }

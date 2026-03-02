@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 
-import { Shield, Phone, MapPin, Info, ArrowLeft, Upload, FileText, Download } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import { Shield, Phone, MapPin, Info, ArrowLeft, Upload, FileText, Download, Sun, Moon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchSupportInsights, getMentalHealthInfo, getAlerts, getMedicalRecords, uploadMedicalRecord } from '../api';
 import MedicalLogTable from './MedicalLogTable';
@@ -27,6 +28,7 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 const SupportDashboard = () => {
     const navigate = useNavigate();
+    const { theme, toggleTheme } = useTheme();
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState(null);
     const [consentGiven, setConsentGiven] = useState(false);
@@ -189,20 +191,29 @@ const SupportDashboard = () => {
             zIndex: 1000
         }}>
             <div className="dashboard-container" style={{ padding: '2rem', width: '100%', color: 'var(--text-main)', minHeight: '100%' }}>
-                <button
-                    onClick={() => navigate('/dashboard')}
-                    style={{
-                        display: 'flex', alignItems: 'center', gap: '0.5rem',
-                        background: 'var(--card-bg)', border: '1px solid var(--border-color)',
-                        color: 'var(--text-secondary)', cursor: 'pointer',
-                        marginBottom: '2rem', padding: '0.5rem 1rem', borderRadius: '8px',
-                        transition: 'all 0.2s ease'
-                    }}
-                    onMouseOver={(e) => { e.currentTarget.style.background = 'var(--border-color)'; e.currentTarget.style.color = 'var(--text-main)'; }}
-                    onMouseOut={(e) => { e.currentTarget.style.background = 'var(--card-bg)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
-                >
-                    <ArrowLeft size={18} /> Back to Dashboard
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                    <button
+                        onClick={() => navigate('/dashboard')}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                            background: 'var(--card-bg)', border: '1px solid var(--border-color)',
+                            color: 'var(--text-secondary)', cursor: 'pointer',
+                            padding: '0.5rem 1rem', borderRadius: '8px',
+                            transition: 'all 0.2s ease'
+                        }}
+                    >
+                        <ArrowLeft size={16} /> Back to Dashboard
+                    </button>
+
+                    <button
+                        className="icon-btn"
+                        onClick={toggleTheme}
+                        title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                        style={{ color: 'var(--text-main)', background: 'transparent', border: '1px solid var(--border-color)', padding: '8px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                        {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                    </button>
+                </div>
 
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}

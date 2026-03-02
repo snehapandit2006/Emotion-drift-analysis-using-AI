@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPatientInsights, getPatientLogs, getMedicalRecords, uploadMedicalRecord, generateReport } from '../api';
-import { ArrowLeft, MessageSquare, Clipboard, FileText, Calendar, AlertTriangle, TrendingUp } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import { ArrowLeft, MessageSquare, Clipboard, FileText, Calendar, AlertTriangle, TrendingUp, Sun, Moon, LayoutDashboard, AlignLeft, UserCircle, Pill, Download, Folder } from 'lucide-react';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ReferenceLine } from 'recharts';
 import ChatInterface from './ChatInterface';
 import MedicalLogTable from './MedicalLogTable';
-import './PatientDetails.css'; // Import new styles
+import DoctorVoiceAssistant from './DoctorVoiceAssistant';
 
 const PatientDetailView = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { theme, toggleTheme } = useTheme();
     const [data, setData] = useState(null);
     const [allTextLogs, setAllTextLogs] = useState([]); // Store all logs
     const [allFaceLogs, setAllFaceLogs] = useState([]); // Store all logs
@@ -133,7 +136,7 @@ const PatientDetailView = () => {
     if (loading) return <div className="pd-container">Loading patient data...</div>;
     if (!data) return <div className="pd-container">Patient not found or access denied.</div>;
 
-    const { detected_conditions, patient_email } = data;
+    const { active_alerts, patient_email, current_instant_risk, stress_trend } = data;
     const name = patient_email.split('@')[0];
 
     const renderContent = () => {
@@ -169,25 +172,35 @@ const PatientDetailView = () => {
                         </div>
                     </div>
 
-                    {/* 3. High Risk / Conditions */}
+                    {/* 3. High Risk / Conditions -> Active Alert Badges */}
                     <div className="pd-card">
                         <div className="pd-card-header">
-                            <span className="pd-card-title">Risk Factors</span>
+                            <span className="pd-card-title">Active Alert Badges</span>
                             <AlertTriangle size={18} color="var(--pd-accent-alert)" />
                         </div>
-                        <div className="pd-big-number">
-                            {detected_conditions?.length || 0}
+
+                        <div style={{ marginBottom: '1rem', padding: '1rem', background: 'var(--bg-input)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                <span style={{ fontWeight: 'bold' }}>Instant Risk Score</span>
+                                <span>{(current_instant_risk || 0).toFixed(2)}</span>
+                            </div>
+                            <div style={{ height: '8px', background: 'var(--bg-main)', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                                <div style={{ height: '100%', width: Math.min(100, Math.max(0, (current_instant_risk || 0) * 100)) + '%', background: (current_instant_risk > 0.85) ? 'var(--emotion-anger)' : (current_instant_risk > 0.7 ? 'var(--emotion-disgust)' : 'var(--emotion-happy)') }}></div>
+                            </div>
                         </div>
 
                         <ul className="pd-alert-list">
-                            {detected_conditions?.map((c, i) => (
-                                <li key={i} className="pd-alert-item">
-                                    <span>{c.name}</span>
-                                    <span className={c.level === 'High' ? 'risk-high' : ''}>{c.level}</span>
+                            {active_alerts?.map((c, i) => (
+                                <li key={i} className="pd-alert-item" style={{ color: 'var(--text-main)' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-main)' }}>{c.type.replace(/_/g, " ")}</span>
+                                        <span style={{ fontSize: '0.75rem', opacity: 0.7, color: 'var(--text-secondary)' }}>Score: {c.score.toFixed(2)} | {new Date(c.timestamp).toLocaleTimeString()}</span>
+                                    </div>
+                                    <span className={c.level === 'HIGH' ? 'risk-high' : 'risk-medium'} style={{ background: c.level === 'HIGH' ? 'rgba(255,100,100,0.2)' : 'rgba(255,165,0,0.2)', color: c.level === 'HIGH' ? '#ff4d4d' : 'orange', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold', alignSelf: 'center' }}>{c.level}</span>
                                 </li>
                             ))}
-                            {(!detected_conditions || detected_conditions.length === 0) && (
-                                <li className="pd-alert-item" style={{ justifyContent: 'center', opacity: 0.5 }}>No active risks</li>
+                            {(!active_alerts || active_alerts.length === 0) && (
+                                <li className="pd-alert-item" style={{ justifyContent: 'center', opacity: 0.5, color: 'var(--text-main)' }}>No active emotional alerts</li>
                             )}
                         </ul>
                     </div>
@@ -195,31 +208,50 @@ const PatientDetailView = () => {
                     {/* 4. Graph Placeholder / Trends (Full Width of Grid 2 & 3) */}
                     <div className="pd-card" style={{ gridColumn: '1 / span 2' }}>
                         <div className="pd-card-header">
-                            <span className="pd-card-title">Sentiment Trend ({selectedDateFilter})</span>
+                            <span className="pd-card-title">Stress Trend Graph (last 5 sessions)</span>
                             <TrendingUp size={18} color="var(--pd-olive-deep)" />
                         </div>
                         <div style={{
                             minHeight: '300px',
                             height: '100%',
-                            background: 'rgba(0,0,0,0.03)',
+                            background: 'var(--bg-panel)',
+                            border: '1px solid var(--border-color)',
                             borderRadius: '8px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: 'var(--pd-olive-medium)'
+                            color: 'var(--text-main)',
+                            padding: '1rem',
+                            paddingTop: '3rem'
                         }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', height: '100px' }}>
-                                {filteredTextLogs.slice(0, 20).reverse().map((log, i) => (
-                                    <div key={i} style={{
-                                        width: '15px',
-                                        height: `${Math.max(log.confidence * 100, 10)}%`,
-                                        background: log.emotion === 'happy' ? 'var(--pd-sage)' :
-                                            log.emotion === 'neutral' ? '#ccc' : 'var(--pd-olive-deep)',
-                                        borderRadius: '2px 2px 0 0',
-                                        opacity: 0.8
-                                    }} title={`${log.emotion}: ${log.confidence}`} />
-                                ))}
-                            </div>
+                            {(stress_trend && stress_trend.length > 0) ? (
+                                <ResponsiveContainer width="100%" height={250}>
+                                    <BarChart
+                                        data={stress_trend}
+                                        margin={{ top: 20, right: 30, left: 10, bottom: 5 }}
+                                    >
+                                        <XAxis dataKey="time" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
+                                        <YAxis domain={[0, 100]} stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}%`} />
+                                        <Tooltip
+                                            cursor={{ fill: 'var(--border-color)', opacity: 0.4 }}
+                                            contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-main)' }}
+                                            formatter={(value, name, props) => [`${value}%`, `Stress (${props.payload.emotion})`]}
+                                            labelStyle={{ color: 'var(--text-secondary)', marginBottom: '4px' }}
+                                            itemStyle={{ color: 'var(--text-main)' }}
+                                        />
+                                        <ReferenceLine y={80} stroke="var(--emotion-anger)" strokeDasharray="3 3" />
+                                        <Bar dataKey="stress" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                                            {
+                                                stress_trend.map((log, index) => (
+                                                    <Cell key={`cell-${index}`} fill={log.stress > 80 ? 'var(--emotion-anger)' : (log.stress > 50 ? 'var(--emotion-disgust)' : 'var(--primary-blue)')} />
+                                                ))
+                                            }
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <p style={{ opacity: 0.5 }}>No data available for this period.</p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -355,11 +387,18 @@ const PatientDetailView = () => {
             {/* Header */}
             <header className="pd-header">
                 <div className="pd-title">
-                    <h1>{selectedDateFilter === 'today' ? "Today's Overview" :
-                        selectedDateFilter === 'yesterday' ? "Yesterday's Overview" : "Patient Overview"}</h1>
-                    <p>Hello, Dr. You have {detected_conditions?.length || 0} high-risk alerts for {name}.</p>
+                    <h1>Emotional Risk Assessment</h1>
+                    <p>Hello, Dr. You have {active_alerts?.length || 0} active emotional alerts for {name}.</p>
                 </div>
-                <div className="pd-controls">
+                <div className="pd-controls" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <button
+                        className="icon-btn"
+                        onClick={toggleTheme}
+                        title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', width: '36px', height: '36px' }}
+                    >
+                        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                    </button>
                     <button className="pd-btn outline" onClick={() => navigate('/doctor-dashboard')}>
                         Dashboard
                     </button>
@@ -408,22 +447,22 @@ const PatientDetailView = () => {
 
                     <ul className="pd-sidebar-menu">
                         <li className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>
-                            [+] Patient Overview
+                            <LayoutDashboard size={18} /> AI Emotional Drift Dashboard
                         </li>
                         <li className={activeTab === 'text_logs' ? 'active' : ''} onClick={() => setActiveTab('text_logs')}>
-                            [T] Text Logs
+                            <AlignLeft size={18} /> Text Logs
                         </li>
                         <li className={activeTab === 'face_logs' ? 'active' : ''} onClick={() => setActiveTab('face_logs')}>
-                            [F] Face Logs
+                            <UserCircle size={18} /> Face Logs
                         </li>
                         <li className={activeTab === 'records' ? 'active' : ''} onClick={() => setActiveTab('records')}>
-                            [↗] Medical Records ({records.length})
+                            <Folder size={18} /> Medical Records ({records.length})
                         </li>
                         <li className={activeTab === 'medicine_log' ? 'active' : ''} onClick={() => setActiveTab('medicine_log')}>
-                            [+] Medicine Log
+                            <Pill size={18} /> Medicine Log
                         </li>
-                        <li onClick={handleGenerateReport} style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
-                            [↓] Generate Report
+                        <li onClick={handleGenerateReport} style={{ marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+                            <Download size={18} /> Generate Report
                         </li>
                     </ul>
                 </div>
@@ -443,6 +482,9 @@ const PatientDetailView = () => {
                     onClose={() => setShowChat(false)}
                 />
             )}
+
+            {/* Global Voice Assistant */}
+            <DoctorVoiceAssistant patientId={id} />
         </div>
     );
 };

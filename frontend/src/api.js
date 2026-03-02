@@ -109,6 +109,10 @@ export const assignPatient = (email) => API.post("/doctor/assign", { email });
 export const getPatientInsights = (id, days = 14) => API.get(`/doctor/patient/${id}/insights?days=${days}`);
 export const getPatientLogs = (id, limit = 50) => API.get(`/doctor/patient/${id}/logs?limit=${limit}`);
 
+export const sendDoctorVoiceQuery = (formData) => API.post("/doctor/bot/query", formData, {
+  headers: { 'Content-Type': 'multipart/form-data' }
+});
+
 export const getChatHistory = (otherUserId) => API.get(`/chat/history/${otherUserId}`);
 
 // Medical Logs (Manual)

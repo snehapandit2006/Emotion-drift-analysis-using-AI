@@ -33,6 +33,7 @@ class EmotionLog(Base):
     text = Column(String)
     emotion = Column(String)
     confidence = Column(Float)
+    source = Column(String, default="chat") # 'chat' or 'dashboard'
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="logs")

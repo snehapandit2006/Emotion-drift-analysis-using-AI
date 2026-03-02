@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
+import speech_recognition as sr
+import io
 
 from db.database import get_db
 from db.models import User, EmotionLog, FaceEmotionLog, MedicalEntry
@@ -10,8 +12,54 @@ from api.deps import get_current_psychiatrist
 from schemas import PatientList
 from analysis.fusion import analyze_fusion
 from analysis.condition_detection import detect_conditions
+from ml.llm_bridge import handle_doctor_voice_query
 
 router = APIRouter(prefix="/doctor", tags=["doctor"])
+
+class DoctorQueryRequest(BaseModel):
+    query: str
+
+from fastapi import Request
+
+@router.post("/bot/query")
+async def doctor_bot_query(
+    request: Request,
+    audio: UploadFile = File(...),
+    current_user: User = Depends(get_current_psychiatrist),
+    db: Session = Depends(get_db)
+):
+    """Voice query layer for Doctor dashboard"""
+    form_data = await request.form()
+    context_patient_id = form_data.get("context_patient_id")
+    text = form_data.get("text")
+
+    if not text:
+        return {"routing_type": "INFORMATION_RESPONSE", "summary": "Could not understand the audio. Please try again."}
+    
+    print(f"Doctor Voice Query Transcribed (Client-Side): {text}")
+
+    # Pass the transcribed text to the deterministic logic
+    response_text = handle_doctor_voice_query(text, db, current_user.id)
+
+    # Optional implicit routing: if the response mentions a specific patient, we can route there
+    # Quick hack to extract patient ID from query for routing, since logic doesn't return ID explicitly
+    import re
+    action_payload = None
+    routing_type = "INFORMATION_RESPONSE"
+    
+    pt_match = re.search(r'patient\s+(\d+)', text.lower())
+    patient_id = int(pt_match.group(1)) if pt_match else (int(context_patient_id) if context_patient_id else None)
+    
+    # If the user asks for a trend or history and we have a patient ID, jump to that page.
+    if patient_id and ("trend" in text.lower() or "summarize" in text.lower()):
+        routing_type = "ACTION_REQUIRED"
+        action_payload = {"url": f"/doctor/patient/{patient_id}"}
+    
+    return {
+        "routing_type": routing_type,
+        "action_payload": action_payload,
+        "summary": response_text
+    }
 
 class AssignPatientRequest(BaseModel):
     email: str
@@ -116,13 +164,67 @@ def get_patient_insights(
         fusion_result = analyze_fusion(recent_text, recent_face, range_days=days)
         severity_info = fusion_result.get("severity", {})
         stability = fusion_result.get("stability_score", 1.0)
-        detected_conditions = detect_conditions(recent_text, recent_face, stability)
         
+        # 1. Fetch recent alerts
+        from db.models import DriftAlert
+        recent_alerts = db.query(DriftAlert).filter(
+            DriftAlert.user_id == patient_id, 
+            DriftAlert.created_at >= cutoff
+        ).order_by(DriftAlert.created_at.desc()).limit(5).all()
+        
+        # 2. Extract latest instant risk if available
+        # Need to parse message JSON
+        import json
+        alerts_out = []
+        for a in recent_alerts:
+            try:
+                payload = json.loads(a.message)
+                alerts_out.append(payload)
+            except:
+                level = "LOW"
+                if a.severity >= 0.6:
+                    level = "HIGH"
+                elif a.severity >= 0.3:
+                    level = "MEDIUM"
+                
+                alerts_out.append({
+                    "type": "LEGACY_ALERT",
+                    "score": a.severity,
+                    "level": level,
+                    "timestamp": a.created_at.isoformat()
+                })
+                
+        # To show the gauge, we can calculate instant_risk of the latest text log
+        from analysis.drift import extract_stress, calculate_instant_risk
+        latest_text_log = db.query(EmotionLog).filter(EmotionLog.user_id == patient.id).order_by(EmotionLog.created_at.desc()).first()
+        current_instant_risk = 0.0
+        if latest_text_log:
+            st = extract_stress(latest_text_log)
+            sa = latest_text_log.confidence if latest_text_log.emotion == 'sadness' else 0.0
+            an = latest_text_log.confidence if latest_text_log.emotion == 'anger' else 0.0
+            current_instant_risk = calculate_instant_risk(st, sa, an)
+
+        # Fallback: if calculated risk is 0 but we have a severe alert, reflect the alert's severity
+        if current_instant_risk == 0.0 and len(alerts_out) > 0:
+            current_instant_risk = float(alerts_out[0].get("score", 0.0))
+        
+        # We also need stress trend (last 5 sessions) for the chart
+        stress_trend_logs = db.query(EmotionLog).filter(EmotionLog.user_id == patient.id).order_by(EmotionLog.created_at.desc()).limit(5).all()
+        stress_trend = []
+        for l in reversed(stress_trend_logs):
+            stress_trend.append({
+                "time": l.created_at.strftime("%H:%M"),
+                "stress": round(extract_stress(l) * 100, 1),
+                "emotion": l.emotion
+            })
+            
         return {
             "patient_email": patient.email,
             "analysis_period_days": days,
             "severity": severity_info,
-            "detected_conditions": detected_conditions,
+            "active_alerts": alerts_out,
+            "current_instant_risk": round(current_instant_risk, 3),
+            "stress_trend": stress_trend,
             "fusion": fusion_result,
             "stats": {
                 "text_logs_count": len(recent_text),

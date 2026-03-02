@@ -21,8 +21,13 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000"
     ]
 
+    # LLM CONFIG
+    LLM_API_KEY: str = ""
+    LLM_MODEL: str = "gemini-flash-latest"
+
     class Config:
         env_file = ".env"
+        extra = "allow"
         case_sensitive = True
 
 settings = Settings()

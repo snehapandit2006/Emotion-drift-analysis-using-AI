@@ -82,20 +82,20 @@ class DialogueManager:
         if recent_probe_types:
             rules.append(f"- Recent Probes: {', '.join(recent_probe_types)}")
 
-        rules.append("\n[Behavioral Constraints]")
-        rules.append("- If user named their emotion, explore the 'Impact' or 'Cause' specifically.")
+        rules.append("\n[Conversational Guidance]")
+        rules.append("- If user named their emotion, you might explore the situational impact.")
         
         if "emotion_probe" in recent_probe_types:
-            rules.append("- AVOID asking how they feel again. Pivot to situational triggers.")
+            rules.append("- You've already explored their feelings; perhaps pivot to situational details.")
             
         if state["volatility"] > 0.4:
-            rules.append("- High Volatility: Use grounding language. Do not over-analyze.")
+            rules.append("- High Volatility: Use calm, grounding language. Avoid over-probing.")
             
         if state.get("incongruence"):
-            rules.append("- Incongruence detected: Gently explore if there's more they aren't saying.")
+            rules.append("- Subtle mismatch detected: Consider a gentle, non-confrontational exploration.")
             
         if state.get("domain") == "physical_distress":
-            rules.append("- CRITICAL: User is discussing physical pain or a medical procedure. DO NOT ask abstract psychological questions (e.g., 'root of this pain'). Instead, offer concrete validation, grounding, and practical concern.")
+            rules.append("- Patient is in physical pain/medical context: Focus on validation and practical grounding rather than deep emotional roots.")
 
         return "\n".join(rules)
 

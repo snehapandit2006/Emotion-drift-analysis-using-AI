@@ -1,6 +1,21 @@
 import React, { useRef, useState, useEffect } from "react";
 import { postSelfEmotionCapture } from "../api";
 
+const getEmotionColor = (emotion) => {
+    const emotionColors = {
+        joy: "var(--emotion-happy)",
+        happy: "var(--emotion-happy)",
+        fear: "var(--emotion-fear)",
+        sadness: "var(--emotion-sadness)",
+        anger: "var(--emotion-anger)",
+        surprise: "var(--emotion-surprise)",
+        neutral: "var(--emotion-neutral)",
+        love: "var(--emotion-love)",
+        disgust: "var(--emotion-disgust)"
+    };
+    return emotionColors[emotion?.toLowerCase()] || "var(--primary-blue)";
+};
+
 const SelfEmotionMonitor = () => {
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
@@ -125,7 +140,12 @@ const SelfEmotionMonitor = () => {
 
             {latestEmotion && !errorMsg && (
                 <div style={styles.result}>
-                    <p style={{ margin: "5px 0", color: "var(--text-main)" }}>Detected: <strong style={{ fontSize: "1.2em", color: "var(--primary-blue)" }}>{latestEmotion.emotion.toUpperCase()}</strong></p>
+                    <p style={{ margin: "5px 0", color: "var(--text-main)" }}>
+                        Detected: <strong style={{
+                            fontSize: "1.2em",
+                            color: getEmotionColor(latestEmotion.emotion)
+                        }}>{latestEmotion.emotion.toUpperCase()}</strong>
+                    </p>
                     <p style={{ margin: "5px 0", color: "var(--text-secondary)" }}>Confidence: {(latestEmotion.confidence * 100).toFixed(1)}%</p>
                     <p style={{ margin: "5px 0", fontSize: "0.8em", color: "var(--text-secondary)", opacity: 0.8 }}>Captured at: {new Date().toLocaleTimeString()}</p>
                 </div>

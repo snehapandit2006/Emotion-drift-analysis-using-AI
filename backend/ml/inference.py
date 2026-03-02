@@ -169,42 +169,51 @@ def get_sentia_intelligence(text: str, audio_path: str = None, user_id: int = 0,
     fused_emotion = SENTIA_LABELS[best_idx]
     fused_conf = float(fused_vector[best_idx])
 
-    # 3. SAFETY & INTENT (Lightweight Gemini calls)
+    # 3. SAFETY (Lightweight keyword check)
     is_safety_risk = check_safety_intent(text)
-    intent = classify_intent_light(text)
-    domain = detect_domain(text)
     
-    # 4. UPDATE DIALOGUE STATE
+    # 4. UPDATE DIALOGUE STATE (Minimal first)
     state = dialogue_manager.update_state(user_id, fused_emotion, text, emotion_vector=fused_vector.tolist())
-    state["last_intent"] = intent
     state["incongruence"] = incongruence
+    
+    # Detect domain (lightweight keywords)
+    domain = detect_domain(text)
     state["domain"] = domain
+    
     context = dialogue_manager.get_dialogue_context(user_id)
     
-    # 5. ATOMIC LOGGING
-    db = SessionLocal()
+    # 5. ATOMIC LOGGING (Keep but optimize session management if needed)
+    from datetime import datetime
+    from db.models import EmotionLog
     try:
-        from datetime import datetime
+        from db.database import engine, Base
+        Base.metadata.create_all(bind=engine) # Ensure tables exist
+        
+        db = SessionLocal()
         log = EmotionLog(
             user_id=user_id,
             text=text,
             emotion=fused_emotion,
             confidence=fused_conf,
+            source=source,
             created_at=datetime.utcnow()
         )
         db.add(log)
         db.commit()
-        
-        # Crisis Escalation
-        if is_safety_risk:
-            # Anchor phrase for mirroring
-            anchor = f"I hear the weight of this {fused_emotion} you're carrying..." if fused_conf > 0.5 else "I'm listening closely to what you're sharing..."
-            escalate_crisis(user_id, text, anchor)
-            
     except Exception as e:
         print(f"Hub Logging Error: {e}")
     finally:
-        db.close()
+        if 'db' in locals(): db.close()
+
+    # 6. CRISIS ESCALATION (moved here to ensure logging happens first)
+    if is_safety_risk:
+        # Anchor phrase for mirroring
+        anchor = f"I hear the weight of this {fused_emotion} you're carrying..." if fused_conf > 0.5 else "I'm listening closely to what you're sharing..."
+        try:
+            from .utils import escalate_crisis
+            escalate_crisis(user_id, text, anchor)
+        except ImportError:
+            pass # Handle if utility not in same path
 
     return {
         "emotion": fused_emotion,
@@ -236,8 +245,10 @@ def check_safety_intent(text: str) -> bool:
             payload = {"contents": [{"parts": [{"text": f"Is this text expressing self-harm or suicide intent? Respond ONLY 'TRUE' or 'FALSE': '{text}'"}]}]}
             res = requests.post(url, json=payload, timeout=5)
             if res.status_code == 200:
-                answer = res.json()["candidates"][0]["content"]["parts"][0]["text"].strip().upper()
-                return "TRUE" in answer
+                result = res.json()
+                if "candidates" in result:
+                    raw_text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    return "TRUE" in raw_text.upper()
         except: pass
     return False
 
@@ -266,16 +277,11 @@ def validate_response_stability(bot_text: str, user_text: str) -> tuple[bool, st
     if bot_text.lower() == user_text.lower():
         return False, "repeats_user"
         
-    # 2. Word Frequency / Gibberish Check
-    words = bot_text.split()
-    if len(words) > 5:
-        counts = Counter(words)
-        most_common_freq = counts.most_common(1)[0][1]
-        if most_common_freq > len(words) / 2:
-            return False, "repetitive_phrasing"
-            
-    # 3. Min Length Check
-    if len(words) < 3:
+    # 2. Heuristic check (Removed Word Frequency to prevent brittle validation)
+    # We rely on similarity instead.
+    
+    # 3. Min Length Check (Relaxed for punchy human responses)
+    if len(bot_text.split()) < 2:
         return False, "too_short"
 
     return True, "valid"
@@ -310,6 +316,10 @@ def get_bot_response(text: str, intel: dict, user_id: int) -> dict:
             
             if is_valid:
                 response_text = llm_payload["text"]
+                # 2. Extract and Update Intent (Merged)
+                new_intent = llm_payload.get("intent", "storytelling")
+                state["last_intent"] = new_intent
+                
                 dialogue_manager.track_probe(user_id, llm_payload.get("type", "general_probe"), response_text)
                 return {"response": response_text, "trace": "LLM_OK"}
             else:
@@ -328,6 +338,7 @@ def get_bot_response(text: str, intel: dict, user_id: int) -> dict:
         state = dialogue_manager.get_state(user_id)
         response_text = generate_structured_fallback(text, state)
         print(f"[TRACE] Triggered Heuristic Fallback. Code: {trace}")
+        dialogue_manager.track_probe(user_id, "fallback_probe", response_text)
         return {"response": response_text, "trace": f"HEURISTIC_FALLBACK_{trace}"}
         
     except Exception as e:
