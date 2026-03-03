@@ -162,7 +162,7 @@ def generate_therapeutic_response(user_text: str, fused_emotion: str, dialogue_c
             "generationConfig": {"temperature": 0.5, "maxOutputTokens": 300}
         }
         
-        res = requests.post(url, json=payload, timeout=8)
+        res = requests.post(url, json=payload, timeout=20)
         
         if res.status_code != 200:
             print(f"[LLM Bridge Error] Status: {res.status_code} - Response: {res.text}")
@@ -203,7 +203,7 @@ def generate_clinical_summary(structured_history: list) -> str:
     STRICT POLICY: LLM summarizes. Model decides risk.
     """
     if not LLM_API_KEY:
-        return "LLM integration missing. Cannot summarize history."
+        return _heuristic_summary(structured_history)
         
     try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{LLM_MODEL}:generateContent?key={LLM_API_KEY}"
@@ -220,21 +220,36 @@ def generate_clinical_summary(structured_history: list) -> str:
         
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 150}
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 500}
         }
         
-        res = requests.post(url, json=payload, timeout=8)
+        res = requests.post(url, json=payload, timeout=20)
         if res.status_code == 200:
             result = res.json()
             if "candidates" in result:
-                return result["candidates"][0]["content"]["parts"][0]["text"].strip()
+                text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+                if len(text) > 30:
+                    return text
+                else:
+                    print(f"DEBUG LLM SUMMARY WARNING: Generated text too short: '{text}'")
+                    return _heuristic_summary(structured_history)
                 
-        return "Failed to generate summary from LLM."
+        print(f"DEBUG LLM SUMMARY FAILED: Status {res.status_code}, Response {res.text}")
+        return _heuristic_summary(structured_history)
+        
     except Exception as e:
         print(f"[LLM Clinical Summary Error]: {e}")
-        return "Error connecting to summarization service."
+        return _heuristic_summary(structured_history)
 
-def handle_doctor_voice_query(query: str, db, doctor_id: int) -> str:
+def _heuristic_summary(history: list) -> str:
+    if not history:
+        return "No recent emotional data logged for this patient."
+    emotions = [h.get("emotion", "neutral") for h in history]
+    first = emotions[0]
+    last = emotions[-1]
+    return f"Based on the last {len(emotions)} sessions, the patient's primary emotion shifted from {first} to {last}."
+
+def handle_doctor_voice_query(query: str, db, doctor_id: int, context_patient_id: int = None) -> str:
     """
     Deterministic regex-based routing for clinical voice assistant.
     Commands:
@@ -264,7 +279,7 @@ def handle_doctor_voice_query(query: str, db, doctor_id: int) -> str:
         
     # Extract Patient ID if mentioned
     pt_match = re.search(r'patient\s+(\d+)', q_lower)
-    patient_id = int(pt_match.group(1)) if pt_match else None
+    patient_id = int(pt_match.group(1)) if pt_match else context_patient_id
     
     # 2. Summarize emotional history
     if "summarize" in q_lower:

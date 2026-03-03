@@ -37,9 +37,11 @@ async def doctor_bot_query(
         return {"routing_type": "INFORMATION_RESPONSE", "summary": "Could not understand the audio. Please try again."}
     
     print(f"Doctor Voice Query Transcribed (Client-Side): {text}")
+    
+    context_patient_id_int = int(context_patient_id) if context_patient_id and context_patient_id != "null" else None
 
     # Pass the transcribed text to the deterministic logic
-    response_text = handle_doctor_voice_query(text, db, current_user.id)
+    response_text = handle_doctor_voice_query(text, db, current_user.id, context_patient_id=context_patient_id_int)
 
     # Optional implicit routing: if the response mentions a specific patient, we can route there
     # Quick hack to extract patient ID from query for routing, since logic doesn't return ID explicitly
@@ -48,10 +50,10 @@ async def doctor_bot_query(
     routing_type = "INFORMATION_RESPONSE"
     
     pt_match = re.search(r'patient\s+(\d+)', text.lower())
-    patient_id = int(pt_match.group(1)) if pt_match else (int(context_patient_id) if context_patient_id else None)
+    patient_id = int(pt_match.group(1)) if pt_match else context_patient_id_int
     
     # If the user asks for a trend or history and we have a patient ID, jump to that page.
-    if patient_id and ("trend" in text.lower() or "summarize" in text.lower()):
+    if patient_id and ("trend" in text.lower() or "summarize" in text.lower() or "summary" in text.lower() or "history" in text.lower()):
         routing_type = "ACTION_REQUIRED"
         action_payload = {"url": f"/doctor/patient/{patient_id}"}
     
