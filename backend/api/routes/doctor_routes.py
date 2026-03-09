@@ -49,11 +49,12 @@ async def doctor_bot_query(
     action_payload = None
     routing_type = "INFORMATION_RESPONSE"
     
-    pt_match = re.search(r'patient\s+(\d+)', text.lower())
+    pt_match = re.search(r'(?:patient|mareez|मरीज)\s+(\d+)', text.lower())
     patient_id = int(pt_match.group(1)) if pt_match else context_patient_id_int
     
     # If the user asks for a trend or history and we have a patient ID, jump to that page.
-    if patient_id and ("trend" in text.lower() or "summarize" in text.lower() or "summary" in text.lower() or "history" in text.lower()):
+    summary_keywords = ["trend", "summarize", "summarise", "summary", "history", "समरी", "इतिहास", "ट्रेंड"]
+    if patient_id and any(w in text.lower() for w in summary_keywords):
         routing_type = "ACTION_REQUIRED"
         action_payload = {"url": f"/doctor/patient/{patient_id}"}
     

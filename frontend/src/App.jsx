@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 // Eager load critical components
 import SupportDashboard from "./components/SupportDashboard";
 import LandingPage from "./components/LandingPage";
-import { Download, Table as TableIcon, Activity, LogOut, MessageSquare, Sun, Moon, Shield, Menu, X } from 'lucide-react';
+import { Download, Table as TableIcon, Activity, LogOut, MessageSquare, Sun, Moon, Shield, Menu, X, Play } from 'lucide-react';
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
@@ -30,7 +30,9 @@ import {
   API,
   getSelfEmotionHistory,
   getSelfEmotionDistribution,
-  getFusionAnalytics
+  getFusionAnalytics,
+  getPatientTherapies,
+  updateProfile
 } from "./api";
 // Assets
 import logoFinal from './assets/logo_final.png';
@@ -126,7 +128,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 function Dashboard() {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, updateUserProfile } = useContext(AuthContext);
   const { theme, toggleTheme } = useTheme();
 
   const [range, setRange] = useState("24h");
@@ -139,18 +141,28 @@ function Dashboard() {
   const [selfHistory, setSelfHistory] = useState([]);
   const [selfDistribution, setSelfDistribution] = useState({});
   const [fusion, setFusion] = useState(null);
+  const [therapies, setTherapies] = useState([]);
+  const [activeTherapyId, setActiveTherapyId] = useState(null);
+  
+  // Use refs for audio objects so they don't trigger or get caught in re-renders
+  const audioContextRef = useRef(null);
+  const oscillatorsRef = useRef([]);
+  const audioFileRef = useRef(null);
+  const therapyTimerRef = useRef(null); // Timer for auto-stop after duration
+  
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [monitoring, setMonitoring] = useState(true);
-  const [viewMode, setViewMode] = useState('dashboard'); // 'dashboard', 'table', 'chat'
+  const [viewMode, setViewMode] = useState('dashboard'); // 'dashboard', 'table', 'chat', 'settings'
   const [showDoctorChat, setShowDoctorChat] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const dashboardRef = useRef(null);
 
   const load = useCallback(async () => {
+    if (!user || !user.id) return;
     try {
-      const [t, d, dr, a, c, sh, sd, f] = await Promise.all([
+      const [t, d, dr, a, c, sh, sd, f, th] = await Promise.all([
         getTimeline(range),
         getDistribution(),
         getDrift(),
@@ -158,7 +170,8 @@ function Dashboard() {
         getComparison(range),
         getSelfEmotionHistory(range),
         getSelfEmotionDistribution(range),
-        getFusionAnalytics(range === '1h' ? 0 : range === '24h' ? 1 : 7)
+        getFusionAnalytics(range === '1h' ? 0 : range === '24h' ? 1 : 7),
+        getPatientTherapies(user.id).catch(() => ({ data: [] }))
       ]);
 
       setTimeline(t.data);
@@ -169,10 +182,18 @@ function Dashboard() {
       setSelfHistory(sh.data);
       setSelfDistribution(sd.data);
       setFusion(f.data);
+      
+      setTherapies(prev => {
+          const newTherapies = th.data || [];
+          if (prev.length !== newTherapies.length) return newTherapies;
+          // Simple deep check to ensure we don't unnecessarily reset the UI if active
+          const isSame = prev.every((p, i) => newTherapies[i] && p.id === newTherapies[i].id);
+          return isSame ? prev : newTherapies;
+      });
     } catch (e) {
       console.error("API error", e);
     }
-  }, [range]);
+  }, [range, user]);
 
   useEffect(() => {
     load();
@@ -246,6 +267,119 @@ function Dashboard() {
       console.error("PDF Generation failed", e);
       alert(`Failed to generate PDF report: ${e.response?.data?.detail || e.message}`);
     }
+  };
+
+  const stopTherapyAudio = useCallback(() => {
+    setActiveTherapyId(null); // Clear active UI state
+    
+    // Clear auto-stop timer
+    if (therapyTimerRef.current) {
+        clearTimeout(therapyTimerRef.current);
+        therapyTimerRef.current = null;
+    }
+    
+    // Clean up file audio
+    if (audioFileRef.current) {
+        audioFileRef.current.pause();
+        audioFileRef.current.currentTime = 0;
+        audioFileRef.current = null;
+    }
+    
+    // Clean up oscillators
+    if (oscillatorsRef.current && oscillatorsRef.current.length > 0) {
+        oscillatorsRef.current.forEach(osc => {
+            try { 
+                osc.stop(); 
+                osc.disconnect(); 
+            } catch(e) { console.error("Error stopping oscillator", e); }
+        });
+        oscillatorsRef.current = [];
+    }
+    
+    // Clean up AudioContext
+    if (audioContextRef.current) {
+        try {
+            audioContextRef.current.close();
+        } catch(e) { console.error("Error closing AudioContext", e); }
+        audioContextRef.current = null;
+    }
+  }, []);
+
+  // Clean up audio on unmount ONLY
+  useEffect(() => {
+      return () => {
+          stopTherapyAudio();
+      };
+  }, [stopTherapyAudio]);
+
+  const playTherapyAudio = async (therapy) => {
+    // 1. Fully stop any existing audio first
+    stopTherapyAudio();
+    
+    // 2. Set the active ID so the UI updates
+    setActiveTherapyId(therapy.id);
+
+    const type = therapy.therapy_type.toLowerCase();
+    
+    // If it's binaural beats, synthesize it via Web Audio API 
+    if (type.includes("binaural")) {
+        try {
+            const baseFreq = therapy.frequency_hz || 432; // Default to 432Hz healing freq if null
+            const beatDiff = 10; // 10Hz Alpha waves for relaxation
+            
+            const actx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Left Ear
+            const oscLeft = actx.createOscillator();
+            const panLeft = actx.createStereoPanner();
+            panLeft.pan.value = -1;
+            oscLeft.type = 'sine';
+            oscLeft.frequency.value = baseFreq;
+            oscLeft.connect(panLeft);
+            panLeft.connect(actx.destination);
+            
+            // Right Ear
+            const oscRight = actx.createOscillator();
+            const panRight = actx.createStereoPanner();
+            panRight.pan.value = 1;
+            oscRight.type = 'sine';
+            oscRight.frequency.value = baseFreq + beatDiff;
+            oscRight.connect(panRight);
+            panRight.connect(actx.destination);
+            
+            oscLeft.start();
+            oscRight.start();
+            
+            // Save to refs
+            audioContextRef.current = actx;
+            oscillatorsRef.current = [oscLeft, oscRight];
+        } catch (err) {
+            console.error("Failed to start Web Audio API:", err);
+            setActiveTherapyId(null);
+            return; // Exit early on error
+        }
+    } else {
+        // Fallback to playing a pleasant ambient track if it's not binaural
+        const audio = new Audio('https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg');
+        audio.crossOrigin = "anonymous";
+        audio.loop = true;
+        audio.volume = 0.5;
+        audioFileRef.current = audio;
+        audio.play().catch(e => {
+            console.error("Error playing audio files", e);
+            setActiveTherapyId(null);
+        });
+        
+        // If there's an error on standard play, activeTherapyId is null, we can return early there too, 
+        // but `audio.play()` is a promise. It's fine to let the timer set, if we stop early it clears itself.
+    }
+    
+    // Auto-stop after prescribed duration
+    const durationMs = (therapy.duration_minutes || 15) * 60 * 1000;
+    therapyTimerRef.current = setTimeout(() => {
+        console.log(`Therapy auto-stopped after ${therapy.duration_minutes} minutes.`);
+        stopTherapyAudio();
+    }, durationMs);
   };
 
   const timelineData =
@@ -378,6 +512,14 @@ function Dashboard() {
               }}>
                 <button
                   className="icon-btn"
+                  onClick={() => { setViewMode('settings'); setIsMenuOpen(false); }}
+                  style={{ justifyContent: 'flex-start', width: '100%', borderRadius: '8px', padding: '10px', gap: '10px' }}
+                >
+                  <Activity size={20} style={{ color: 'var(--primary-blue)' }} /> <span>Profile Settings</span>
+                </button>
+
+                <button
+                  className="icon-btn"
                   onClick={() => { window.location.href = '/support-dashboard'; setIsMenuOpen(false); }}
                   title="Support & Safety"
                   style={{ justifyContent: 'flex-start', width: '100%', borderRadius: '8px', padding: '10px', gap: '10px' }}
@@ -454,6 +596,93 @@ function Dashboard() {
               &larr; Back to Dashboard
             </button>
             <ChatAnalyzer />
+          </div>
+        ) : viewMode === 'settings' ? (
+          <div style={{ marginTop: '2rem' }}>
+            <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+              &larr; Back to Dashboard
+            </button>
+            <div className="glass-panel" style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
+                <h2 style={{ marginBottom: '1.5rem', color: 'var(--text-main)' }}>Profile Settings</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <label style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>My Hobbies</label>
+                        <textarea 
+                            value={user.hobbies || ''}
+                            onChange={(e) => updateUserProfile({ hobbies: e.target.value })}
+                            placeholder="e.g. Playing guitar, Painting, Reading sci-fi novels..."
+                            style={{ 
+                                background: 'var(--bg-input)', 
+                                border: '1px solid var(--border-color)', 
+                                padding: '1rem', 
+                                borderRadius: '8px', 
+                                color: 'var(--text-main)',
+                                minHeight: '100px',
+                                resize: 'vertical'
+                            }}
+                        />
+                        <p style={{ fontSize: '0.8rem', opacity: 0.6 }}>Sentia will gently check in about these to help maintain your routine.</p>
+                    </div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <label style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Preferred Anti-Anxiety Games</label>
+                        <textarea 
+                            value={(() => {
+                                try {
+                                    const parsed = JSON.parse(user.preferred_games);
+                                    if (Array.isArray(parsed)) return parsed.map(g => g.name).join(', ');
+                                    return user.preferred_games || '';
+                                } catch(e) {
+                                    return user.preferred_games || '';
+                                }
+                            })()}
+                            onChange={(e) => updateUserProfile({ preferred_games: e.target.value })}
+                            placeholder="e.g. Tetris, Stardew Valley, Cozy Grove..."
+                            style={{ 
+                                background: 'var(--bg-input)', 
+                                border: '1px solid var(--border-color)', 
+                                padding: '1rem', 
+                                borderRadius: '8px', 
+                                color: 'var(--text-main)',
+                                minHeight: '80px',
+                                resize: 'vertical'
+                            }}
+                        />
+                        <p style={{ fontSize: '0.8rem', opacity: 0.6 }}>Sentia will suggest these or new grounding games during anxiety.</p>
+                    </div>
+                    
+                    <button 
+                        onClick={async () => {
+                            try {
+                                setLoading(true);
+                                await updateProfile({
+                                    hobbies: user.hobbies,
+                                    preferred_games: user.preferred_games
+                                });
+                                alert("Preferences saved successfully!");
+                            } catch (e) {
+                                console.error(e);
+                                alert("Failed to save preferences.");
+                            } finally {
+                                setLoading(false);
+                            }
+                        }}
+                        disabled={loading}
+                        style={{ 
+                            padding: '1rem', 
+                            background: 'var(--accent-color)', 
+                            border: 'none', 
+                            borderRadius: '8px', 
+                            fontWeight: 'bold', 
+                            cursor: 'pointer', 
+                            color: 'var(--accent-text)',
+                            marginTop: '1rem'
+                        }}
+                    >
+                        {loading ? "Saving..." : "Save Preferences"}
+                    </button>
+                </div>
+            </div>
           </div>
         ) : (
           <>
@@ -638,6 +867,123 @@ function Dashboard() {
                     <p className="empty">Loading insights...</p>
                   )}
                 </motion.div>
+
+                {/* Patient Therapies Render */}
+                {therapies.length > 0 && (
+                  <motion.div className="card full" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span role="img" aria-label="music">🎵</span> Doctor Prescribed Therapies
+                      </div>
+                      {activeTherapyId && (
+                         <button 
+                           onClick={() => stopTherapyAudio()} 
+                           style={{ background: 'var(--emotion-anger)', color: 'white', border: 'none', padding: '5px 15px', borderRadius: '20px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold' }}
+                         >
+                           ⏹ Stop Audio
+                         </button>
+                      )}
+                    </h2>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+                      {therapies.map(t => {
+                        const isPlaying = activeTherapyId === t.id;
+                        return (
+                          <div 
+                            key={t.id} 
+                            style={{ 
+                              padding: '1.5rem', 
+                              background: isPlaying ? 'rgba(59, 130, 246, 0.1)' : 'var(--bg-panel)', 
+                              borderRadius: '12px', 
+                              border: isPlaying ? '2px solid var(--primary-blue)' : '1px solid var(--glass-border)',
+                              transition: 'all 0.3s ease',
+                              cursor: 'pointer',
+                              position: 'relative',
+                              overflow: 'hidden'
+                            }}
+                            onClick={() => isPlaying ? stopTherapyAudio() : playTherapyAudio(t)}
+                          >
+                            {isPlaying && (
+                              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.05), transparent)', animation: 'wave 2s infinite linear', pointerEvents: 'none' }} />
+                            )}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                               <h3 style={{ margin: 0, color: 'var(--primary-blue)' }}>{t.name}</h3>
+                               <div style={{ padding: '8px', borderRadius: '50%', background: isPlaying ? 'var(--primary-blue)' : 'rgba(255,255,255,0.05)', color: isPlaying ? 'white' : 'var(--text-secondary)' }}>
+                                   {isPlaying ? <Activity size={16} className="animate-pulse" /> : <Play size={16} />}
+                               </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '1rem' }}>
+                              <span style={{ fontSize: '0.8rem', padding: '4px 8px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.2)', color: 'var(--primary-blue)' }}>
+                                 {t.therapy_type}
+                              </span>
+                              {t.frequency_hz && (
+                                <span style={{ fontSize: '0.8rem', padding: '4px 8px', borderRadius: '4px', background: 'rgba(139, 92, 246, 0.2)', color: '#8b5cf6' }}>
+                                   {t.frequency_hz} Hz
+                                </span>
+                              )}
+                              <span style={{ fontSize: '0.8rem', padding: '4px 8px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.2)', color: '#10b981' }}>
+                                 {t.duration_minutes} Mins
+                              </span>
+                            </div>
+                            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t.description}</p>
+                            <p style={{ margin: '1rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-sub)' }}>
+                              Prescribed: {new Date(t.prescribed_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* AI Prescribed Grounding Games */}
+                {user.preferred_games && (
+                  <motion.div className="card full" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span role="img" aria-label="game">🎮</span> Digital Prescription: Grounding Games
+                    </h2>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                      Sentia has recommended these games to help you ground yourself when anxiety levels are high.
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                      {(() => {
+                        try {
+                          const gameList = JSON.parse(user.preferred_games);
+                          if (!Array.isArray(gameList)) throw new Error("Not a list");
+                          return gameList.map((game, idx) => (
+                            <div 
+                              key={idx}
+                              className="glass-panel"
+                              style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}
+                            >
+                              <img src={game.logo} alt={game.name} style={{ width: '60px', height: '60px', borderRadius: '12px', objectFit: 'cover', background: 'white', padding: '5px' }} />
+                              <div style={{ flex: 1 }}>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{game.name}</h3>
+                                <p style={{ fontSize: '0.75rem', opacity: 0.6, margin: '4px 0 10px 0' }}>Prescribed: {new Date(game.prescribed_at).toLocaleDateString()}</p>
+                                <a 
+                                  href={game.link} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="accent-btn"
+                                  style={{ padding: '6px 15px', fontSize: '0.85rem', display: 'inline-block', textDecoration: 'none', background: 'var(--primary-blue)', color: 'white', borderRadius: '6px' }}
+                                >
+                                  Play Now
+                                </a>
+                              </div>
+                            </div>
+                          ));
+                        } catch (e) {
+                          // Fallback for legacy plain text data
+                          return (
+                            <div className="glass-panel" style={{ padding: '1rem', color: 'var(--text-secondary)' }}>
+                              <p>Legacy preferences: {user.preferred_games}</p>
+                              <p style={{ fontSize: '0.8rem' }}>Sentia will update these with rich cards the next time she recommends a game!</p>
+                            </div>
+                          );
+                        }
+                      })()}
+                    </div>
+                  </motion.div>
+                )}
               </>
             )}
           </>

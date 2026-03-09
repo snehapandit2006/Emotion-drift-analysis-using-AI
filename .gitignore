@@ -4,3 +4,15 @@ __pycache__
 *.pyc
 .env
 .DS_Store
+
+# Data and Logs
+backend/storage/*.db
+backend/storage/sentia_audio/
+backend/storage/sentia_tts/
+*.log
+*out.txt
+*_report.txt
+*_list.txt
+*_list_utf8.txt
+modified_files.txt
+untracked_files.txt

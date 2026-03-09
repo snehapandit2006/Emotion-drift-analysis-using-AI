@@ -15,6 +15,9 @@ class User(Base):
     role = Column(String, default="patient") # 'patient' or 'psychiatrist'
     doctor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
+    hobbies = Column(String, nullable=True)
+    preferred_games = Column(String, nullable=True)
+
     logs = relationship("EmotionLog", back_populates="user")
     alerts = relationship("DriftAlert", back_populates="user")
     reports = relationship("Report", back_populates="user")
@@ -144,3 +147,19 @@ class SentiaMessage(Base):
 
 # Final User relationship updates
 User.sentia_conversations = relationship("SentiaConversation", back_populates="user")
+User.prescribed_therapies = relationship("PrescribedTherapy", back_populates="user")
+
+class PrescribedTherapy(Base):
+    __tablename__ = "prescribed_therapies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    therapy_type = Column(String) # 'binaural', 'custom_frequency', 'guided'
+    name = Column(String)
+    description = Column(String)
+    duration_minutes = Column(Integer)
+    frequency_hz = Column(Integer, nullable=True) # e.g. 432
+    prescribed_at = Column(DateTime, default=datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+
+    user = relationship("User", back_populates="prescribed_therapies")

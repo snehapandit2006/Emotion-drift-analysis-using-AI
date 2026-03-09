@@ -18,8 +18,17 @@ export const AuthProvider = ({ children }) => {
             const userId = localStorage.getItem('user_id');
             const role = localStorage.getItem('user_role');
             const doctorId = localStorage.getItem('user_doctor_id');
+            const hobbies = localStorage.getItem('user_hobbies');
+            const preferredGames = localStorage.getItem('user_preferred_games');
             if (email && userId) {
-                setUser({ email, id: userId, role: role || 'patient', doctor_id: doctorId });
+                setUser({ 
+                    email, 
+                    id: userId, 
+                    role: role || 'patient', 
+                    doctor_id: doctorId,
+                    hobbies: hobbies || '',
+                    preferred_games: preferredGames || ''
+                });
             }
         }
         setLoading(false);
@@ -52,9 +61,18 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('user_id', data.user_id);
             localStorage.setItem('user_role', data.role);
             if (data.doctor_id) localStorage.setItem('user_doctor_id', data.doctor_id);
+            if (data.hobbies) localStorage.setItem('user_hobbies', data.hobbies);
+            if (data.preferred_games) localStorage.setItem('user_preferred_games', data.preferred_games);
 
             setToken(data.access_token);
-            setUser({ email: data.email, id: data.user_id, role: data.role, doctor_id: data.doctor_id });
+            setUser({ 
+                email: data.email, 
+                id: data.user_id, 
+                role: data.role, 
+                doctor_id: data.doctor_id,
+                hobbies: data.hobbies || '',
+                preferred_games: data.preferred_games || ''
+            });
             return true;
         } catch (error) {
             console.error(error);
@@ -87,9 +105,18 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('user_id', data.user_id);
             localStorage.setItem('user_role', data.role);
             if (data.doctor_id) localStorage.setItem('user_doctor_id', data.doctor_id);
+            if (data.hobbies) localStorage.setItem('user_hobbies', data.hobbies);
+            if (data.preferred_games) localStorage.setItem('user_preferred_games', data.preferred_games);
 
             setToken(data.access_token);
-            setUser({ email: data.email, id: data.user_id, role: data.role, doctor_id: data.doctor_id });
+            setUser({ 
+                email: data.email, 
+                id: data.user_id, 
+                role: data.role, 
+                doctor_id: data.doctor_id,
+                hobbies: data.hobbies || '',
+                preferred_games: data.preferred_games || ''
+            });
             return true;
         } catch (error) {
             console.error(error);
@@ -103,12 +130,24 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('user_id');
         localStorage.removeItem('user_role');
         localStorage.removeItem('user_doctor_id');
+        localStorage.removeItem('user_hobbies');
+        localStorage.removeItem('user_preferred_games');
         setToken(null);
         setUser(null);
     };
 
+    const updateUserProfile = (newData) => {
+        if (newData.hobbies !== undefined) localStorage.setItem('user_hobbies', newData.hobbies);
+        if (newData.preferred_games !== undefined) localStorage.setItem('user_preferred_games', newData.preferred_games);
+        
+        setUser(prev => ({
+            ...prev,
+            ...newData
+        }));
+    };
+
     return (
-        <AuthContext.Provider value={{ user, token, login, signup, googleLogin, logout, loading }}>
+        <AuthContext.Provider value={{ user, token, login, signup, googleLogin, logout, updateUserProfile, loading }}>
             {children}
         </AuthContext.Provider>
     );

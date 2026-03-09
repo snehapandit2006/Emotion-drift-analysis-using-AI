@@ -1,0 +1,20 @@
+﻿Total Patients Found: 2
+
+==================================================
+PATIENT: sneha20061901@gmail.com (ID: 1)
+==================================================
+Text Logs Count: 65
+  - [2026-03-08 07:08:40.770621] Emotion: sadness (0.9928081035614014)
+  - [2026-03-08 07:00:45.051317] Emotion: sadness (0.9928081035614014)
+  - [2026-03-08 07:00:11.325141] Emotion: neutral (0.5532128214836121)
+Face Logs Count: 26
+Total Alerts: 1
+  [ALERT] ID: 1 | Severity: 0.667 | Level: HIGH (LEGACY)
+          Message: 'Significant emotional drift detected (Severity: 0.667)'
+
+==================================================
+PATIENT: test@example.com (ID: 2)
+==================================================
+Text Logs Count: 0
+Face Logs Count: 0
+Total Alerts: 0

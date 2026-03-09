@@ -1,18 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mic, MicOff, Loader, Activity, X } from 'lucide-react';
-import { sendDoctorVoiceQuery } from '../api';
+import { sendDoctorVoiceQuery, postTTS } from '../api';
+
+const SARVAM_VOICES = ['aditya', 'ritu', 'ashutosh', 'priya', 'neha', 'rahul', 'pooja', 'rohan', 'simran', 'kavya', 'amit', 'dev', 'ishita', 'shreya', 'ratan', 'varun', 'manan', 'sumit', 'roopa', 'kabir', 'aayan', 'shubh', 'advait', 'amelia', 'sophia', 'anand', 'tanya', 'tarun', 'sunny', 'mani', 'gokul', 'vijay', 'shruti', 'suhani', 'mohit', 'kavitha', 'rehan', 'soham', 'rupali'];
 
 const DoctorVoiceAssistant = ({ patientId = null }) => {
     const [isListening, setIsListening] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [botResponse, setBotResponse] = useState(null);
     const [isSpeaking, setIsSpeaking] = useState(false);
-    const [isOpen, setIsOpen] = useState(false); // Controls if the chat bubble is visible
+    const [isOpen, setIsOpen] = useState(false);
+    const [selectedVoice, setSelectedVoice] = useState('ishita');
+    const [lang, setLang] = useState('en-IN'); // Default to en-IN for better Hinglish support
 
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
     const recognitionRef = useRef(null);
+    const audioPlayerRef = useRef(null);
     const transcriptRef = useRef('');
     const navigate = useNavigate();
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -21,7 +26,7 @@ const DoctorVoiceAssistant = ({ patientId = null }) => {
         if (SpeechRecognition) {
             const recognition = new SpeechRecognition();
             recognition.continuous = false;
-            recognition.lang = 'en-US';
+            recognition.lang = lang; // Use the selected language
             recognition.interimResults = true;
 
             recognition.onresult = (event) => {
@@ -42,12 +47,12 @@ const DoctorVoiceAssistant = ({ patientId = null }) => {
             };
             recognitionRef.current = recognition;
         }
-    }, [isListening]);
+    }, [isListening, lang]); // Re-init on language change
 
     const startListening = async () => {
         setBotResponse(null);
         setIsOpen(true);
-        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        if (audioPlayerRef.current) audioPlayerRef.current.pause();
         setIsSpeaking(false);
         transcriptRef.current = '';
 
@@ -106,8 +111,8 @@ const DoctorVoiceAssistant = ({ patientId = null }) => {
                 navigate(data.action_payload.url);
             }
 
+            await speak(data.summary);
             setBotResponse(data.summary);
-            speak(data.summary);
 
         } catch (err) {
             console.error(err);
@@ -117,20 +122,40 @@ const DoctorVoiceAssistant = ({ patientId = null }) => {
         }
     };
 
-    const speak = (text) => {
-        if (!window.speechSynthesis) return;
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.onstart = () => setIsSpeaking(true);
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
-        window.speechSynthesis.speak(utterance);
+    const speak = async (text) => {
+        if (audioPlayerRef.current) {
+            audioPlayerRef.current.pause();
+            audioPlayerRef.current.currentTime = 0;
+            setIsSpeaking(false);
+        }
+
+        try {
+            const { data } = await postTTS(text, selectedVoice);
+            const audioUrl = URL.createObjectURL(data);
+            const audio = new Audio(audioUrl);
+            audioPlayerRef.current = audio;
+
+            audio.onended = () => {
+                setIsSpeaking(false);
+                URL.revokeObjectURL(audioUrl);
+            };
+            audio.onerror = () => {
+                setIsSpeaking(false);
+                URL.revokeObjectURL(audioUrl);
+            };
+
+            setIsSpeaking(true);
+            await audio.play();
+        } catch (error) {
+            console.error("TTS Audio Failed:", error);
+            setIsSpeaking(false);
+        }
     };
 
     const handleClose = () => {
         setIsOpen(false);
         setBotResponse(null);
-        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        if (audioPlayerRef.current) audioPlayerRef.current.pause();
         setIsSpeaking(false);
     };
 
@@ -166,16 +191,37 @@ const DoctorVoiceAssistant = ({ patientId = null }) => {
                         <X size={16} />
                     </button>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-                        <div style={{
-                            background: isListening ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.2)',
-                            color: isListening ? '#ef4444' : 'var(--primary-blue)',
-                            padding: '8px',
-                            borderRadius: '50%'
-                        }}>
-                            {isProcessing ? <Activity size={18} className="spin-slow" /> : <Activity size={18} />}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{
+                                background: isListening ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.2)',
+                                color: isListening ? '#ef4444' : 'var(--primary-blue)',
+                                padding: '8px',
+                                borderRadius: '50%'
+                            }}>
+                                {isProcessing ? <Activity size={18} className="spin-slow" /> : <Activity size={18} />}
+                            </div>
+                            <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--primary-blue)' }}>Sentia Voice</span>
                         </div>
-                        <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--primary-blue)' }}>Sentia Voice Assistant</span>
+                        <div style={{ display: 'flex', gap: '5px', alignItems: 'center', marginRight: '20px' }}>
+                            <select 
+                                value={lang} 
+                                onChange={(e) => setLang(e.target.value)}
+                                style={{ background: 'var(--bg-main)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '2px 4px', fontSize: '11px', cursor: 'pointer', outline: 'none' }}
+                                title="Recognition Language"
+                            >
+                                <option value="en-IN">English (IN)</option>
+                                <option value="hi-IN">Hindi</option>
+                            </select>
+                            <select 
+                                value={selectedVoice} 
+                                onChange={(e) => setSelectedVoice(e.target.value)}
+                                style={{ background: 'var(--bg-main)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '2px 4px', fontSize: '11px', cursor: 'pointer', outline: 'none' }}
+                                title="Speaker Voice"
+                            >
+                                {SARVAM_VOICES.map(v => <option key={v} value={v}>{v.charAt(0).toUpperCase() + v.slice(1)}</option>)}
+                            </select>
+                        </div>
                     </div>
 
                     <div style={{ fontSize: '0.95rem', lineHeight: '1.5', minHeight: '60px', display: 'flex', alignItems: 'center' }}>

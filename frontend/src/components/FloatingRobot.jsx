@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Mic, Send, Volume2, VolumeX, Bot, Sparkles, MicOff } from 'lucide-react';
-import { postBotChat, postBotChatAudio } from '../api';
+import { postBotChat, postBotChatAudio, postTTS } from '../api';
 import './FloatingRobot.css';
 import SentiaFullScreenChat from './SentiaFullScreenChat';
 
@@ -35,6 +35,7 @@ const FloatingRobot = () => {
     const [audioBlob, setAudioBlob] = useState(null);
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
+    const audioPlayerRef = useRef(null);
 
     // Web Speech API - Recognition
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -130,26 +131,37 @@ const FloatingRobot = () => {
         }
     };
 
-    // Web Speech API - Synthesis
-    const speak = (text) => {
-        if (!isTtsEnabled || !window.speechSynthesis) return;
+    // TTS Integration API - Synthesis
+    const speak = async (text) => {
+        if (!isTtsEnabled) return;
 
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
+        if (audioPlayerRef.current) {
+            audioPlayerRef.current.pause();
+            audioPlayerRef.current.currentTime = 0;
+            setIsSpeaking(false);
+        }
 
-        // Find a preferred voice
-        const voices = window.speechSynthesis.getVoices();
-        const preferredVoice = voices.find(v => v.name.includes("Google US English") || v.name.includes("Female"));
-        if (preferredVoice) utterance.voice = preferredVoice;
+        try {
+            const { data } = await postTTS(text);
+            const audioUrl = URL.createObjectURL(data);
+            const audio = new Audio(audioUrl);
+            audioPlayerRef.current = audio;
 
-        utterance.rate = 0.95;
-        utterance.pitch = 1.05;
+            audio.onended = () => {
+                setIsSpeaking(false);
+                URL.revokeObjectURL(audioUrl);
+            };
+            audio.onerror = () => {
+                setIsSpeaking(false);
+                URL.revokeObjectURL(audioUrl);
+            };
 
-        utterance.onstart = () => setIsSpeaking(true);
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
-
-        window.speechSynthesis.speak(utterance);
+            setIsSpeaking(true);
+            await audio.play();
+        } catch (error) {
+            console.error("TTS Audio Failed:", error);
+            setIsSpeaking(false);
+        }
     };
 
     const isSubmitting = useRef(false);
@@ -182,14 +194,14 @@ const FloatingRobot = () => {
             }
 
             const botMsg = response.response;
+            await speak(botMsg);
             setMessages(prev => [...prev, { text: botMsg, isBot: true }]);
-            speak(botMsg);
             window.dispatchEvent(new CustomEvent('refresh-dashboard'));
         } catch (error) {
             console.error("Bot chat error:", error);
             const fallbackMsg = "I'm having a little trouble connecting right now, but I'm still here. Could you try sharing that one more time?";
+            await speak(fallbackMsg);
             setMessages(prev => [...prev, { text: fallbackMsg, isBot: true }]);
-            speak(fallbackMsg);
         } finally {
             setIsLoading(false);
             isSubmitting.current = false;

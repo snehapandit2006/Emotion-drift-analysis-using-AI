@@ -292,6 +292,18 @@ def bot_chat(req: BotChatRequest, current_user: User = Depends(get_current_user)
     # 3. Generate Response
     bot_payload = get_bot_response(req.text, intel, user_id=current_user.id)
     
+    # 4. OVERRIDE EMOTION IN DB
+    if bot_payload and bot_payload.get("emotion"):
+        from db.database import SessionLocal
+        from db.models import EmotionLog
+        db = SessionLocal()
+        latest_log = db.query(EmotionLog).filter(EmotionLog.user_id == current_user.id).order_by(EmotionLog.created_at.desc()).first()
+        if latest_log:
+            latest_log.emotion = bot_payload["emotion"]
+            db.commit()
+        db.close()
+        intel["emotion"] = bot_payload["emotion"]
+    
     return {
         "response": bot_payload["response"],
         "emotion": intel["emotion"],
@@ -324,6 +336,18 @@ async def bot_chat_audio(
     # 3. Generate Response
     bot_payload = get_bot_response(text, intel, user_id=current_user.id)
     
+    # 4. OVERRIDE EMOTION IN DB
+    if bot_payload and bot_payload.get("emotion"):
+        from db.database import SessionLocal
+        from db.models import EmotionLog
+        db = SessionLocal()
+        latest_log = db.query(EmotionLog).filter(EmotionLog.user_id == current_user.id).order_by(EmotionLog.created_at.desc()).first()
+        if latest_log:
+            latest_log.emotion = bot_payload["emotion"]
+            db.commit()
+        db.close()
+        intel["emotion"] = bot_payload["emotion"]
+    
     return {
         "response": bot_payload["response"],
         "emotion": intel["emotion"],
@@ -331,3 +355,87 @@ async def bot_chat_audio(
         "audio_path": audio_path,
         "trace": bot_payload["trace"]
     }
+
+
+# ---------------------------------------------------------
+# TEXT TO SPEECH ENDPOINT (Sarvam AI)
+# ---------------------------------------------------------
+from fastapi import Response
+import base64
+import requests
+
+class TTSRequest(BaseModel):
+    text: str
+    target_language_code: str = "hi-IN"
+    speaker: str = "ishita"
+    model: str = "bulbul:v3"
+
+@router.post("/chat/tts")
+def generate_sarvam_tts(req: TTSRequest, current_user: User = Depends(get_current_user)):
+    from core.config import settings
+    import os
+    
+    print(f"[TTS ENTRY] Received request with text: {repr(req.text)} | Speaker: {req.speaker}")
+    
+    # SAFEGUARD: Sarvam crashes on empty text. Return empty success if text is missing.
+    if not req.text or not str(req.text).strip():
+        print("[TTS DEBUG] Empty text caught by safeguard. Returning early.")
+        return {"audios": [""], "language_code": req.target_language_code}
+
+    # Supported speakers for bulbul:v3
+    SUPPORTED_SPEAKERS = [
+        'aditya', 'ritu', 'ashutosh', 'priya', 'neha', 'rahul', 'pooja', 'rohan', 
+        'simran', 'kavya', 'amit', 'dev', 'ishita', 'shreya', 'ratan', 'varun', 
+        'manan', 'sumit', 'roopa', 'kabir', 'aayan', 'shubh', 'advait', 'amelia', 
+        'sophia', 'anand', 'tanya', 'tarun', 'sunny', 'mani', 'gokul', 'vijay', 
+        'shruti', 'suhani', 'mohit', 'kavitha', 'rehan', 'soham', 'rupali'
+    ]
+    
+    selected_speaker = req.speaker
+    if selected_speaker not in SUPPORTED_SPEAKERS:
+        print(f"[TTS ALERT] Falling back from incompatible speaker '{selected_speaker}' to 'ishita'")
+        selected_speaker = "ishita"
+
+    api_key = os.environ.get("LLM_API_KEY", settings.LLM_API_KEY)
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Sarvam TTS API key not configured")
+        
+    url = "https://api.sarvam.ai/text-to-speech"
+    headers = {
+        "api-subscription-key": api_key,
+        "Content-Type": "application/json"
+    }
+    
+    print(f"[TTS DEBUG] Text sent to Sarvam: {req.text[:50]}... (Len: {len(req.text)}) Speaker: {selected_speaker}")
+    
+    payload = {
+        "inputs": [req.text], # Sarvam uses "inputs" array for text
+        "target_language_code": req.target_language_code,
+        "speaker": selected_speaker,
+        "model": req.model,
+        "pace": 1.0,
+        "enable_preprocessing": True
+    }
+    
+    try:
+        res = requests.post(url, headers=headers, json=payload, timeout=20)
+        if res.status_code != 200:
+            print(f"[TTS Error] {res.status_code} - {res.text}")
+            raise HTTPException(status_code=502, detail="Failed to generate TTS audio")
+            
+        print(f"[TTS SUCCESS] Voice generated correctly.")
+        data = res.json()
+        audio_b64 = data.get("audios", [""])[0]
+        if not audio_b64:
+            raise HTTPException(status_code=502, detail="No audio returned from TTS payload")
+            
+        audio_bytes = base64.b64decode(audio_b64)
+        return Response(content=audio_bytes, media_type="audio/wav")
+        
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=504, detail="TTS service timeout")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[TTS Exception] {e}")
+        raise HTTPException(status_code=500, detail=str(e))

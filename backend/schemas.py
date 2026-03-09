@@ -5,6 +5,8 @@ from datetime import datetime
 class UserBase(BaseModel):
     email: str
     role: str = "patient"
+    hobbies: Optional[str] = None
+    preferred_games: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
@@ -51,4 +53,22 @@ class MedicalEntry(MedicalEntryBase):
     user_id: int
     created_at: datetime
     
+    model_config = ConfigDict(from_attributes=True)
+
+class PrescribedTherapyBase(BaseModel):
+    therapy_type: str
+    name: str
+    description: str
+    duration_minutes: int
+    frequency_hz: Optional[int] = None
+    is_active: bool = True
+
+class PrescribedTherapyCreate(PrescribedTherapyBase):
+    user_id: int
+
+class PrescribedTherapySchema(PrescribedTherapyBase):
+    id: int
+    user_id: int
+    prescribed_at: datetime
+
     model_config = ConfigDict(from_attributes=True)

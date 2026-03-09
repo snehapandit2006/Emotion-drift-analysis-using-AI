@@ -2,12 +2,96 @@ import os
 import requests
 import json
 import re
+from datetime import datetime
 
 from core.config import settings
+
+# Curated library of anti-anxiety games
+GAME_LIBRARY = {
+    "Tetris": {
+        "link": "https://tetris.com/play-tetris",
+        "logo": "https://upload.wikimedia.org/wikipedia/commons/f/f7/Tetris_logo.png",
+        "description": "Research shows Tetris helps block traumatic memories and reduces anxious spiraling."
+    },
+    "2048": {
+        "link": "https://play2048.co/",
+        "logo": "https://upload.wikimedia.org/wikipedia/commons/3/30/2048_logo.png",
+        "description": "Math-based puzzle focusing on logic and strategy to ground the mind."
+    },
+    "Flow": {
+        "link": "https://www.agame.com/game/flow-free",
+        "logo": "https://is1-ssl.mzstatic.com/image/thumb/Purple126/v4/4a/d6/3c/4ad63c1d-19cc-8461-9f93-162808c16d56/AppIcon-0-0-1x_U007emarketing-0-0-0-7-0-0-sRGB-0-0-0-GLES2_U002c0-512MB-85-220-0-0.png/246x0w.webp",
+        "description": "Fluid puzzle game promoting relaxation through color-matching logic."
+    }
+}
 
 # LLM Configuration
 LLM_API_KEY = settings.LLM_API_KEY
 LLM_MODEL = settings.LLM_MODEL
+
+def scrub_tech_tags(text: str) -> str:
+    """
+    Nuclear scrubber to remove <think> blocks, square brackets, and URLs.
+    Ensures clean conversational output for both patients and doctors.
+    If the model ONLY outputs a <think> block, we extract its content.
+    """
+    if not text:
+        return ""
+    
+    # 0. Cache original for fallback
+    original = text
+    
+    # 1. Strip Thought Blocks
+    clean = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    clean = re.sub(r"<think>.*", "", clean, flags=re.DOTALL)
+
+    # 2. BRUTE-FORCE TAG REMOVAL
+    clean = re.sub(r"\[.*?\]", "", clean, flags=re.DOTALL)
+    clean = re.sub(r"［.*?］", "", clean, flags=re.DOTALL)
+    
+    # 3. URL SCRUBBING
+    clean = re.sub(r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+", "", clean)
+    
+    clean = clean.strip()
+
+    # 4. IF EMPTY BUT HAD THINK BLOCK, EXTRACT THINK CONTENT
+    if not clean and "<think>" in original:
+        think_content = re.search(r"<think>(.*?)(?:</think>|$)", original, flags=re.DOTALL)
+        if think_content:
+            clean = think_content.group(1).strip()
+            # Still apply other scrubbers to the extracted content (except think)
+            clean = re.sub(r"\[.*?\]", "", clean, flags=re.DOTALL)
+            clean = re.sub(r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+", "", clean)
+            clean = clean.strip()
+            print(f"[SCRUBBER] Extracted content from <think> block as no other text was found.")
+
+    # 5. Final clean up
+    clean = re.sub(r"(?i)here's the link:?\s*$", "", clean).strip()
+    clean = re.sub(r"(?i)click here:?\s*$", "", clean).strip()
+    
+    return clean
+
+def text_to_digit(text: str) -> str:
+    """
+    Converts verbal numbers (one, two, etc.) to digits (1, 2, etc.) for patient ID parsing.
+    Handles basic punctuation like 'one?'.
+    """
+    num_map = {
+        "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+        "six": "6", "seven": "7", "eight": "8", "nine": "9", "ten": "10",
+        "एक": "1", "दो": "2", "तीन": "3", "चार": "4", "पाँच": "5",
+        "छह": "6", "सात": "7", "आठ": "8", "नौ": "9", "दस": "10"
+    }
+    # Use regex to replace whole words only, ignoring punctuation
+    processed = text.lower()
+    for word, digit in num_map.items():
+        # Use word boundaries only for English words to avoid partial matches (e.g., "one" in "alone")
+        # Hindi characters don't always trigger \b accurately in some regex environments.
+        if any(ord(c) > 127 for c in word):
+            processed = re.sub(rf'{word}', digit, processed)
+        else:
+            processed = re.sub(rf'\b{word}\b', digit, processed)
+    return processed
 
 def generate_structured_fallback(user_text: str, state: dict) -> str:
     """
@@ -92,7 +176,11 @@ def classify_intent_light(user_text: str) -> str:
         return "storytelling"
 
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{LLM_MODEL}:generateContent?key={LLM_API_KEY}"
+        url = "https://api.sarvam.ai/v1/chat/completions"
+        headers = {
+            "api-subscription-key": LLM_API_KEY,
+            "Content-Type": "application/json"
+        }
         
         prompt = (
             "Classify the following user message into exactly ONE of these categories: "
@@ -102,15 +190,17 @@ def classify_intent_light(user_text: str) -> str:
         )
         
         payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 10}
+            "model": LLM_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.1,
+            "max_tokens": 15
         }
         
-        res = requests.post(url, json=payload, timeout=4.0)
+        res = requests.post(url, headers=headers, json=payload, timeout=4.0)
         if res.status_code == 200:
             result = res.json()
             try:
-                intent = result["candidates"][0]["content"]["parts"][0]["text"].strip().lower()
+                intent = result["choices"][0]["message"]["content"].strip().lower()
                 return intent
             except (KeyError, IndexError):
                 print(f"[Intent Classifier] Parsing Error or Safety Block. Result: {result}")
@@ -125,64 +215,120 @@ def classify_intent_light(user_text: str) -> str:
     if any(w in text_lower for w in ["no", "not", "actually"]): return "clarification"
     return "storytelling"
 
-def generate_therapeutic_response(user_text: str, fused_emotion: str, dialogue_context: str = "") -> dict:
+def generate_therapeutic_response(user_text: str, fused_emotion: str, dialogue_context: str = "", hobbies: str = None, games: str = None, history: list = None, ui_lang: str = None) -> dict:
     """
-    Calls Gemini API with structured policy injection.
+    Calls Sarvam API with structured policy injection and history awareness.
     """
     if not LLM_API_KEY:
         print("[LLM Bridge] WARNING: LLM_API_KEY is missing. Falling back to heuristic mode.")
         return None
 
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{LLM_MODEL}:generateContent?key={LLM_API_KEY}"
+        url = "https://api.sarvam.ai/v1/chat/completions"
+        headers = {
+            "api-subscription-key": LLM_API_KEY,
+            "Content-Type": "application/json"
+        }
         
+        # 0. Format History
+        history_str = ""
+        if history:
+            history_str = "RECENT CONVERSATION HISTORY:\n"
+            for msg in history:
+                role = "User" if msg["role"] == "user" else "Sentia"
+                history_str += f"{role}: {msg['content']}\n"
+            history_str += "\n"
+
+        # Personalized Logic
+        hobby_str = f"The user enjoys: {hobbies}." if hobbies else ""
+        games_str = f"The user plays these for anxiety: {games}." if games else ""
+
+        library_str = "\n".join([f"- {name}: {info['link']} ({info['description']})" for name, info in GAME_LIBRARY.items()])
+        
+        # Match the UI language if possible
+        lang_anchor = f"The user's current interface language is: {ui_lang}." if ui_lang else ""
+
         # Structure is key: State first, Personality second
-        # Merged Intent + Response + Type pattern for single network trip
         full_system_instructions = (
             f"{dialogue_context}\n\n"
             "SYSTEM INSTRUCTIONS:\n"
-            "You are Sentia, a warm, professional, yet deeply human-centric AI Therapist.\n"
-            "1. Classify the user turn into one of: [Storytelling, Avoidance, Direct Request, Emotional Disclosure, Greeting, Clarification, Medical Disclosure].\n"
-            "2. Respond with empathy and natural conversational flow. Avoid robotic templates. Vary your sentence length.\n"
-            "3. If appropriate, include a gentle probe to help the patient explore further.\n\n"
-            "EXAMPLE FORMAT:\n"
-            "[INTENT: storytelling]\n"
-            "I hear how much weight you're carrying right now. It sounds like that clinical experience was physically exhausting. How are you managing the discomfort today?\n"
-            "[TYPE: causal_probe]\n\n"
-            "MANDATORY RESPONSE FORMAT:\n"
+            "You are Sentia, a deeply empathetic and naturally conversational human therapist.\n"
+            f"{hobby_str} {games_str} {lang_anchor}\n" 
+            "GAME LIBRARY (RESEARCH-BACKED):\n"
+            f"{library_str}\n\n"
+            "CRITICAL RULES:\n"
+            "1. LANGUAGE MIRROR: Reply in the EXACT SAME LANGUAGE and SCRIPT as the user.\n"
+            "   - If user uses Roman letters (Hinglish/English), you MUST use Roman letters.\n"
+            "   - If the user is ambiguous, use the UI language anchor: {ui_lang or 'English (IN)'}.\n"
+            "   - IMPORTANT: Do NOT drift into Gujarati or Marathi if the user is speaking Hindi/Hinglish.\n"
+            "2. BREVITY: Keep your response short and conversational (MAX 2 sentences).\n"
+            "3. NO AI TAGS: NEVER use ANY square brackets [ ] in your output speech. Just talk naturally.\n"
+            "4. NO LINKS: NEVER include direct URLs or game links in your spoken text.\n"
+            "5. FORMAT: [EMOTION: category], [INTENT: category], [TYPE: category].\n"
+            "6. GROUNDING PROTOCOL: If panic/anxiety, pick a game name. Include [ACTION: PRESCRIBE_GAME: GameName] at the end.\n\n"
+            "MANDATORY FORMAT:\n"
+            "[EMOTION: category]\n"
             "[INTENT: category]\n"
-            "Your warm, natural response here.\n"
-            "[TYPE: probe_type]"
+            "[TYPE: probe_type]\n"
+            "Your warm response text here. (ABSOLUTELY NO BRACKETS OR URLs HERE).\n"
+            "[ACTION: PRESCRIBE_GAME: GameName]"
         )
         
-        full_prompt = f"{full_system_instructions}\n\nUser: '{user_text}'. Current Emotion Context: {fused_emotion}."
-        
         payload = {
-            "contents": [{"parts": [{"text": full_prompt}]}],
-            "generationConfig": {"temperature": 0.5, "maxOutputTokens": 300}
+            "model": LLM_MODEL,
+            "messages": [
+                {"role": "system", "content": full_system_instructions},
+                {"role": "user", "content": f"{history_str}Current User Message: '{user_text}'. Current Emotion Context: {fused_emotion}."}
+            ],
+            "temperature": 0.5,
+            "max_tokens": 300
         }
         
-        res = requests.post(url, json=payload, timeout=20)
+        res = requests.post(url, headers=headers, json=payload, timeout=20)
         
         if res.status_code != 200:
             print(f"[LLM Bridge Error] Status: {res.status_code} - Response: {res.text}")
             return None
             
         result = res.json()
-        if "candidates" in result:
-            raw_text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+        if "choices" in result and len(result["choices"]) > 0:
+            raw_text = result["choices"][0]["message"]["content"].strip()
             
             # Extraction logic
             intent = extract_intent_block(raw_text)
             probe_type = extract_probe_type(raw_text)
+            emotion_tag = extract_emotion_block(raw_text)
+            prescribed_game = extract_action_block(raw_text)
             
-            # Clean response (remove tags)
-            clean_resp = re.sub(r"\[INTENT:.*?\]", "", raw_text)
-            clean_resp = re.sub(r"\[TYPE:.*?\]", "", clean_resp).strip()
+            # Clean response using centralized scrubber
+            clean_resp = scrub_tech_tags(raw_text)
             
-            return {"text": clean_resp, "type": probe_type, "intent": intent}
+            # 5. SALVAGE LOGIC: If cleaning destroyed everything, try to find text lines
+            if not clean_resp and raw_text:
+                lines = [line.strip() for line in raw_text.split('\n') if line.strip() and "[" not in line and "［" not in line and "<" not in line]
+                if lines:
+                    clean_resp = " ".join(lines)
             
-        print("[LLM Bridge Error] No candidates found in response:", result)
+            # 5. PERSISTENT LOGGING for debugging leakage
+            print(f"[SENTIA DEBUG] CLEANED: {clean_resp[:50]}...")
+            try:
+                with open("llm_debug.log", "a", encoding="utf-8") as f:
+                    f.write(f"\n--- {datetime.utcnow()} ---\n")
+                    f.write(f"RAW: {raw_text}\n")
+                    f.write(f"CLEANED: {clean_resp}\n")
+                    f.write("-" * 50 + "\n")
+            except Exception as e:
+                print(f"[SENTIA DEBUG] Logging Failed: {e}")
+            
+            return {
+                "text": clean_resp, 
+                "type": probe_type, 
+                "intent": intent, 
+                "emotion": emotion_tag,
+                "prescribed_game": prescribed_game
+            }
+            
+        print("[LLM Bridge Error] No choices found in response:", result)
         return None
         
     except Exception as e:
@@ -197,6 +343,14 @@ def extract_intent_block(llm_response: str) -> str:
     match = re.search(r"\[INTENT:\s*(.*?)\]", llm_response, re.IGNORECASE)
     return match.group(1).strip().lower() if match else "storytelling"
 
+def extract_emotion_block(llm_response: str) -> str:
+    match = re.search(r"\[EMOTION:\s*(.*?)\]", llm_response, re.IGNORECASE)
+    return match.group(1).strip().lower() if match else None
+
+def extract_action_block(llm_response: str) -> str:
+    match = re.search(r"\[ACTION: PRESCRIBE_GAME:\s*(.*?)\]", llm_response, re.IGNORECASE)
+    return match.group(1).strip() if match else None
+
 def generate_clinical_summary(structured_history: list) -> str:
     """
     Phase 3: LLM-Based Context Summary
@@ -206,7 +360,11 @@ def generate_clinical_summary(structured_history: list) -> str:
         return _heuristic_summary(structured_history)
         
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{LLM_MODEL}:generateContent?key={LLM_API_KEY}"
+        url = "https://api.sarvam.ai/v1/chat/completions"
+        headers = {
+            "api-subscription-key": LLM_API_KEY,
+            "Content-Type": "application/json"
+        }
         
         prompt = (
             "You are a clinical summarization assistant.\n"
@@ -219,15 +377,18 @@ def generate_clinical_summary(structured_history: list) -> str:
         )
         
         payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 500}
+            "model": LLM_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.1,
+            "max_tokens": 500
         }
         
-        res = requests.post(url, json=payload, timeout=20)
+        res = requests.post(url, headers=headers, json=payload, timeout=20)
         if res.status_code == 200:
             result = res.json()
-            if "candidates" in result:
-                text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+            if "choices" in result and len(result["choices"]) > 0:
+                raw_text = result["choices"][0]["message"]["content"].strip()
+                text = scrub_tech_tags(raw_text)
                 if len(text) > 30:
                     return text
                 else:
@@ -250,66 +411,114 @@ def _heuristic_summary(history: list) -> str:
     return f"Based on the last {len(emotions)} sessions, the patient's primary emotion shifted from {first} to {last}."
 
 def handle_doctor_voice_query(query: str, db, doctor_id: int, context_patient_id: int = None) -> str:
-    """
-    Deterministic regex-based routing for clinical voice assistant.
-    Commands:
-    1. "Show emotional trend for patient {id}"
-    2. "Any high emotional risk patients?"
-    3. "Summarize emotional history [for patient {id}]"
-    """
-    q_lower = query.lower()
-    
     from db.models import DriftAlert, EmotionLog, User
+    import json
+    import re
+    import requests
     
-    # 1. Any high emotional risk patients?
+    print(f"[DOCTOR QUERY ENTRY] Query: {repr(query)} | Context ID: {context_patient_id}")
+    
+    q_lower = text_to_digit(query.lower())
+    
+    # Nuclear Extraction: Support patient, pt, id, #, number, mareez (Hindi), user, etc.
+    patient_id = None
+    pt_match = re.search(r'(?:patient|id|number|pt|#|user|मरीज|mareez)\s*[:#-]?\s*(\d+)', q_lower)
+    if pt_match:
+        patient_id = int(pt_match.group(1))
+    
+    # Secondary Fallback: If summarizing or trends, grab any first digit
+    summary_keywords = ["summarize", "summarise", "summary", "history", "trend", "log", "समरी", "इतिहास", "ट्रेंड"]
+    if not patient_id and any(w in q_lower for w in summary_keywords):
+        digit_match = re.search(r'(\d+)', q_lower)
+        if digit_match:
+            patient_id = int(digit_match.group(1))
+            
+    # CRITICAL: If no number found but we have context_patient_id, use it.
+    if not patient_id:
+        patient_id = context_patient_id
+    
+    response_text = ""
+    
+    if patient_id:
+        logs = db.query(EmotionLog).filter(EmotionLog.user_id == patient_id).order_by(EmotionLog.created_at.desc()).limit(15).all()
+        
+        if not logs:
+            response_text = f"I couldn't find any recent emotional logs for patient {patient_id}. Please ensure the patient ID is correct or check the database."
+            return response_text
+            
+        history_data = [{"date": l.created_at.isoformat(), "emotion": l.emotion, "confidence": round(l.confidence, 2), "text": l.text} for l in reversed(logs)]
+        
+        if LLM_API_KEY:
+            url = "https://api.sarvam.ai/v1/chat/completions"
+            headers = {"api-subscription-key": LLM_API_KEY, "Content-Type": "application/json"}
+            prompt = (
+                "You are Sentia Voice, a clinical data assistant for a psychiatrist.\n"
+                f"The doctor just asked a voice query: '{query}'\n"
+                "CRITICAL RULES for TTS CLARITY:\n"
+                "1. If answering in Hindi, YOU MUST USE DEVANAGARI SCRIPT (हिन्दी लिपि). Do not use Hinglish or English letters for Hindi words.\n"
+                "2. If answering in English, use standard English script.\n"
+                "3. Match the doctor's language perfectly. If they use a mix, choose the dominant one and use its native script.\n"
+                "4. Keep it brief and professional. Directly answer based exclusively on the patient data below.\n"
+                "5. If the emotional drift indicates high anxiety, prolonged sadness, or anger, recommend Music Therapy (e.g. 432Hz Binaural Beats).\n\n"
+                f"Patient ID {patient_id} Recent Logs:\n{json.dumps(history_data, indent=2)}"
+            )
+            print(f"[DOCTOR LLM DEBUG] Calling Sarvam API. Model: {LLM_MODEL} | API Key exists: {bool(LLM_API_KEY)}")
+            try:
+                payload = {
+                    "model": LLM_MODEL,
+                    "messages": [
+                        {"role": "system", "content": "You are Sentia Voice, a professional clinical assistant. You MUST respond in the NATIVE SCRIPT of the language (Devanagari for Hindi, Latin for English). NO ROMANIZED HINDI."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.1,
+                    "max_tokens": 250
+                }
+                print(f"[DOCTOR LLM DEBUG] Sending Payload: {json.dumps(payload)}")
+                res = requests.post(url, headers=headers, json=payload, timeout=15)
+                print(f"[DOCTOR LLM DEBUG] Sarvam Status: {res.status_code}")
+                if res.status_code == 200:
+                    result = res.json()
+                    raw_text = result["choices"][0]["message"]["content"].strip()
+                    response_text = scrub_tech_tags(raw_text)
+                    if response_text:
+                        print(f"[DOCTOR LLM DEBUG] Success. Summary Length: {len(response_text)}")
+                        return response_text
+                else:
+                    print(f"[DOCTOR LLM DEBUG] Sarvam Error Body: {res.text}")
+            except Exception as e:
+                print("[DOCTOR LLM DEBUG] Connection Error:", e)
+        
+        # If we got here, it means the LLM failed but we DID have a patient ID.
+        # Don't say "ID missing"; say "Summary failed".
+        response_text = f"I retrieved the logs for patient {patient_id}, but I'm having trouble generating a conversational summary right now. Please check their dashboard for the full data."
+        return response_text
+                
+    # Fallback if NO patient ID was found anywhere
     if "high" in q_lower and "risk" in q_lower:
-        # Find active High alerts for doc's patients
+        from sqlalchemy import or_
         patients = db.query(User).filter(User.doctor_id == doctor_id).all()
         p_ids = [p.id for p in patients]
         alerts = db.query(DriftAlert).filter(
             DriftAlert.user_id.in_(p_ids),
-            DriftAlert.message.like('%"level": "HIGH"%')
+            or_(
+                DriftAlert.message.like('%"level": "HIGH"%'),
+                DriftAlert.severity >= 0.6
+            )
         ).all()
-        
-        if not alerts:
-            return "There are currently no patients with HIGH emotional risk alerts."
-            
-        high_risk_ids = list(set([a.user_id for a in alerts]))
-        return f"Yes, you have {len(high_risk_ids)} high emotional risk patients. Patient IDs: {', '.join(map(str, high_risk_ids))}."
-        
-    # Extract Patient ID if mentioned
-    pt_match = re.search(r'patient\s+(\d+)', q_lower)
-    patient_id = int(pt_match.group(1)) if pt_match else context_patient_id
-    
-    # 2. Summarize emotional history
-    if "summarize" in q_lower:
-        if not patient_id:
-            return "Please specify a patient ID to summarize."
-            
-        logs = db.query(EmotionLog).filter(EmotionLog.user_id == patient_id).order_by(EmotionLog.created_at.desc()).limit(10).all()
-        if not logs:
-            return f"No emotional history found for patient {patient_id}."
-            
-        history_data = [
-            {"date": l.created_at.isoformat(), "emotion": l.emotion, "confidence": round(l.confidence, 2)} 
-            for l in reversed(logs)
-        ]
-        summary = generate_clinical_summary(history_data)
-        return summary
-        
-    # 3. Show emotional trend for patient
-    if "trend" in q_lower:
-        if not patient_id:
-            return "Please specify a patient ID to show trends."
-            
-        # Get last 5 sessions
-        logs = db.query(EmotionLog).filter(EmotionLog.user_id == patient_id).order_by(EmotionLog.created_at.desc()).limit(5).all()
-        if len(logs) < 2:
-            return f"Patient {patient_id} does not have enough sessions to establish a trend."
-            
-        # Basic slope or diff logic for readout
-        # Just mapping the emotions from older to newer
-        trend_emotions = [l.emotion for l in reversed(logs)]
-        return f"Patient {patient_id} emotional trend over the last {len(logs)} sessions: " + " -> ".join(trend_emotions) + "."
+        if not alerts: 
+            response_text = "There are currently no patients with HIGH emotional risk alerts."
+        else:
+            high_risk_ids = list(set([a.user_id for a in alerts]))
+            response_text = f"Yes, you have {len(high_risk_ids)} high emotional risk patients. Patient IDs: {', '.join(map(str, high_risk_ids))}."
+    else:
+        # Improved feedback if ID is missing but intended
+        if any(w in q_lower for w in ["summarize", "summarise", "summary", "history", "trend", "log", "patient", "pt", "id", "मरीज", "समरी"]):
+             response_text = "I heard you mention a patient or summary, but I couldn't catch the Patient ID. Please specify a number."
+        else:
+             response_text = "I am your Emotional Risk Assessment assistant. Please ask about a specific patient's history, log, or trends."
 
-    return "I am your Emotional Risk Assessment assistant. You can ask me to summarize history, show trends, or check for high-risk patients."
+    # FINAL SAFEGUARD: Ensure we never return an empty string
+    if not response_text or not response_text.strip():
+        response_text = "I processed the query but could not generate a specific summary. Please check the patient dashboard for details."
+        
+    return response_text

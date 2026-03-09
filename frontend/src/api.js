@@ -45,6 +45,9 @@ export const postBotChatAudio = (formData) =>
     headers: { 'Content-Type': 'multipart/form-data' }
   });
 
+export const postTTS = (text, speaker = "ishita") =>
+  API.post("/chat/tts", { text, speaker }, { responseType: 'blob' });
+
 export const getTimeline = (range) =>
   API.get("/visualization/timeline", {
     params: { range },
@@ -87,6 +90,7 @@ export const fetchSupportInsights = (days = 14, includeNearby = false, lat = nul
 // Auth & Self Emotion
 export const forgotPassword = (email) => API.post("/auth/forgot-password", { email });
 export const resetPassword = (token, newPassword) => API.post("/auth/reset-password", { token, new_password: newPassword });
+export const updateProfile = (data) => API.put("/auth/profile", data);
 
 // Removed duplicates that were here (postSelfEmotionCapture, getSelfEmotionHistory, etc)
 // They are already defined above at lines 54-70
@@ -108,6 +112,10 @@ export const assignPatient = (email) => API.post("/doctor/assign", { email });
 
 export const getPatientInsights = (id, days = 14) => API.get(`/doctor/patient/${id}/insights?days=${days}`);
 export const getPatientLogs = (id, limit = 50) => API.get(`/doctor/patient/${id}/logs?limit=${limit}`);
+
+// Therapies
+export const getPatientTherapies = (patientId) => API.get(`/therapy/${patientId}`);
+export const prescribeTherapy = (payload) => API.post('/therapy/prescribe', payload);
 
 export const sendDoctorVoiceQuery = (formData) => API.post("/doctor/bot/query", formData, {
   headers: { 'Content-Type': 'multipart/form-data' }

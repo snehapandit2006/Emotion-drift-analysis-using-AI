@@ -1,0 +1,29 @@
+{
+  "id": "20260308_9ff1b993-6291-4e17-9fd6-b96b73fdb4eb",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "<think>\n Hi! Thanks for the test. How can I assist you today? \ud83d\ude0a",
+        "refusal": null,
+        "reasoning_content": null,
+        "role": "assistant",
+        "tool_calls": []
+      }
+    }
+  ],
+  "created": 1772966356,
+  "model": "sarvam-m",
+  "object": "chat.completion",
+  "service_tier": null,
+  "system_fingerprint": null,
+  "usage": {
+    "completion_tokens": 18,
+    "prompt_tokens": 26,
+    "total_tokens": 44,
+    "completion_tokens_details": null,
+    "prompt_tokens_details": null
+  }
+}

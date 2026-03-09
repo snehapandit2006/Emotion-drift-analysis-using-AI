@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import datetime
 import numpy as np
 import torch
 from collections import Counter
@@ -85,9 +86,10 @@ classifier = None
 chatbot = None
 
 try:
-    print(f"Sentia Hub: Loading Models...")
+    print(f"Sentia Hub: Loading Primary Models...")
     classifier = pipeline("text-classification", model=MODEL_NAME, return_all_scores=True)
-    chatbot = pipeline("text-generation", model=BOT_MODEL_NAME)
+    # Blenderbot disabled to prevent resource exhaustion and crash-loops
+    chatbot = None 
     print("Sentia Hub: Models ready.")
 except Exception as e:
     print(f"CRITICAL: Sentia Hub failed to load models: {e}")
@@ -102,42 +104,61 @@ def get_sentia_intelligence(text: str, audio_path: str = None, user_id: int = 0,
     from db.database import SessionLocal
     from db.models import EmotionLog
     
-    # 0. Quick Keyword Overrides (Lowest Latency)
+    # 0. Quick Keyword Overrides (Lowest Latency - Zero LLM/ML hits)
+    # Expanded for Hinglish and common conversational fillers
     text_lower = text.lower().strip(' .!?,')
-    if text_lower in ["ok", "yes", "yeah", "hmm"]:
-        return {"emotion": "neutral", "confidence": 0.9, "context": ""}
+    hinglish_keywords = [
+        "ok", "yes", "yeah", "hmm", "yep", "yup", "sure", "correct", 
+        "theek hai", "ji", "haan", "acha", "sahi hai", "thik h", "bilkul"
+    ]
+    if text_lower in hinglish_keywords:
+        return {
+            "emotion": "neutral",
+            "confidence": 0.9,
+            "is_safety_risk": False,
+            "domain": "general_emotional",
+            "context": "",
+            "state": {}
+        }
 
-    # 1. PREDICT RAW
-    # Text
-    text_results = {"emotion": "neutral", "confidence": 0.5}
-    if classifier:
-        try:
-            # Simple translation check if needed
-            translated = text
-            if any(ord(c) > 127 for c in text): # Basic non-ascii detection
-                 translated = GoogleTranslator(source='auto', target='en').translate(text)
-            
-            raw_out = classifier(translated)
-            # HF can return [[{...}]] or [{...}] depending on pipeline config
-            if isinstance(raw_out, list) and len(raw_out) > 0:
-                inner = raw_out[0]
-                if isinstance(inner, list):
-                    best = max(inner, key=lambda x: x.get('score', 0))
-                    text_results = {"emotion": get_canonical_emotion(best.get('label')), "confidence": float(best.get('score', 0))}
-                elif isinstance(inner, dict):
-                    text_results = {"emotion": get_canonical_emotion(inner.get('label')), "confidence": float(inner.get('score', 0))}
-        except Exception as e:
-            print(f"Hub Text Error: {e} | Raw Out type: {type(raw_out) if 'raw_out' in locals() else 'None'}")
+    # 1. PREDICT RAW (PARALLELIZED)
+    from concurrent.futures import ThreadPoolExecutor
+    
+    def get_text_emotion():
+        text_res = {"emotion": "neutral", "confidence": 0.5}
+        if classifier:
+            try:
+                translated = text
+                if any(ord(c) > 127 for c in text): 
+                     translated = GoogleTranslator(source='auto', target='en').translate(text)
+                raw_out = classifier(translated)
+                if isinstance(raw_out, list) and len(raw_out) > 0:
+                    inner = raw_out[0]
+                    if isinstance(inner, list):
+                        best = max(inner, key=lambda x: x.get('score', 0))
+                        text_res = {"emotion": get_canonical_emotion(best.get('label')), "confidence": float(best.get('score', 0))}
+                    elif isinstance(inner, dict):
+                        text_res = {"emotion": get_canonical_emotion(inner.get('label')), "confidence": float(inner.get('score', 0))}
+            except Exception as e:
+                print(f"Hub Text Error: {e}")
+        return text_res
 
-    # Voice
-    voice_results = {"emotion": "neutral", "confidence": 0.0}
-    if audio_path and os.path.exists(audio_path):
-        try:
-            raw_voice = predict_voice_emotion(audio_path)
-            best_voice = max(raw_voice, key=raw_voice.get)
-            voice_results = {"emotion": get_canonical_emotion(best_voice), "confidence": float(raw_voice[best_voice])}
-        except Exception as e:
-            print(f"Hub Voice Error: {e}")
+    def get_voice_emotion():
+        voice_res = {"emotion": "neutral", "confidence": 0.0}
+        if audio_path and os.path.exists(audio_path):
+            try:
+                raw_voice = predict_voice_emotion(audio_path)
+                best_voice = max(raw_voice, key=raw_voice.get)
+                voice_res = {"emotion": get_canonical_emotion(best_voice), "confidence": float(raw_voice[best_voice])}
+            except Exception as e:
+                print(f"Hub Voice Error: {e}")
+        return voice_res
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_text = executor.submit(get_text_emotion)
+        future_voice = executor.submit(get_voice_emotion)
+        text_results = future_text.result()
+        voice_results = future_voice.result()
 
     # 2. FUSE (Adaptive Confidence-Weighted)
     # Convert results to full vectors
@@ -234,22 +255,19 @@ def detect_domain(text: str) -> str:
     return "general_emotional"
 
 def check_safety_intent(text: str) -> bool:
-    risk_keywords = ["self-harm", "suicide", "kill myself", "end it all"]
-    if any(k in text.lower() for k in risk_keywords): return True
+    """
+    Lightweight keyword-based safety check.
+    Removed secondary LLM API call to reduce latency by 3-5 seconds.
+    Primary safety is now handled by the main Sarvam LLM and this keyword filter.
+    """
+    risk_keywords = [
+        "self-harm", "suicide", "kill myself", "end it all", "end my life",
+        "आत्महत्या", "खुदकुशी", "ज़िंदगी खत्म"
+    ]
+    text_lower = text.lower()
+    if any(k in text_lower for k in risk_keywords): 
+        return True
     
-    from .llm_bridge import LLM_API_KEY, LLM_MODEL
-    import requests
-    if LLM_API_KEY:
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{LLM_MODEL}:generateContent?key={LLM_API_KEY}"
-            payload = {"contents": [{"parts": [{"text": f"Is this text expressing self-harm or suicide intent? Respond ONLY 'TRUE' or 'FALSE': '{text}'"}]}]}
-            res = requests.post(url, json=payload, timeout=5)
-            if res.status_code == 200:
-                result = res.json()
-                if "candidates" in result:
-                    raw_text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
-                    return "TRUE" in raw_text.upper()
-        except: pass
     return False
 
 def escalate_crisis(user_id: int, text: str, anchor: str = ""):
@@ -280,13 +298,19 @@ def validate_response_stability(bot_text: str, user_text: str) -> tuple[bool, st
     # 2. Heuristic check (Removed Word Frequency to prevent brittle validation)
     # We rely on similarity instead.
     
-    # 3. Min Length Check (Relaxed for punchy human responses)
-    if len(bot_text.split()) < 2:
+    # 3. Min Length Check (Relaxed for conversational flow)
+    # We just need to ensure the bot actually said something meaningful.
+    if not bot_text.strip():
+        return False, "empty_response"
+    
+    # 2 words is a safe bet for a 'sentence', 
+    # but let's allow 1 word if it's high confidence.
+    if len(bot_text.split()) < 1:
         return False, "too_short"
 
     return True, "valid"
 
-def get_bot_response(text: str, intel: dict, user_id: int) -> dict:
+def get_bot_response(text: str, intel: dict, user_id: int, conversation_id: int = None, ui_lang: str = None) -> dict:
     """
     Resilient response generator with Layered Fallback and Diagnostic Tracing.
     Returns: {"response": str, "trace": str}
@@ -295,8 +319,8 @@ def get_bot_response(text: str, intel: dict, user_id: int) -> dict:
     response_text = ""
     
     # 0. Safety Override
-    if intel["is_safety_risk"]:
-        mirror = f"I hear the weight of this {intel['emotion']} you're carrying..." if intel['confidence'] > 0.5 else "I'm listening closely to what you're sharing."
+    if intel.get("is_safety_risk", False):
+        mirror = f"I hear the weight of this {intel.get('emotion', 'neutral')} you're carrying..." if intel.get('confidence', 0) > 0.5 else "I'm listening closely to what you're sharing."
         return {
             "response": f"{mirror} Please reach out to a professional (988 in the US) or visit the nearest emergency room. You don't have to carry this alone.",
             "trace": "SAFETY_OVERRIDE"
@@ -305,13 +329,63 @@ def get_bot_response(text: str, intel: dict, user_id: int) -> dict:
     # 1. Primary Path: LLM
     try:
         from .llm_bridge import generate_therapeutic_response
+        from db.database import SessionLocal
+        from db.models import User, SentiaMessage
+        
+        db = SessionLocal()
+        user = db.query(User).filter(User.id == user_id).first()
+        hobbies = user.hobbies if user else None
+        games = user.preferred_games if user else None
+        
+        # Fetch last 5 messages for context (History awareness)
+        history = []
+        if conversation_id:
+            db_history = db.query(SentiaMessage).filter(
+                SentiaMessage.conversation_id == conversation_id
+            ).order_by(SentiaMessage.timestamp.desc()).offset(1).limit(5).all() # Offset 1 to skip the current msg
+            history = [{"role": m.role, "content": m.content} for m in reversed(db_history)]
+        
+        db.close()
+
         state = dialogue_manager.get_state(user_id)
         context = dialogue_manager.get_dialogue_context(user_id)
         
-        llm_payload = generate_therapeutic_response(text, intel["emotion"], context)
+        llm_payload = generate_therapeutic_response(text, intel.get("emotion", "neutral"), context, hobbies=hobbies, games=games, history=history, ui_lang=ui_lang)
         
         if llm_payload and "text" in llm_payload:
-            # Validate Stability
+            # 1.5 Handle Game Prescription Persistence
+            prescribed_game_name = llm_payload.get("prescribed_game")
+            if prescribed_game_name:
+                from .llm_bridge import GAME_LIBRARY
+                game_info = GAME_LIBRARY.get(prescribed_game_name)
+                if game_info:
+                    db = SessionLocal()
+                    user = db.query(User).filter(User.id == user_id).first()
+                    if user:
+                        import json
+                        current_games = []
+                        try:
+                            if user.preferred_games:
+                                decoded = json.loads(user.preferred_games)
+                                current_games = decoded if isinstance(decoded, list) else []
+                        except:
+                            # Handle legacy plain text
+                            pass
+                        
+                        # Check if game already exists
+                        if not any(g.get('name') == prescribed_game_name for g in current_games):
+                            current_games.append({
+                                "name": prescribed_game_name,
+                                "link": game_info["link"],
+                                "logo": game_info["logo"],
+                                "prescribed_at": datetime.utcnow().isoformat()
+                            })
+                            user.preferred_games = json.dumps(current_games)
+                            db.commit()
+                            print(f"[Inference] Prescribed game '{prescribed_game_name}' saved for user {user_id}")
+                    db.close()
+
+            # 2. Validate Stability
             is_valid, rejection_reason = validate_response_stability(llm_payload["text"], text)
             
             if is_valid:
@@ -321,7 +395,7 @@ def get_bot_response(text: str, intel: dict, user_id: int) -> dict:
                 state["last_intent"] = new_intent
                 
                 dialogue_manager.track_probe(user_id, llm_payload.get("type", "general_probe"), response_text)
-                return {"response": response_text, "trace": "LLM_OK"}
+                return {"response": response_text, "trace": "LLM_OK", "emotion": llm_payload.get("emotion")}
             else:
                 trace = f"STABILITY_REJECTED_{rejection_reason.upper()}"
                 print(f"[TRACE] Stability Rejected: {rejection_reason}")

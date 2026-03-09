@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPatientInsights, getPatientLogs, getMedicalRecords, uploadMedicalRecord, generateReport } from '../api';
 import { useTheme } from '../context/ThemeContext';
-import { ArrowLeft, MessageSquare, Clipboard, FileText, Calendar, AlertTriangle, TrendingUp, Sun, Moon, LayoutDashboard, AlignLeft, UserCircle, Pill, Download, Folder } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Clipboard, FileText, Calendar, AlertTriangle, TrendingUp, Sun, Moon, LayoutDashboard, AlignLeft, UserCircle, Pill, Download, Folder, Music } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ReferenceLine } from 'recharts';
+import { getPatientTherapies, prescribeTherapy } from '../api';
 import ChatInterface from './ChatInterface';
 import MedicalLogTable from './MedicalLogTable';
 import DoctorVoiceAssistant from './DoctorVoiceAssistant';
@@ -17,6 +18,7 @@ const PatientDetailView = () => {
     const [allFaceLogs, setAllFaceLogs] = useState([]); // Store all logs
     const [filteredTextLogs, setFilteredTextLogs] = useState([]); // Displayed logs
     const [records, setRecords] = useState([]);
+    const [therapies, setTherapies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showChat, setShowChat] = useState(false);
     const [activeTab, setActiveTab] = useState('overview');
@@ -26,13 +28,15 @@ const PatientDetailView = () => {
 
     const loadData = useCallback(async () => {
         try {
-            const [insightsRes, logsRes, recordsRes] = await Promise.all([
+            const [insightsRes, logsRes, recordsRes, therapiesRes] = await Promise.all([
                 getPatientInsights(id),
                 getPatientLogs(id),
-                getMedicalRecords(id)
+                getMedicalRecords(id),
+                getPatientTherapies(id)
             ]);
             setData(insightsRes.data);
             setRecords(recordsRes.data || []);
+            setTherapies(therapiesRes.data || []);
 
             // Handle new structure
             if (logsRes.data.text_logs) {
@@ -130,6 +134,29 @@ const PatientDetailView = () => {
             } catch {
                 alert("Upload failed");
             }
+        }
+    };
+
+    const handlePrescribeTherapy = async () => {
+        const type = prompt("Enter therapy type (e.g. binaural, lofi, general):", "binaural");
+        if (!type) return;
+        const hzStr = prompt("Enter frequency Hz (or leave blank if none):", "432");
+        const freq = hzStr ? parseInt(hzStr) : null;
+        
+        try {
+            await prescribeTherapy({
+                user_id: parseInt(id),
+                therapy_type: type,
+                name: "Custom Music Therapy Session",
+                description: "Prescribed to regulate emotional drift and reduce anxiety.",
+                duration_minutes: 15,
+                frequency_hz: freq,
+                is_active: true
+            });
+            loadData();
+            alert("Therapy prescribed successfully");
+        } catch (e) {
+            alert("Failed to prescribe therapy.");
         }
     };
 
@@ -378,6 +405,45 @@ const PatientDetailView = () => {
                     </div>
                 </div>
             )
+        } else if (activeTab === 'therapies') {
+            return (
+                <div className="pd-card" style={{ minHeight: '500px' }}>
+                    <div className="pd-card-header">
+                        <span className="pd-card-title">Prescribed Therapies</span>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <button className="pd-btn secondary" onClick={handlePrescribeTherapy} style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+                                + Prescribe Music Therapy
+                            </button>
+                        </div>
+                    </div>
+                    <ul className="pd-alert-list" style={{ marginTop: '1rem' }}>
+                        {therapies.map(t => (
+                            <li key={t.id} className="pd-alert-item" style={{ padding: '1rem', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                    <div style={{ background: 'rgba(59, 130, 246, 0.2)', padding: '0.8rem', borderRadius: '8px' }}>
+                                        <Music size={24} color="var(--primary-blue)" />
+                                    </div>
+                                    <div>
+                                        <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1rem' }}>{t.name}</p>
+                                        <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>Type: {t.therapy_type} {t.frequency_hz ? `| ${t.frequency_hz}Hz` : ''} | {t.duration_minutes} Mins</p>
+                                        <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.6 }}>{t.description}</p>
+                                        <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.5, marginTop: '4px' }}>Prescribed: {new Date(t.prescribed_at).toLocaleDateString()}</p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <button className="pd-btn outline" style={{ pointerEvents: 'none', opacity: 0.7 }}>Active</button>
+                                </div>
+                            </li>
+                        ))}
+                        {therapies.length === 0 && (
+                            <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.5 }}>
+                                <Music size={48} style={{ marginBottom: '1rem' }} />
+                                <p>No therapies prescribed.</p>
+                            </div>
+                        )}
+                    </ul>
+                </div>
+            )
         }
         return null;
     }
@@ -460,6 +526,9 @@ const PatientDetailView = () => {
                         </li>
                         <li className={activeTab === 'medicine_log' ? 'active' : ''} onClick={() => setActiveTab('medicine_log')}>
                             <Pill size={18} /> Medicine Log
+                        </li>
+                        <li className={activeTab === 'therapies' ? 'active' : ''} onClick={() => setActiveTab('therapies')}>
+                            <Music size={18} /> Therapies ({therapies.length})
                         </li>
                         <li onClick={handleGenerateReport} style={{ marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
                             <Download size={18} /> Generate Report

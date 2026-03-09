@@ -7,8 +7,9 @@ import secrets
 
 from db.models import User
 from core.security import verify_password, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-from api.deps import get_db
+from api.deps import get_db, get_current_user
 from pydantic import BaseModel
+from typing import Optional
 
 class GoogleLoginRequest(BaseModel):
     access_token: str
@@ -60,6 +61,7 @@ def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
     
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.email, "role": user.role}, expires_delta=access_token_expires
     )
@@ -69,8 +71,21 @@ def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db)):
         "user_id": user.id, 
         "email": user.email,
         "role": user.role,
-        "doctor_id": user.doctor_id
+        "doctor_id": user.doctor_id,
+        "hobbies": user.hobbies,
+        "preferred_games": user.preferred_games
     }
+
+class ProfileUpdateRequest(BaseModel):
+    hobbies: Optional[str] = None
+    preferred_games: Optional[str] = None
+
+@router.put("/profile", response_model=dict)
+def update_profile(payload: ProfileUpdateRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    current_user.hobbies = payload.hobbies
+    current_user.preferred_games = payload.preferred_games
+    db.commit()
+    return {"msg": "Profile updated successfully"}
 
 class SignupRequest(BaseModel):
     email: str
@@ -112,7 +127,6 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.email, "role": user.role}, expires_delta=access_token_expires
@@ -123,7 +137,9 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
         "user_id": user.id, 
         "email": user.email,
         "role": user.role,
-        "doctor_id": user.doctor_id
+        "doctor_id": user.doctor_id,
+        "hobbies": user.hobbies,
+        "preferred_games": user.preferred_games
     }
 
 # --- Forgot Password / Reset Implementation ---
