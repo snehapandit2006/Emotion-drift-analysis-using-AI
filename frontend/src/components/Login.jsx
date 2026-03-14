@@ -1,12 +1,10 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
 import { useGoogleLogin } from '@react-oauth/google';
 import AppleLogin from 'react-apple-login';
 import logoFinal from '../assets/logo_final.png';
 import { forgotPassword, resetPassword } from '../api';
-import { Sun, Moon } from 'lucide-react';
 
 const Login = () => {
     const [view, setView] = useState('login'); // 'login', 'forgot', 'reset'
@@ -18,9 +16,18 @@ const Login = () => {
     const [message, setMessage] = useState('');
 
     const { login, googleLogin } = useContext(AuthContext);
-    const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
+
+    const [rememberMe, setRememberMe] = useState(false);
+
+    useEffect(() => {
+        const savedEmail = localStorage.getItem('rememberedEmail');
+        if (savedEmail) {
+            setEmail(savedEmail);
+            setRememberMe(true);
+        }
+    }, []);
 
     const handleLogin = async () => {
         setLoading(true);
@@ -28,6 +35,11 @@ const Login = () => {
         try {
             const success = await login(email, password);
             if (success) {
+                if (rememberMe) {
+                    localStorage.setItem('rememberedEmail', email);
+                } else {
+                    localStorage.removeItem('rememberedEmail');
+                }
                 navigate('/welcome');
             } else {
                 setError('Invalid email or password');
@@ -98,7 +110,7 @@ const Login = () => {
 
     return (
         <div className="login-screen">
-            <div className="login-box">
+            <div className="login-box glass-panel">
                 {/* Logo Replacement */}
                 {/* Logo - Styles moved to App.css for theme consistency */}
                 <div className="logo-container" style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
@@ -131,8 +143,8 @@ const Login = () => {
                                 left: '50%',
                                 transform: 'translateX(-50%)',
                                 height: '100%',
-                                clipPath: 'inset(73% 0 0 0)',
-                                filter: theme === 'dark' ? 'brightness(0) invert(1)' : 'brightness(0)',
+                                clipPath: 'inset(50% 0 0 0)',
+                                filter: 'brightness(0) invert(1)',
                                 transition: 'filter 0.3s ease',
                                 zIndex: 1
                             }}
@@ -143,8 +155,8 @@ const Login = () => {
                 {view === 'login' && (
                     <>
                         <div className="login-header">
-                            <h1>Welcome Back!</h1>
-                            <p>Sign in to access smart, personalized emotional monitoring made for you.</p>
+                            <h1 className="serif-heading">Welcome Back!</h1>
+                            <p style={{ color: 'var(--text-body)', opacity: 0.8 }}>Sign in to access smart, personalized emotional monitoring made for you.</p>
                         </div>
 
                         {error && <p style={{ color: '#ff4d4d', textAlign: 'center' }}>{error}</p>}
@@ -174,7 +186,11 @@ const Login = () => {
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#888' }}>
                             <label style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                <input type="checkbox" /> Remember me
+                                <input 
+                                    type="checkbox" 
+                                    checked={rememberMe}
+                                    onChange={(e) => setRememberMe(e.target.checked)}
+                                /> Remember me
                             </label>
                             <span
                                 style={{ cursor: 'pointer', color: 'var(--accent-color)' }}
@@ -184,7 +200,7 @@ const Login = () => {
                             </span>
                         </div>
 
-                        <button className="sentia-btn" onClick={handleLogin} disabled={loading}>
+                        <button className="glass-button primary" style={{ width: '100%', padding: '1rem', marginTop: '1rem' }} onClick={handleLogin} disabled={loading}>
                             {loading ? "Signing in..." : "Sign in"}
                         </button>
 

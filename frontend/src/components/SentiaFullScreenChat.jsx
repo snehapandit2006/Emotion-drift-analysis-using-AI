@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, ChevronLeft, ChevronRight, History,
     Trash2, Send, Mic, Volume2, VolumeX, Sparkles, X,
-    LogOut, Terminal, Activity, MicOff, MonitorPlay, Music
+    LogOut, Terminal, MicOff, MonitorPlay
 } from 'lucide-react';
 import {
     getSentiaConversations,
@@ -62,8 +62,6 @@ const SentiaFullScreenChat = ({ onClose }) => {
     const [selectedVoice, setSelectedVoice] = useState('ishita');
     const [isVisualizationEnabled, setIsVisualizationEnabled] = useState(false);
     const [mouthVolume, setMouthVolume] = useState(0);
-    const [ambientSound, setAmbientSound] = useState('none');
-    const [isPlayingAmbient, setIsPlayingAmbient] = useState(false);
     const [recognitionLang, setRecognitionLang] = useState('en-IN'); 
     const ambientAudioRef = useRef(null);
     const chatEndRef = useRef(null);
@@ -78,6 +76,7 @@ const SentiaFullScreenChat = ({ onClose }) => {
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
     const recognitionRef = useRef(null);
+    const isRecognitionActiveRef = useRef(false); // guard against double-start
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     useEffect(() => {
@@ -85,10 +84,6 @@ const SentiaFullScreenChat = ({ onClose }) => {
         return () => {
              if (audioContextRef.current) audioContextRef.current.close();
              if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-             if (ambientAudioRef.current) {
-                 ambientAudioRef.current.pause();
-                 ambientAudioRef.current = null;
-             }
         };
     }, []);
 
@@ -102,6 +97,7 @@ const SentiaFullScreenChat = ({ onClose }) => {
             if (recognitionRef.current) {
                 try { recognitionRef.current.stop(); } catch (e) {}
             }
+            isRecognitionActiveRef.current = false;
             const recognition = new SpeechRecognition();
             recognition.continuous = false;
             recognition.lang = lang; 
@@ -116,11 +112,13 @@ const SentiaFullScreenChat = ({ onClose }) => {
 
             recognition.onerror = (e) => {
                 console.error("Sentia: Speech Recognition Error", e);
+                isRecognitionActiveRef.current = false;
                 setIsListening(false);
             };
 
             recognition.onend = () => {
                 console.log("Sentia: Speech Recognition Ended");
+                isRecognitionActiveRef.current = false;
                 // Only reset if we're not waiting for a manual stop
                 if (mediaRecorderRef.current?.state !== 'recording') {
                     setIsListening(false);
@@ -158,10 +156,14 @@ const SentiaFullScreenChat = ({ onClose }) => {
             };
 
             mediaRecorder.start();
-            try {
-                recognitionRef.current.start();
-            } catch (reconErr) {
-                console.warn("Recognition start failed (already started?), continuing recorder:", reconErr);
+            if (!isRecognitionActiveRef.current) {
+                try {
+                    isRecognitionActiveRef.current = true;
+                    recognitionRef.current.start();
+                } catch (reconErr) {
+                    isRecognitionActiveRef.current = false;
+                    console.warn("Recognition start failed:", reconErr);
+                }
             }
             setIsListening(true);
         } catch (err) {
@@ -193,6 +195,13 @@ const SentiaFullScreenChat = ({ onClose }) => {
     };
 
     const toggleVoice = () => {
+        // Unlock AudioContext on interaction
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+            audioContextRef.current.resume();
+        } else if (!audioContextRef.current) {
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
         if (isListening) stopListeningAndRecord();
         else startListening();
     };
@@ -226,9 +235,14 @@ const SentiaFullScreenChat = ({ onClose }) => {
     };
 
     const handleSend = async () => {
+        // Unlock AudioContext on interaction
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+            audioContextRef.current.resume();
+        }
+
         if (!inputText.trim() && !audioBlob) return;
 
-        const currentText = inputText;
+        const currentText = inputText.trim();
         const tempMsg = { text: currentText || "Analyzing voice...", isBot: false, timestamp: new Date().toISOString() };
         setMessages(prev => [...prev, tempMsg]);
         setInputText('');
@@ -242,13 +256,15 @@ const SentiaFullScreenChat = ({ onClose }) => {
                 blobToSend = await stopListeningAndRecord();
             }
 
-            if (!inputText.trim() && !blobToSend) return;
+            // Bug 1 Fix: use captured currentText, not cleared inputText state
+            if (!currentText && !blobToSend) return;
 
             const formData = new FormData();
             formData.append('text', currentText);
             if (blobToSend) formData.append('audio', blobToSend, 'voice.wav');
             if (activeConvId) formData.append('conversation_id', activeConvId);
             formData.append('ui_lang', recognitionLang);
+            formData.append('speaker', selectedVoice);
 
             const { data } = await postSentiaMessage(formData);
 
@@ -297,10 +313,16 @@ const SentiaFullScreenChat = ({ onClose }) => {
             if (audioPlayerRef.current) audioPlayerRef.current.pause();
         }
 
-        if (!initialB64 && index >= urls.length) {
+        // Bug 2 Fix: handle termination correctly for both B64-only and URL-chain cases
+        const effectiveIndex = (index === 0 && initialB64) ? 0 : index;
+        if (!initialB64 && effectiveIndex >= urls.length) {
             setIsSpeaking(false);
             setMouthVolume(0);
             return;
+        }
+        // If we have a B64 chunk but no URLs, we still need to mark speaking=false on end
+        if (index === 0 && initialB64 && urls.length === 0) {
+            // Will handle onended below — no early return, let playback proceed
         }
 
         let audio;
@@ -317,6 +339,10 @@ const SentiaFullScreenChat = ({ onClose }) => {
         audio.crossOrigin = "anonymous";
 
         const startPlayback = () => {
+            // Resume AudioContext before play (browser autoplay policy)
+            if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+                audioContextRef.current.resume();
+            }
             audio.play()
                 .then(() => {
                     if (audioPlayerRef.current && audioPlayerRef.current !== audio) {
@@ -362,13 +388,23 @@ const SentiaFullScreenChat = ({ onClose }) => {
 
     // Helper to connect audio element to analyzer
     const setupAudioAnalysis = (audio) => {
+        // Always ensure AudioContext and Analyser exist
         if (!audioContextRef.current) {
             audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (!analyserRef.current) {
             analyserRef.current = audioContextRef.current.createAnalyser();
             analyserRef.current.fftSize = 256;
         }
 
-        if (sourceNodeRef.current) sourceNodeRef.current.disconnect();
+        // Resume if suspended (autoplay policy)
+        if (audioContextRef.current.state === 'suspended') {
+            audioContextRef.current.resume();
+        }
+
+        if (sourceNodeRef.current) {
+            try { sourceNodeRef.current.disconnect(); } catch (e) {}
+        }
         
         try {
             sourceNodeRef.current = audioContextRef.current.createMediaElementSource(audio);
@@ -376,6 +412,7 @@ const SentiaFullScreenChat = ({ onClose }) => {
             analyserRef.current.connect(audioContextRef.current.destination);
         } catch (e) { console.warn("Audio linking err:", e); }
 
+        if (!analyserRef.current) return; // safety guard
         const bufferLength = analyserRef.current.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
 
@@ -472,49 +509,12 @@ const SentiaFullScreenChat = ({ onClose }) => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    useEffect(() => {
-        if (ambientSound !== 'none') {
-            const urls = {
-                'rain': 'https://actions.google.com/sounds/v1/weather/rain_heavy_loud.ogg',
-                'lofi': 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-                'whitenoise': 'https://actions.google.com/sounds/v1/water/waves_crashing_on_rock_beach.ogg'
-            };
-            
-            if (ambientAudioRef.current) {
-                ambientAudioRef.current.pause();
-            }
-            
-            const audio = new Audio(urls[ambientSound]);
-            audio.loop = true;
-            audio.volume = 0.3;
-            ambientAudioRef.current = audio;
-            
-            if (isPlayingAmbient) {
-                audio.play().catch(e => console.error("Audio play error:", e));
-            }
-        } else {
-            if (ambientAudioRef.current) {
-                ambientAudioRef.current.pause();
-                ambientAudioRef.current = null;
-            }
-            setIsPlayingAmbient(false);
-        }
-    }, [ambientSound]);
-
     const handleAmbientChange = (e) => {
-        setAmbientSound(e.target.value);
+        // Ambient sound removed from UI — stub kept for compatibility
     };
     
     const toggleAmbientPlay = () => {
-        if (!ambientAudioRef.current) return;
-        
-        if (isPlayingAmbient) {
-            ambientAudioRef.current.pause();
-            setIsPlayingAmbient(false);
-        } else {
-            ambientAudioRef.current.play().catch(e => console.error("Audio play error:", e));
-            setIsPlayingAmbient(true);
-        }
+        // Ambient sound removed from UI — stub kept for compatibility
     };
 
     return (
@@ -562,42 +562,6 @@ const SentiaFullScreenChat = ({ onClose }) => {
                         </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', background: '#1f2937', borderRadius: '8px', padding: '2px 8px', border: '1px solid #374151', gap: '5px' }}>
-                            <Activity size={14} style={{ color: '#9ca3af' }} />
-                            <select 
-                                value={recognitionLang} 
-                                onChange={(e) => setRecognitionLang(e.target.value)}
-                                style={{ background: 'transparent', color: '#9ca3af', border: 'none', fontSize: '12px', cursor: 'pointer', outline: 'none' }}
-                                title="Speech Recognition Language"
-                            >
-                                <option value="en-IN">English (IN)</option>
-                                <option value="hi-IN">Hindi (IN)</option>
-                                <option value="en-US">English (US)</option>
-                            </select>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', background: '#1f2937', borderRadius: '8px', padding: '2px 8px', border: '1px solid #374151' }}>
-                            <Music size={14} style={{ color: '#9ca3af', marginRight: '5px' }} />
-                            <select 
-                                value={ambientSound} 
-                                onChange={handleAmbientChange}
-                                style={{ background: 'transparent', color: '#9ca3af', border: 'none', fontSize: '12px', cursor: 'pointer', outline: 'none' }}
-                            >
-                                <option value="none">No Ambient</option>
-                                <option value="rain">Light Rain</option>
-                                <option value="lofi">Lo-Fi Study</option>
-                                <option value="whitenoise">White Noise</option>
-                            </select>
-                            {ambientSound !== 'none' && (
-                                <button 
-                                    onClick={toggleAmbientPlay} 
-                                    style={{ background: 'none', border: 'none', color: isPlayingAmbient ? '#3b82f6' : '#9ca3af', cursor: 'pointer', marginLeft: '5px', padding: '0' }}
-                                >
-                                    {isPlayingAmbient ? <Volume2 size={16} /> : <VolumeX size={16} />}
-                                </button>
-                            )}
-                        </div>
-
                         <select 
                             value={selectedVoice} 
                             onChange={(e) => setSelectedVoice(e.target.value)}
@@ -673,7 +637,7 @@ const SentiaFullScreenChat = ({ onClose }) => {
                         <input
                             value={inputText}
                             onChange={(e) => setInputText(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
                             placeholder={isListening ? "Listening..." : "Type a message..."}
                             className="sentia-input"
                         />

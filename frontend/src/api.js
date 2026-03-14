@@ -138,3 +138,25 @@ export const postSentiaMessage = (formData) => API.post("/chat/sentia/message", 
   headers: { 'Content-Type': 'multipart/form-data' }
 });
 export const deleteSentiaConversation = (id) => API.delete(`/chat/sentia/conversations/${id}`);
+
+// Wellness
+export const logMeditation = (data) => API.post("/wellness/meditation", data);
+export const getMeditationHistory = () => API.get("/wellness/meditation");
+export const getMediaRecommendations = () => API.get("/wellness/media");
+
+// Community Chat (WebSockets)
+export const getChatRooms = () => API.get("/rooms");
+export const getCommunityMessages = (roomId) => API.get(`/rooms/${roomId}/messages`);
+export const getMatchedRoom = () => API.get("/rooms/match");
+
+// Fitness / Vitals
+export const getHealthMetricsHistory = (range = "7d") => API.get("/fitness/metrics/history", { params: { range } });
+export const getLatestHealthMetrics = () => API.get("/fitness/metrics/latest");
+export const syncMockGoogleFit = () => API.post("/fitness/sync/google_fit/mock");
+export const addHealthMetric = (data) => API.post("/fitness/metrics", data);
+
+export const getWebSocketUrl = () => {
+  // If we are in dev (localhost with port 5173), Vite proxy will forward '/ws' 
+  // to the backend. In production, we'll hit the API_URL directly.
+  return window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${window.location.host}`;
+};

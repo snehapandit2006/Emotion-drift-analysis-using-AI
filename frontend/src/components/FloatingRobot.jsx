@@ -40,6 +40,9 @@ const FloatingRobot = () => {
     // Web Speech API - Recognition
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognitionRef = useRef(null);
+    // Bug 6 Fix: ref to track latest inputText without adding it to useEffect deps
+    const inputTextRef = useRef('');
+    useEffect(() => { inputTextRef.current = inputText; }, [inputText]);
 
     useEffect(() => {
         if (SpeechRecognition) {
@@ -78,7 +81,8 @@ const FloatingRobot = () => {
 
             recognition.onend = () => {
                 setIsListening(false);
-                if (isAutoSend && inputText.trim()) {
+                // Bug 6 Fix: use ref instead of stale closure for inputText
+                if (isAutoSend && inputTextRef.current.trim()) {
                     // Logic to auto-submit will be triggered here
                     // But we need to wait for audioBlob to be ready
                 }
@@ -86,7 +90,8 @@ const FloatingRobot = () => {
 
             recognitionRef.current = recognition;
         }
-    }, [SpeechRecognition, isAutoSend, inputText]);
+    // Bug 6 Fix: removed inputText from deps — recreating recognition on each keystroke caused broken references
+    }, [SpeechRecognition, isAutoSend]);
 
     const startAudioRecording = async () => {
         try {

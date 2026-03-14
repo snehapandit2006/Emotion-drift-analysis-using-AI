@@ -16,3 +16,15 @@ backend/storage/sentia_tts/
 *_list_utf8.txt
 modified_files.txt
 untracked_files.txt
+
+# Database and Temporary Files
+*.db
+*.pdf
+*.png
+*.jpeg
+__pycache__/
+*.pyc
+tmp/
+ documents/
+*.txt
+!Project_Documentation.md

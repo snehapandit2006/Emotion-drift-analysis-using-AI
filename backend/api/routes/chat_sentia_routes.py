@@ -32,11 +32,11 @@ def generate_sarvam_tts_bytes(text, speaker="ishita"):
     headers = {"api-subscription-key": api_key, "Content-Type": "application/json"}
     payload = {
         "inputs": [text],
-        "target_language_code": "hi-IN",
+        "target_language_code": "en-IN",
         "speaker": speaker,
         "model": "bulbul:v3",
-        "pace": 1.1,
-        "enable_preprocessing": False
+        "pace": 1.0,
+        "enable_preprocessing": True
     }
     try:
         res = tts_session.post(url, headers=headers, json=payload, timeout=20)
@@ -110,6 +110,7 @@ async def chat_with_sentia(
     audio: Optional[UploadFile] = File(None),
     conversation_id: Optional[int] = Form(None),
     ui_lang: Optional[str] = Form(None),
+    speaker: Optional[str] = Form("ishita"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -179,11 +180,21 @@ async def chat_with_sentia(
         sentences = split_into_sentences(bot_text)
         batch_id = str(uuid.uuid4())
         
+        # Validate speaker name
+        SUPPORTED_SPEAKERS = [
+            'aditya', 'ritu', 'ashutosh', 'priya', 'neha', 'rahul', 'pooja', 'rohan',
+            'simran', 'kavya', 'amit', 'dev', 'ishita', 'shreya', 'ratan', 'varun',
+            'manan', 'sumit', 'roopa', 'kabir', 'aayan', 'shubh', 'advait', 'amelia',
+            'sophia', 'anand', 'tanya', 'tarun', 'sunny', 'mani', 'gokul', 'vijay',
+            'shruti', 'suhani', 'mohit', 'kavitha', 'rehan', 'soham', 'rupali'
+        ]
+        active_speaker = speaker if speaker in SUPPORTED_SPEAKERS else "ishita"
+
         # Part A: Generate FIRST chunk synchronously (Base64) - Gives immediate voice
         if sentences:
             first_sentence = sentences[0]
             if len(first_sentence) >= 2:
-                first_bytes = generate_sarvam_tts_bytes(first_sentence)
+                first_bytes = generate_sarvam_tts_bytes(first_sentence, speaker=active_speaker)
                 if first_bytes:
                     first_chunk_b64 = base64.b64encode(first_bytes).decode('utf-8')
 
@@ -197,7 +208,7 @@ async def chat_with_sentia(
             os.makedirs("storage/sentia_tts", exist_ok=True)
             
             # Submission happens NOW, not in background_tasks (which wait for response end)
-            router.tts_executor.submit(generate_sarvam_tts_internal, sentence, chunk_path)
+            router.tts_executor.submit(generate_sarvam_tts_internal, sentence, chunk_path, active_speaker)
             
             # Point to the Smart Waiter endpoint instead of direct static file
             tts_urls.append(f"/chat/sentia/audio/{chunk_filename}")

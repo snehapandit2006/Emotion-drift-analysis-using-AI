@@ -73,17 +73,23 @@ def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db)):
         "role": user.role,
         "doctor_id": user.doctor_id,
         "hobbies": user.hobbies,
-        "preferred_games": user.preferred_games
+        "preferred_games": user.preferred_games,
+        "music_interests": user.music_interests
     }
 
 class ProfileUpdateRequest(BaseModel):
     hobbies: Optional[str] = None
     preferred_games: Optional[str] = None
+    music_interests: Optional[str] = None
 
 @router.put("/profile", response_model=dict)
 def update_profile(payload: ProfileUpdateRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    current_user.hobbies = payload.hobbies
-    current_user.preferred_games = payload.preferred_games
+    if payload.hobbies is not None:
+        current_user.hobbies = payload.hobbies
+    if payload.preferred_games is not None:
+        current_user.preferred_games = payload.preferred_games
+    if payload.music_interests is not None:
+        current_user.music_interests = payload.music_interests
     db.commit()
     return {"msg": "Profile updated successfully"}
 
@@ -139,7 +145,8 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
         "role": user.role,
         "doctor_id": user.doctor_id,
         "hobbies": user.hobbies,
-        "preferred_games": user.preferred_games
+        "preferred_games": user.preferred_games,
+        "music_interests": user.music_interests
     }
 
 # --- Forgot Password / Reset Implementation ---

@@ -2,15 +2,13 @@ import React, { useState, useEffect, useContext } from 'react';
 import { getPatients, assignPatient } from '../api';
 import { motion } from 'framer-motion';
 
-import { User, Activity, AlertCircle, Plus, LogOut, Sun, Moon } from 'lucide-react';
+import { User, Activity, AlertCircle, Plus, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
 import DoctorVoiceAssistant from './DoctorVoiceAssistant';
 
 const PsychiatristDashboard = () => {
     const { user, logout } = useContext(AuthContext);
-    const { theme, toggleTheme } = useTheme();
     const [patients, setPatients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [newPatientEmail, setNewPatientEmail] = useState("");
@@ -44,21 +42,14 @@ const PsychiatristDashboard = () => {
     };
 
     return (
-        <div className="pd-container">
+        <div className="pd-container" style={{ background: 'transparent' }}>
             <header className="pd-header">
                 <div className="pd-title">
-                    <h1>Psychiatrist Dashboard</h1>
+                    <h1 className="serif-heading">Psychiatrist Dashboard</h1>
                     <p>Welcome back, Dr. {user?.email}</p>
                 </div>
                 <div className="pd-controls" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <button
-                        className="icon-btn"
-                        onClick={toggleTheme}
-                        title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-                        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', width: '36px', height: '36px' }}
-                    >
-                        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-                    </button>
+
                     <button className="pd-btn outline" onClick={logout} title="Logout">
                         <LogOut size={16} /> Logout
                     </button>
@@ -66,9 +57,9 @@ const PsychiatristDashboard = () => {
             </header>
 
             {/* Add Patient Section */}
-            <div className="pd-card" style={{ marginBottom: '2rem' }}>
+            <div className="pd-card glass-panel" style={{ marginBottom: '2rem', padding: '1.5rem' }}>
                 <div className="pd-card-header">
-                    <span className="pd-card-title">Add New Patient</span>
+                    <span className="pd-card-title serif-heading" style={{ fontSize: '1.2rem' }}>Add New Patient</span>
                     <Plus size={18} color="var(--pd-olive-deep)" />
                 </div>
                 <form onSubmit={handleAssign} style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
@@ -95,17 +86,16 @@ const PsychiatristDashboard = () => {
             </div>
 
             <h2 style={{
-                fontSize: '1.5rem',
-                fontWeight: '400',
+                fontSize: '1.8rem',
                 marginBottom: '1.5rem',
-                color: 'var(--text-main)',
-                borderBottom: '1px solid var(--border-color)',
+                color: 'var(--text-heading)',
+                borderBottom: '1px solid var(--glass-border)',
                 paddingBottom: '0.5rem',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.5rem'
-            }}>
-                <User size={24} /> My Patients ({patients.length})
+                gap: '0.8rem'
+            }} className="serif-heading">
+                <User size={28} /> My Patients ({patients.length})
             </h2>
 
             {/* Patient List */}

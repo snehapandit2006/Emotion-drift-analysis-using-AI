@@ -1,7 +1,6 @@
 import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
 import logoFinal from '../assets/logo_final.png';
 
 // Signup component with theme support
@@ -12,7 +11,6 @@ const Signup = () => {
     const [role, setRole] = useState('patient');
     const [error, setError] = useState('');
     const { signup, login } = useContext(AuthContext);
-    const { theme } = useTheme(); // Use theme context
     const navigate = useNavigate();
     const [isSigningUp, setIsSigningUp] = useState(false);
 
@@ -37,11 +35,11 @@ const Signup = () => {
 
     return (
         <div className="login-screen">
-            <div className="login-box">
-                <div className="logo-container" style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-                    <div style={{ position: 'relative', height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="login-box glass-panel">
+                <div className="logo-container" style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}>
+                    <div style={{ position: 'relative', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {/* Spacer to establish width */}
-                        <img src={logoFinal} alt="" style={{ height: '120px', opacity: 0 }} />
+                        <img src={logoFinal} alt="" style={{ height: '80px', opacity: 0 }} />
 
                         {/* Top Layer: Robot (Original Colors) - Shows top 73% */}
                         <img
@@ -68,8 +66,8 @@ const Signup = () => {
                                 left: '50%',
                                 transform: 'translateX(-50%)',
                                 height: '100%',
-                                clipPath: 'inset(73% 0 0 0)',
-                                filter: theme === 'dark' ? 'brightness(0) invert(1)' : 'brightness(0)',
+                                clipPath: 'inset(50% 0 0 0)',
+                                filter: 'brightness(0) invert(1)',
                                 transition: 'filter 0.3s ease',
                                 zIndex: 1
                             }}
@@ -78,8 +76,8 @@ const Signup = () => {
                 </div>
 
                 <div className="login-header">
-                    <h1>Create Account</h1>
-                    <p>Join Sentia for smart emotional monitoring.</p>
+                    <h1 className="serif-heading">Create Account</h1>
+                    <p style={{ color: 'var(--text-body)', opacity: 0.8 }}>Join Sentia for smart emotional monitoring.</p>
                 </div>
 
                 {error && <p style={{ color: '#ff4d4d', fontSize: '0.85rem', margin: '0 0 10px 0', textAlign: 'center' }}>{error}</p>}
@@ -130,7 +128,7 @@ const Signup = () => {
                     </select>
                 </div>
 
-                <button className="sentia-btn" onClick={handleSubmit} disabled={isSigningUp}>
+                <button className="glass-button primary" style={{ width: '100%', padding: '1rem', marginTop: '1rem' }} onClick={handleSubmit} disabled={isSigningUp}>
                     {isSigningUp ? "Creating Account..." : "Sign Up"}
                 </button>
 

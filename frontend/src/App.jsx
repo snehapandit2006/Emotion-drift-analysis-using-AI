@@ -15,7 +15,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 // Eager load critical components
 import SupportDashboard from "./components/SupportDashboard";
 import LandingPage from "./components/LandingPage";
-import { Download, Table as TableIcon, Activity, LogOut, MessageSquare, Sun, Moon, Shield, Menu, X, Play } from 'lucide-react';
+import NeuralBackground from "./components/NeuralBackground";
+import BackgroundSelector, { getStoredBackground } from "./components/BackgroundSelector";
+import { Download, Table as TableIcon, Activity, LogOut, MessageSquare, Sun, Moon, Shield, Menu, X, Play, Timer, Music, Settings, Layout, Sparkles, Layers } from 'lucide-react';
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
@@ -40,6 +42,7 @@ import logoFinal from './assets/logo_final.png';
 import "./App.css";
 // Lazy load non-critical components
 const Background3D = lazy(() => import("./components/Background3D"));
+const Brain3D = lazy(() => import("./components/Brain3D"));
 const DriftGraph = lazy(() => import("./components/DriftGraph"));
 const LogTable = lazy(() => import("./components/LogTable"));
 const TransitionArrows = lazy(() => import("./components/TransitionArrows"));
@@ -52,10 +55,15 @@ const PsychiatristDashboard = lazy(() => import("./components/PsychiatristDashbo
 const PatientDetailView = lazy(() => import("./components/PatientDetailView"));
 import ChatInterface from "./components/ChatInterface";
 import FloatingRobot from "./components/FloatingRobot";
-
+import DoctorFloatingButton from "./components/DoctorFloatingButton";
+import SentiaFullScreenChat from "./components/SentiaFullScreenChat";
+const MeditationTimer = lazy(() => import("./components/MeditationTimer"));
+const MediaHub = lazy(() => import("./components/MediaHub"));
+const CommunityChat = lazy(() => import("./components/CommunityChat"));
+const VitalsDashboard = lazy(() => import("./components/VitalsDashboard"));
 
 import AuthContext, { AuthProvider } from "./context/AuthContext";
-import { ThemeProvider, useTheme } from "./context/ThemeContext";
+import { ThemeProvider } from "./context/ThemeContext";
 
 const emotionColors = {
   joy: "var(--emotion-happy)",
@@ -110,15 +118,15 @@ const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <div style={{ background: 'var(--bg-card)', padding: '10px', borderRadius: '5px', border: '1px solid var(--border-color)' }}>
-        <p style={{ margin: 0, fontWeight: 'bold', color: 'var(--text-main)' }}>{label}</p>
-        <p style={{ margin: '5px 0', color: emotionColors[data.emotion] || '#fff' }}>
+      <div className="glass-panel" style={{ padding: '12px', border: '1px solid var(--glass-border)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+        <p style={{ margin: 0, fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>{label}</p>
+        <p style={{ margin: '4px 0', color: emotionColors[data.emotion] || '#fff', fontWeight: '600' }}>
           {data.emotion.toUpperCase()}
         </p>
-        <p style={{ margin: 0, fontSize: '0.8em', color: 'var(--text-secondary)' }}>
-          Confidence: {(data.confidence * 100).toFixed(1)}%
+        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+          Confidence: <span style={{ color: 'var(--text-main)' }}>{(data.confidence * 100).toFixed(1)}%</span>
         </p>
-        <p style={{ margin: 0, fontSize: '0.8em', color: data.source === 'face' ? 'var(--primary-blue)' : 'var(--accent-color)' }}>
+        <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: data.source === 'face' ? 'var(--primary-blue)' : 'var(--accent-color)' }}>
           Source: {data.source === 'face' ? '📷 Face' : '💬 Chat'}
         </p>
       </div>
@@ -129,7 +137,6 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 function Dashboard() {
   const { user, logout, updateUserProfile } = useContext(AuthContext);
-  const { theme, toggleTheme } = useTheme();
 
   const [range, setRange] = useState("24h");
   const [timeline, setTimeline] = useState(null);
@@ -153,8 +160,9 @@ function Dashboard() {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [monitoring, setMonitoring] = useState(true);
-  const [viewMode, setViewMode] = useState('dashboard'); // 'dashboard', 'table', 'chat', 'settings'
+  const [viewMode, setViewMode] = useState('dashboard'); // 'dashboard', 'table', 'chat', 'settings', 'meditation', 'media', 'community'
   const [showDoctorChat, setShowDoctorChat] = useState(false);
+  const [showSentia, setShowSentia] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const dashboardRef = useRef(null);
@@ -219,6 +227,16 @@ function Dashboard() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showAlerts]);
+
+  // Listener for global doctor chat open event
+  useEffect(() => {
+    const handleOpenDoctorChat = () => {
+      console.log("Toggling doctor chat from global event...");
+      setShowDoctorChat(prev => !prev);
+    };
+    window.addEventListener('open-doctor-chat', handleOpenDoctorChat);
+    return () => window.removeEventListener('open-doctor-chat', handleOpenDoctorChat);
+  }, []);
 
   const submit = async () => {
     if (!text.trim() || !monitoring) return;
@@ -426,61 +444,66 @@ function Dashboard() {
   console.log("Current User ID:", user?.id);
 
   return (
-    <div className="dashboard" ref={dashboardRef}>
+    <div className="dashboard" style={{ background: 'transparent' }} ref={dashboardRef}>
       <header className="header glass-panel">
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{ position: 'relative', height: '245px', display: 'flex', alignItems: 'center' }}>
-            {/* Spacer to establish width */}
-            <img src={logoFinal} alt="" style={{ height: '245px', opacity: 0 }} />
-
-            {/* Top Layer: Robot (Original Colors) - Shows top 73% */}
-            <img
-              src={logoFinal}
-              alt="Sentia Robot"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                height: '100%',
-                clipPath: 'inset(0 0 27% 0)',
-                zIndex: 2
-              }}
-            />
-
-            {/* Bottom Layer: Text (White in Dark Mode) - Shows bottom 27% */}
-            <img
-              src={logoFinal}
-              alt="Sentia Text"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                height: '100%',
-                clipPath: 'inset(73% 0 0 0)',
-                filter: theme === 'dark' ? 'brightness(0) invert(1)' : 'brightness(0)',
-                transition: 'filter 0.3s ease',
-                zIndex: 1
-              }}
-            />
-          </div>
+        <div className="header-logo" style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setViewMode('dashboard')}>
+          <span className="serif-heading" style={{ fontSize: '1.8rem', letterSpacing: '2px', fontWeight: 'bold', color: 'var(--primary-blue)', fontStyle: 'normal' }}>SENTIA</span>
         </div>
+
+        {/* Desktop Features Bar - Compact & Complete */}
+        <nav className="desktop-nav">
+          {[
+            { id: 'dashboard', label: 'Analytics', icon: Activity },
+            { id: 'settings', label: 'Profile', icon: Settings },
+            { id: 'meditation', label: 'Therapy', icon: Timer },
+            { id: 'media', label: 'Media', icon: Music },
+            { id: 'support', label: 'Support', icon: Shield, action: () => window.location.href = '/support-dashboard' },
+            { id: 'community', label: 'Community', icon: MessageSquare },
+            { id: 'vitals', label: 'Vitals', icon: Activity },
+            { id: 'sentia', label: 'Sentia (Therapist)', icon: Sparkles, action: () => setShowSentia(true) },
+            { id: 'chat', label: 'Analysis', icon: MessageSquare, disabled: !monitoring },
+            { id: 'dr', label: 'Dr Chat', icon: MessageSquare, action: () => setShowDoctorChat(true), hidden: !user.doctor_id },
+            { id: 'toggle', label: viewMode === 'table' ? 'Dashboard' : 'Table', icon: viewMode === 'table' ? Layout : TableIcon, action: () => setViewMode(viewMode === 'dashboard' ? 'table' : 'dashboard'), disabled: !monitoring },
+            { id: 'export', label: 'Export', icon: Download, action: () => handleExportPDF(), disabled: !monitoring }
+          ].filter(item => !item.hidden).map(item => (
+            <button
+              key={item.id}
+              onClick={item.action || (() => setViewMode(item.id))}
+              disabled={item.disabled}
+              className={`nav-item-btn ${viewMode === item.id && !item.action ? 'active' : ''}`}
+            >
+              <item.icon size={16} />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
 
         {/* Center spacer if needed or just let space-between handle it */}
         <div style={{ flex: 1 }}></div>
 
         <div className="header-actions">
           {/* Always visible: Theme & Alerts */}
-          <button
-            className="icon-btn"
-            onClick={toggleTheme}
-            title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            style={{ color: 'var(--text-main)', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            {theme === 'dark' ? <Sun size={24} /> : <Moon size={24} />}
-          </button>
 
-          <div className="bell" onClick={() => setShowAlerts(!showAlerts)}>
+
+          <div className="bell" style={{ position: 'relative' }} onClick={() => setShowAlerts(!showAlerts)}>
             🔔{alerts.length > 0 && <span className="dot" />}
+            {showAlerts && (
+              <div className="alert-popup glass-panel" style={{ position: 'absolute', top: '100%', right: 0, marginTop: '10px' }}>
+                {alerts.length === 0 ? (
+                  <div className="alert-empty">No drift alerts</div>
+                ) : (
+                  alerts.slice(0, 5).map((a, i) => {
+                    const [t, d] = severityText(a.severity);
+                    return (
+                      <div key={i} className="alert-item" style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
+                        <strong>{t}</strong>
+                        <small>{d}</small>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </div>
 
           {/* Hamburger Menu */}
@@ -493,7 +516,7 @@ function Dashboard() {
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
 
-            {/* Dropdown Menu */}
+            {/* Dropdown Menu - System Actions Only */}
             {isMenuOpen && (
               <div className="glass-panel" style={{
                 position: 'absolute',
@@ -504,70 +527,15 @@ function Dashboard() {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '1rem',
-                minWidth: '200px',
+                minWidth: '180px',
                 zIndex: 1000,
                 background: 'var(--bg-card)',
                 border: '1px solid var(--glass-border)',
                 boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
               }}>
                 <button
-                  className="icon-btn"
-                  onClick={() => { setViewMode('settings'); setIsMenuOpen(false); }}
-                  style={{ justifyContent: 'flex-start', width: '100%', borderRadius: '8px', padding: '10px', gap: '10px' }}
-                >
-                  <Activity size={20} style={{ color: 'var(--primary-blue)' }} /> <span>Profile Settings</span>
-                </button>
-
-                <button
-                  className="icon-btn"
-                  onClick={() => { window.location.href = '/support-dashboard'; setIsMenuOpen(false); }}
-                  title="Support & Safety"
-                  style={{ justifyContent: 'flex-start', width: '100%', borderRadius: '8px', padding: '10px', gap: '10px' }}
-                >
-                  <Shield size={20} style={{ color: 'var(--accent-color)' }} /> <span>Support & Safety</span>
-                </button>
-
-                <button
-                  className="icon-btn"
-                  onClick={() => { setViewMode('chat'); setIsMenuOpen(false); }}
-                  disabled={!monitoring}
-                  style={{ justifyContent: 'flex-start', width: '100%', borderRadius: '8px', padding: '10px', gap: '10px' }}
-                >
-                  <MessageSquare size={20} style={{ color: 'var(--accent-color)' }} /> <span>Chat Analysis</span>
-                </button>
-
-                {user.doctor_id && (
-                  <button
-                    className="icon-btn"
-                    onClick={() => { setShowDoctorChat(true); setIsMenuOpen(false); }}
-                    style={{ justifyContent: 'flex-start', width: '100%', borderRadius: '8px', padding: '10px', gap: '10px' }}
-                  >
-                    <MessageSquare size={20} style={{ color: 'var(--primary-blue)' }} /> <span>Chat with Dr</span>
-                  </button>
-                )}
-
-                <button
-                  className="icon-btn"
-                  disabled={!monitoring}
-                  onClick={() => { setViewMode(viewMode === 'dashboard' ? 'table' : 'dashboard'); setIsMenuOpen(false); }}
-                  style={{ justifyContent: 'flex-start', width: '100%', borderRadius: '8px', padding: '10px', gap: '10px' }}
-                >
-                  {viewMode === 'table' ? <Activity size={20} /> : <TableIcon size={20} />}
-                  <span>{viewMode === 'table' ? "Show Dashboard" : "Show Table"}</span>
-                </button>
-
-                <button
-                  className="icon-btn"
-                  disabled={!monitoring}
-                  onClick={() => { handleExportPDF(); setIsMenuOpen(false); }}
-                  style={{ justifyContent: 'flex-start', width: '100%', borderRadius: '8px', padding: '10px', gap: '10px' }}
-                >
-                  <Download size={20} /> <span>Export PDF</span>
-                </button>
-
-                <button
                   className={`monitor-toggle ${monitoring ? "on" : "off"}`}
-                  onClick={() => setMonitoring(!monitoring)}
+                  onClick={() => { setMonitoring(!monitoring); setIsMenuOpen(false); }}
                   style={{ justifyContent: 'center', width: '100%' }}
                 >
                   {monitoring ? "Monitoring ON" : "Monitoring OFF"}
@@ -589,7 +557,7 @@ function Dashboard() {
       </header>
 
       {/* View Switcher Content */}
-      <div className={!monitoring ? "frozen" : ""}>
+      <div className={!monitoring ? "monitoring-paused" : ""}>
         {viewMode === 'chat' ? (
           <div style={{ marginTop: '2rem' }}>
             <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
@@ -597,13 +565,49 @@ function Dashboard() {
             </button>
             <ChatAnalyzer />
           </div>
+        ) : viewMode === 'meditation' ? (
+          <div style={{ marginTop: '2rem' }}>
+            <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+              &larr; Back to Dashboard
+            </button>
+            <Suspense fallback={<div>Loading Meditation...</div>}>
+              <MeditationTimer onComplete={() => load()} />
+            </Suspense>
+          </div>
+        ) : viewMode === 'media' ? (
+          <div style={{ marginTop: '2rem' }}>
+            <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+              &larr; Back to Dashboard
+            </button>
+            <Suspense fallback={<div>Loading Media...</div>}>
+              <MediaHub />
+            </Suspense>
+          </div>
+        ) : viewMode === 'community' ? (
+          <div style={{ marginTop: '2rem' }}>
+            <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+              &larr; Back to Dashboard
+            </button>
+            <Suspense fallback={<div>Loading Community Chat...</div>}>
+              <CommunityChat />
+            </Suspense>
+          </div>
+        ) : viewMode === 'vitals' ? (
+          <div style={{ marginTop: '2rem' }}>
+            <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+              &larr; Back to Dashboard
+            </button>
+            <Suspense fallback={<div>Loading Vitals Dashboard...</div>}>
+              <VitalsDashboard />
+            </Suspense>
+          </div>
         ) : viewMode === 'settings' ? (
           <div style={{ marginTop: '2rem' }}>
             <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
               &larr; Back to Dashboard
             </button>
             <div className="glass-panel" style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-                <h2 style={{ marginBottom: '1.5rem', color: 'var(--text-main)' }}>Profile Settings</h2>
+                <h2 className="serif-heading" style={{ marginBottom: '1.5rem', color: 'var(--text-main)' }}>Profile Settings</h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         <label style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>My Hobbies</label>
@@ -650,6 +654,25 @@ function Dashboard() {
                         />
                         <p style={{ fontSize: '0.8rem', opacity: 0.6 }}>Sentia will suggest these or new grounding games during anxiety.</p>
                     </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <label style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Music & Media Interests</label>
+                        <textarea 
+                            value={user.music_interests || ''}
+                            onChange={(e) => updateUserProfile({ music_interests: e.target.value })}
+                            placeholder="e.g. Lofi hip hop for focus, Classical for sleep, YouTube links to favorite yoga channels..."
+                            style={{ 
+                                background: 'var(--bg-input)', 
+                                border: '1px solid var(--border-color)', 
+                                padding: '1rem', 
+                                borderRadius: '8px', 
+                                color: 'var(--text-main)',
+                                minHeight: '80px',
+                                resize: 'vertical'
+                            }}
+                        />
+                        <p style={{ fontSize: '0.8rem', opacity: 0.6 }}>Linked YouTube/Spotify content will be suggested for mood regulation.</p>
+                    </div>
                     
                     <button 
                         onClick={async () => {
@@ -657,7 +680,8 @@ function Dashboard() {
                                 setLoading(true);
                                 await updateProfile({
                                     hobbies: user.hobbies,
-                                    preferred_games: user.preferred_games
+                                    preferred_games: user.preferred_games,
+                                    music_interests: user.music_interests
                                 });
                                 alert("Preferences saved successfully!");
                             } catch (e) {
@@ -686,38 +710,26 @@ function Dashboard() {
           </div>
         ) : (
           <>
-            {showAlerts && (
-              <div className="alert-popup glass-panel">
-                {alerts.length === 0 ? (
-                  <div className="alert-empty">No drift alerts</div>
-                ) : (
-                  alerts.slice(0, 5).map((a, i) => {
-                    const [t, d] = severityText(a.severity);
-                    return (
-                      <div key={i} className="alert-item" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <strong>{t}</strong>
-                        <small>{d}</small>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            )}
-
             {/* Self Emotion Monitor (Webcam) */}
             <div style={{ marginBottom: '20px' }}>
               <SelfEmotionMonitor />
             </div>
 
-            <div className="input-card glass-panel" style={{ padding: '2rem' }}>
+            <div className="input-card glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
               <input
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder={monitoring ? `How are you feeling, ${user.email.split('@')[0]}?` : "Monitoring paused"}
                 disabled={!monitoring}
-                style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', padding: '1rem', borderRadius: '8px', color: 'var(--text-main)', width: '70%' }}
+                className="sentia-input"
+                style={{ flex: 1 }}
               />
-              <button onClick={submit} disabled={loading || !monitoring} style={{ marginLeft: '1rem', padding: '1rem 2rem', background: 'var(--accent-color)', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', color: 'var(--accent-text)' }}>
+              <button 
+                onClick={submit} 
+                disabled={loading || !text.trim() || !monitoring} 
+                className="glass-button primary"
+                style={{ height: '54px', minWidth: '150px' }}
+              >
                 {loading ? "Analyzing..." : "Analyze"}
               </button>
             </div>
@@ -740,8 +752,8 @@ function Dashboard() {
               <LogTable logs={timelineData} />
             ) : (
               <div className="grid">
-                <motion.div className="card" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}>
-                  <h2>Drift Analysis</h2>
+                <motion.div className="card glass-panel" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}>
+                  <h2 className="serif-heading">Drift Analysis</h2>
                   {lastEmotion ? (
                     <>
                       <TransitionArrows previous={prevEmotion} current={lastEmotion} />
@@ -757,8 +769,8 @@ function Dashboard() {
                   )}
                 </motion.div>
 
-                <motion.div className="card" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, delay: 0.1 }}>
-                  <h2>Emotion Distribution</h2>
+                <motion.div className="card glass-panel" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, delay: 0.1 }}>
+                  <h2 className="serif-heading">Emotion Distribution</h2>
                   <ResponsiveContainer height={260}>
                     <BarChart data={distData}>
                       <XAxis dataKey="emotion" stroke="var(--text-secondary)" />
@@ -777,8 +789,8 @@ function Dashboard() {
 
             {viewMode === 'dashboard' && (
               <>
-                <motion.div className="card full" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-                  <h2>Timeline</h2>
+                <motion.div className="card full glass-panel" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+                  <h2 className="serif-heading">Timeline</h2>
                   <ResponsiveContainer height={300}>
                     <LineChart data={timelineData}>
                       <CartesianGrid stroke="var(--glass-border)" />
@@ -790,8 +802,8 @@ function Dashboard() {
                   </ResponsiveContainer>
                 </motion.div>
 
-                <motion.div className="card full" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
-                  <h2>Historical Comparison</h2>
+                <motion.div className="card full glass-panel" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
+                  <h2 className="serif-heading">Historical Comparison</h2>
                   {comparison?.meta?.current_count === 0 ? (
                     <p className="empty">Not enough data</p>
                   ) : (
@@ -807,8 +819,8 @@ function Dashboard() {
                   )}
                 </motion.div>
 
-                <motion.div className="card full" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }}>
-                  <h2>Face Emotion Trend</h2>
+                <motion.div className="card full glass-panel" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }}>
+                  <h2 className="serif-heading">Face Emotion Trend</h2>
                   <ResponsiveContainer height={300}>
                     <LineChart data={selfHistoryData}>
                       <CartesianGrid stroke="var(--glass-border)" />
@@ -820,8 +832,8 @@ function Dashboard() {
                   </ResponsiveContainer>
                 </motion.div>
 
-                <motion.div className="card full" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.3 }}>
-                  <h2>Face Emotion Distribution</h2>
+                <motion.div className="card full glass-panel" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.3 }}>
+                  <h2 className="serif-heading">Face Emotion Distribution</h2>
                   <ResponsiveContainer height={260}>
                     <BarChart data={selfDistData}>
                       <XAxis dataKey="emotion" stroke="var(--text-secondary)" />
@@ -837,8 +849,8 @@ function Dashboard() {
                 </motion.div>
 
 
-                <motion.div className="card full" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-                  <h2>Fusion Insights</h2>
+                <motion.div className="card full glass-panel" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                  <h2 className="serif-heading">Fusion Insights</h2>
                   {fusion ? (
                     <div className="fusion-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', textAlign: 'center' }}>
                       <div style={{ padding: '1rem', background: 'var(--bg-panel)', borderRadius: '8px' }}>
@@ -870,8 +882,8 @@ function Dashboard() {
 
                 {/* Patient Therapies Render */}
                 {therapies.length > 0 && (
-                  <motion.div className="card full" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between' }}>
+                  <motion.div className="card full glass-panel" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+                    <h2 className="serif-heading" style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span role="img" aria-label="music">🎵</span> Doctor Prescribed Therapies
                       </div>
@@ -955,7 +967,32 @@ function Dashboard() {
                               className="glass-panel"
                               style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}
                             >
-                              <img src={game.logo} alt={game.name} style={{ width: '60px', height: '60px', borderRadius: '12px', objectFit: 'cover', background: 'white', padding: '5px' }} />
+                              <div style={{
+                                  width: '60px', height: '60px', borderRadius: '12px',
+                                  background: `hsl(${(game.name?.charCodeAt(0) || 200) * 137 % 360}, 60%, 35%)`,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  flexShrink: 0, overflow: 'hidden'
+                              }}>
+                                  {game.logo ? (
+                                      <img 
+                                          src={game.logo} 
+                                          alt={game.name} 
+                                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                          onError={(e) => {
+                                              // Hide broken image and show fallback emoji
+                                              e.target.style.display = 'none';
+                                              e.target.nextSibling.style.display = 'flex';
+                                          }}
+                                      />
+                                  ) : null}
+                                  <span style={{ 
+                                      display: game.logo ? 'none' : 'flex',
+                                      fontSize: '1.8rem', 
+                                      alignItems: 'center', 
+                                      justifyContent: 'center',
+                                      width: '100%', height: '100%'
+                                  }}>🎮</span>
+                              </div>
                               <div style={{ flex: 1 }}>
                                 <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{game.name}</h3>
                                 <p style={{ fontSize: '0.75rem', opacity: 0.6, margin: '4px 0 10px 0' }}>Prescribed: {new Date(game.prescribed_at).toLocaleDateString()}</p>
@@ -1015,7 +1052,90 @@ function Dashboard() {
           />
         )
       }
+      {
+        showSentia && (
+          <SentiaFullScreenChat onClose={() => setShowSentia(false)} />
+        )
+      }
     </div >
+  );
+}
+
+
+// Pages that should NOT show the background (auth + landing pages)
+const AUTH_ROUTES = ['/', '/login', '/signup', '/welcome'];
+
+function MainContent() {
+  const location = useLocation();
+  const isLandingPage = location.pathname === '/';
+  const showBackground = !AUTH_ROUTES.includes(location.pathname);
+  const [activeBg, setActiveBg] = useState(getStoredBackground);
+
+  useEffect(() => {
+    const handler = (e) => setActiveBg(e.detail.background);
+    window.addEventListener('background-change', handler);
+    return () => window.removeEventListener('background-change', handler);
+  }, []);
+
+  return (
+    <>
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: -1, background: '#02040A', transition: 'background 0.3s ease' }}>
+        {showBackground && activeBg === 'neural' && <NeuralBackground theme="dark" />}
+        {showBackground && activeBg === 'particles' && (
+          <Suspense fallback={null}>
+            <Background3D />
+          </Suspense>
+        )}
+        {showBackground && activeBg === 'brain3d' && (
+          <Suspense fallback={null}>
+            <Brain3D progress={1} />
+          </Suspense>
+        )}
+      </div>
+      <Suspense fallback={
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'white', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ width: '40px', height: '40px', border: '3px solid rgba(255,255,255,0.3)', borderRadius: '50%', borderTopColor: '#e1ff5e', animation: 'spin 1s linear infinite' }}></div>
+          <p>Loading Sentia...</p>
+          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        </div>
+      }>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={
+            <Suspense fallback={null}><Login /></Suspense>
+          } />
+          <Route path="/signup" element={
+            <Suspense fallback={null}><Signup /></Suspense>
+          } />
+          <Route path="/welcome" element={
+            <Suspense fallback={null}><WelcomeScreen /></Suspense>
+          } />
+          <Route path="/dashboard" element={
+            <RequireAuth>
+              <Dashboard />
+            </RequireAuth>
+          } />
+          <Route path="/support-dashboard" element={
+            <RequireAuth>
+              <SupportDashboard />
+            </RequireAuth>
+          } />
+          <Route path="/doctor-dashboard" element={
+            <RequireDoctorAuth>
+              <Suspense fallback={null}><PsychiatristDashboard /></Suspense>
+            </RequireDoctorAuth>
+          } />
+          <Route path="/doctor/patient/:id" element={
+            <RequireDoctorAuth>
+              <Suspense fallback={null}><PatientDetailView /></Suspense>
+            </RequireDoctorAuth>
+          } />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+        <GlobalDoctorFloatingButton />
+        {showBackground && <BackgroundSelector />}
+      </Suspense>
+    </>
   );
 }
 
@@ -1024,135 +1144,40 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
-          <Suspense fallback={
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'white', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ width: '40px', height: '40px', border: '3px solid rgba(255,255,255,0.3)', borderRadius: '50%', borderTopColor: '#e1ff5e', animation: 'spin 1s linear infinite' }}></div>
-              <p>Loading Sentia...</p>
-              <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-            </div>
-          }>
-            <Background3D />
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/welcome" element={<RequireAuth><WelcomeScreen /></RequireAuth>} />
-              <Route
-                path="/support-dashboard"
-                element={
-                  <RequireAuth>
-                    <SupportDashboard />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/dashboard"
-                element={
-                  <RequireAuth>
-                    <Dashboard />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/doctor-dashboard"
-                element={
-                  <RequireDoctorAuth>
-                    <PsychiatristDashboard />
-                  </RequireDoctorAuth>
-                }
-              />
-              <Route
-                path="/doctor/patient/:id"
-                element={
-                  <RequireDoctorAuth>
-                    <PatientDetailView />
-                  </RequireDoctorAuth>
-                }
-              />
-            </Routes>
-            <GlobalThemeToggle />
-            <GlobalFloatingRobot />
-          </Suspense>
+          <MainContent />
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
   );
 }
 
-function GlobalThemeToggle() {
-  const { theme, toggleTheme } = useTheme();
-  const location = useLocation();
 
-  // Hide on pages that likely already have a header with settings
-  // (Dashboard, Support Dashboard, Doctor Dashboard, Patient View)
-  const hideOnRoutes = ['/dashboard', '/support-dashboard', '/doctor-dashboard', '/doctor/patient', '/'];
-  const shouldHide = hideOnRoutes.some(route => location.pathname === '/' ? route === '/' : location.pathname.startsWith(route) && route !== '/');
 
-  if (shouldHide) return null;
-
-  const isDark = theme === 'dark';
-
-  return (
-    <button
-      onClick={toggleTheme}
-      style={{
-        position: 'fixed',
-        top: '2rem',
-        right: '2rem',
-        zIndex: 9999,
-        background: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
-        backdropFilter: 'blur(10px)',
-        border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
-        borderRadius: '50%',
-        width: '50px',
-        height: '50px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        cursor: 'pointer',
-        boxShadow: isDark ? '0 4px 12px rgba(0,0,0,0.5)' : '0 4px 12px rgba(0,0,0,0.1)',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-      }}
-      title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'scale(1.1) rotate(15deg)';
-        e.currentTarget.style.background = isDark ? 'rgba(250, 204, 21, 0.1)' : 'rgba(79, 70, 229, 0.1)';
-        e.currentTarget.style.borderColor = isDark ? '#FACC15' : '#4F46E5';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
-        e.currentTarget.style.background = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
-        e.currentTarget.style.borderColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-      }}
-    >
-      <div style={{
-        position: 'relative',
-        width: '26px',
-        height: '26px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        transition: 'none'
-      }}>
-        {isDark ? (
-          <Sun size={26} strokeWidth={2.5} stroke="#FACC15" fill="#FACC15" style={{ display: 'block', filter: 'drop-shadow(0 0 5px rgba(250,204,21,0.5))' }} />
-        ) : (
-          <Moon size={26} strokeWidth={2.5} stroke="#4F46E5" fill="#4F46E5" style={{ display: 'block' }} />
-        )}
-      </div>
-    </button>
-  );
-}
-
-function GlobalFloatingRobot() {
+function GlobalDoctorFloatingButton() {
   const { user } = useContext(AuthContext);
   const location = useLocation();
 
-  // Only show on dashboard and related pages, and only for patients
-  const showOnRoutes = ['/dashboard', '/support-dashboard', '/welcome'];
-  const shouldShow = user && user.role === 'patient' && showOnRoutes.some(route => location.pathname.startsWith(route));
+  // Show floating button for doctor chat instead of robot
+  const showOnRoutes = ['/dashboard', '/support-dashboard'];
+  const shouldShow = user && user.role === 'patient' && user.doctor_id && showOnRoutes.some(route => location.pathname.startsWith(route));
 
   if (!shouldShow) return null;
 
-  return <FloatingRobot />;
+  // We need a way to open the doctor chat from here
+  // Since we're in App, we can't easily access Dashboard's setShowDoctorChat
+  // BUT we can use the navigation menu or just let the dashboard handle its own floating button if we prefer
+  // Wait, the user asked for "in place of virtaul assitant robo put the chat with dr"
+  
+  // To make it fully functional globally, we might need a GlobalChatContext or similar.
+  // For now, let's just make it trigger the chat if we are on the dashboard.
+  // Actually, Dashboard is where showDoctorChat lives.
+  
+  // If we want it truly global, we should move showDoctorChat to a context.
+  // But let's see if we can trigger it via a custom event like refresh-dashboard.
+  
+  const handleClick = () => {
+    window.dispatchEvent(new CustomEvent('open-doctor-chat'));
+  };
+
+  return <DoctorFloatingButton onClick={handleClick} />;
 }

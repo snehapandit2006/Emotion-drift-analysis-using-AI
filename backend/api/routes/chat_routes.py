@@ -366,9 +366,52 @@ import requests
 
 class TTSRequest(BaseModel):
     text: str
-    target_language_code: str = "hi-IN"
+    target_language_code: str = "en-IN"
     speaker: str = "ishita"
     model: str = "bulbul:v3"
+
+def split_text_into_chunks(text: str, max_chars: int = 450) -> list:
+    """
+    Split text into chunks of max_chars, trying to break at sentence boundaries.
+    """
+    if not text:
+        return []
+    
+    # Split by common sentence markers
+    import re
+    sentences = re.split(r'([.।!?|])', text)
+    
+    chunks = []
+    current_chunk = ""
+    
+    for i in range(0, len(sentences), 2):
+        sentence = sentences[i]
+        punctuation = sentences[i+1] if i+1 < len(sentences) else ""
+        full_sentence = (sentence + punctuation).strip()
+        
+        if not full_sentence:
+            continue
+            
+        if len(current_chunk) + len(full_sentence) + 1 <= max_chars:
+            current_chunk = (current_chunk + " " + full_sentence).strip()
+        else:
+            if current_chunk:
+                chunks.append(current_chunk)
+            
+            # If a single sentence is still too long, brute force split it
+            if len(full_sentence) > max_chars:
+                temp_sentence = full_sentence
+                while len(temp_sentence) > max_chars:
+                    chunks.append(temp_sentence[:max_chars])
+                    temp_sentence = temp_sentence[max_chars:]
+                current_chunk = temp_sentence
+            else:
+                current_chunk = full_sentence
+                
+    if current_chunk:
+        chunks.append(current_chunk)
+        
+    return chunks
 
 @router.post("/chat/tts")
 def generate_sarvam_tts(req: TTSRequest, current_user: User = Depends(get_current_user)):
@@ -408,8 +451,12 @@ def generate_sarvam_tts(req: TTSRequest, current_user: User = Depends(get_curren
     
     print(f"[TTS DEBUG] Text sent to Sarvam: {req.text[:50]}... (Len: {len(req.text)}) Speaker: {selected_speaker}")
     
+    print(f"[TTS DEBUG] Text length: {len(req.text)}. Splitting into chunks...")
+    chunks = split_text_into_chunks(req.text)
+    print(f"[TTS DEBUG] Number of chunks: {len(chunks)}")
+    
     payload = {
-        "inputs": [req.text], # Sarvam uses "inputs" array for text
+        "inputs": chunks,
         "target_language_code": req.target_language_code,
         "speaker": selected_speaker,
         "model": req.model,
@@ -418,19 +465,36 @@ def generate_sarvam_tts(req: TTSRequest, current_user: User = Depends(get_curren
     }
     
     try:
-        res = requests.post(url, headers=headers, json=payload, timeout=20)
+        res = requests.post(url, headers=headers, json=payload, timeout=30)
         if res.status_code != 200:
             print(f"[TTS Error] {res.status_code} - {res.text}")
             raise HTTPException(status_code=502, detail="Failed to generate TTS audio")
             
-        print(f"[TTS SUCCESS] Voice generated correctly.")
         data = res.json()
-        audio_b64 = data.get("audios", [""])[0]
-        if not audio_b64:
+        audios_b64 = data.get("audios", [])
+        
+        if not audios_b64:
             raise HTTPException(status_code=502, detail="No audio returned from TTS payload")
             
-        audio_bytes = base64.b64decode(audio_b64)
-        return Response(content=audio_bytes, media_type="audio/wav")
+        # Bug 7 Fix: WAV files have a 44-byte header. Concatenating raw WAV bytes
+        # produces multiple headers which causes browser audio glitches/silence.
+        # Strip the header from all chunks after the first.
+        WAV_HEADER_SIZE = 44
+        final_audio_bytes = b""
+        for i, b64 in enumerate(audios_b64):
+            audio_bytes = base64.b64decode(b64)
+            if i == 0:
+                # Keep full header from first chunk
+                final_audio_bytes += audio_bytes
+            else:
+                # Strip WAV header (44 bytes) from subsequent chunks
+                if len(audio_bytes) > WAV_HEADER_SIZE:
+                    final_audio_bytes += audio_bytes[WAV_HEADER_SIZE:]
+                else:
+                    final_audio_bytes += audio_bytes
+            
+        print(f"[TTS SUCCESS] Voice generated correctly with {len(chunks)} chunks.")
+        return Response(content=final_audio_bytes, media_type="audio/wav")
         
     except requests.exceptions.Timeout:
         raise HTTPException(status_code=504, detail="TTS service timeout")

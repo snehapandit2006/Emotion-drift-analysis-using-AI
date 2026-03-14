@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPatientInsights, getPatientLogs, getMedicalRecords, uploadMedicalRecord, generateReport } from '../api';
-import { useTheme } from '../context/ThemeContext';
 import { ArrowLeft, MessageSquare, Clipboard, FileText, Calendar, AlertTriangle, TrendingUp, Sun, Moon, LayoutDashboard, AlignLeft, UserCircle, Pill, Download, Folder, Music } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ReferenceLine } from 'recharts';
 import { getPatientTherapies, prescribeTherapy } from '../api';
@@ -12,7 +11,6 @@ import DoctorVoiceAssistant from './DoctorVoiceAssistant';
 const PatientDetailView = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { theme, toggleTheme } = useTheme();
     const [data, setData] = useState(null);
     const [allTextLogs, setAllTextLogs] = useState([]); // Store all logs
     const [allFaceLogs, setAllFaceLogs] = useState([]); // Store all logs
@@ -160,8 +158,8 @@ const PatientDetailView = () => {
         }
     };
 
-    if (loading) return <div className="pd-container">Loading patient data...</div>;
-    if (!data) return <div className="pd-container">Patient not found or access denied.</div>;
+    if (loading) return <div className="pd-container" style={{ background: 'transparent' }}>Loading patient data...</div>;
+    if (!data) return <div className="pd-container" style={{ background: 'transparent' }}>Patient not found or access denied.</div>;
 
     const { active_alerts, patient_email, current_instant_risk, stress_trend } = data;
     const name = patient_email.split('@')[0];
@@ -171,9 +169,9 @@ const PatientDetailView = () => {
             return (
                 <div className="pd-grid">
                     {/* 2. Ready for Review / Text Logs Summary */}
-                    <div className="pd-card">
+                    <div className="pd-card glass-panel">
                         <div className="pd-card-header">
-                            <span className="pd-card-title">Recent Text Logs</span>
+                            <span className="pd-card-title serif-heading">Recent Text Logs</span>
                         </div>
                         <div className="pd-big-number">{filteredTextLogs.length}</div>
 
@@ -200,9 +198,9 @@ const PatientDetailView = () => {
                     </div>
 
                     {/* 3. High Risk / Conditions -> Active Alert Badges */}
-                    <div className="pd-card">
+                    <div className="pd-card glass-panel">
                         <div className="pd-card-header">
-                            <span className="pd-card-title">Active Alert Badges</span>
+                            <span className="pd-card-title serif-heading">Active Alert Badges</span>
                             <AlertTriangle size={18} color="var(--pd-accent-alert)" />
                         </div>
 
@@ -233,9 +231,9 @@ const PatientDetailView = () => {
                     </div>
 
                     {/* 4. Graph Placeholder / Trends (Full Width of Grid 2 & 3) */}
-                    <div className="pd-card" style={{ gridColumn: '1 / span 2' }}>
+                    <div className="pd-card glass-panel" style={{ gridColumn: '1 / span 2' }}>
                         <div className="pd-card-header">
-                            <span className="pd-card-title">Stress Trend Graph (last 5 sessions)</span>
+                            <span className="pd-card-title serif-heading">Stress Trend Graph (last 5 sessions)</span>
                             <TrendingUp size={18} color="var(--pd-olive-deep)" />
                         </div>
                         <div style={{
@@ -285,9 +283,9 @@ const PatientDetailView = () => {
             );
         } else if (activeTab === 'text_logs') {
             return (
-                <div className="pd-card" style={{ minHeight: '500px' }}>
+                <div className="pd-card glass-panel" style={{ minHeight: '500px' }}>
                     <div className="pd-card-header">
-                        <span className="pd-card-title">Full Text Logs History</span>
+                        <span className="pd-card-title serif-heading">Full Text Logs History</span>
                     </div>
                     <div className="pd-scroll-container">
                         <table className="pd-log-table" style={{ marginTop: '0' }}>
@@ -317,9 +315,9 @@ const PatientDetailView = () => {
             )
         } else if (activeTab === 'face_logs') {
             return (
-                <div className="pd-card" style={{ minHeight: '500px' }}>
+                <div className="pd-card glass-panel" style={{ minHeight: '500px' }}>
                     <div className="pd-card-header">
-                        <span className="pd-card-title">Face Expression Logs</span>
+                        <span className="pd-card-title serif-heading">Face Expression Logs</span>
                     </div>
                     <div className="pd-scroll-container">
                         <table className="pd-log-table" style={{ marginTop: '0' }}>
@@ -345,9 +343,9 @@ const PatientDetailView = () => {
             )
         } else if (activeTab === 'records') {
             return (
-                <div className="pd-card" style={{ minHeight: '500px' }}>
+                <div className="pd-card glass-panel" style={{ minHeight: '500px' }}>
                     <div className="pd-card-header">
-                        <span className="pd-card-title">Medical Records & Files</span>
+                        <span className="pd-card-title serif-heading">Medical Records & Files</span>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                             <input type="file" id="full-upload" style={{ display: 'none' }} onChange={handleFileUpload} />
                             <label htmlFor="full-upload" className="pd-btn secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
@@ -396,9 +394,9 @@ const PatientDetailView = () => {
             )
         } else if (activeTab === 'medicine_log') {
             return (
-                <div className="pd-card" style={{ minHeight: '500px' }}>
+                <div className="pd-card glass-panel" style={{ minHeight: '500px' }}>
                     <div className="pd-card-header">
-                        <span className="pd-card-title">Patient Medicine Log</span>
+                        <span className="pd-card-title serif-heading">Patient Medicine Log</span>
                     </div>
                     <div style={{ marginTop: '1rem' }}>
                         <MedicalLogTable patientId={id} readOnly={true} allowAdd={true} />
@@ -407,9 +405,9 @@ const PatientDetailView = () => {
             )
         } else if (activeTab === 'therapies') {
             return (
-                <div className="pd-card" style={{ minHeight: '500px' }}>
+                <div className="pd-card glass-panel" style={{ minHeight: '500px' }}>
                     <div className="pd-card-header">
-                        <span className="pd-card-title">Prescribed Therapies</span>
+                        <span className="pd-card-title serif-heading">Prescribed Therapies</span>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                             <button className="pd-btn secondary" onClick={handlePrescribeTherapy} style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
                                 + Prescribe Music Therapy
@@ -449,22 +447,15 @@ const PatientDetailView = () => {
     }
 
     return (
-        <div className="pd-container">
+        <div className="pd-container" style={{ background: 'transparent' }}>
             {/* Header */}
-            <header className="pd-header">
+            <header className="pd-header" style={{ background: 'transparent', borderBottom: '1px solid var(--glass-border)' }}>
                 <div className="pd-title">
-                    <h1>Emotional Risk Assessment</h1>
-                    <p>Hello, Dr. You have {active_alerts?.length || 0} active emotional alerts for {name}.</p>
+                    <h1 className="serif-heading" style={{ fontSize: '2.5rem' }}>Emotional Risk Assessment</h1>
+                    <p style={{ opacity: 0.8 }}>Hello, Dr. You have {active_alerts?.length || 0} active emotional alerts for {name}.</p>
                 </div>
                 <div className="pd-controls" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <button
-                        className="icon-btn"
-                        onClick={toggleTheme}
-                        title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-                        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', width: '36px', height: '36px' }}
-                    >
-                        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-                    </button>
+
                     <button className="pd-btn outline" onClick={() => navigate('/doctor-dashboard')}>
                         Dashboard
                     </button>
@@ -502,12 +493,12 @@ const PatientDetailView = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1.5rem' }}>
 
                 {/* Fixed Sidebar */}
-                <div className="pd-card pd-sidebar" style={{ height: 'fit-content' }}>
+                <div className="pd-card pd-sidebar glass-panel" style={{ height: 'fit-content' }}>
                     <div className="pd-card-header">
-                        <span className="pd-card-title">Quick Access</span>
+                        <span className="pd-card-title serif-heading">Quick Access</span>
                     </div>
                     <div style={{ marginTop: '1rem' }}>
-                        <h2 style={{ fontSize: '1.5rem', margin: 0 }}>{name}</h2>
+                        <h2 className="serif-heading" style={{ fontSize: '1.5rem', margin: 0 }}>{name}</h2>
                         <p style={{ opacity: 0.7, fontSize: '0.9rem' }}>{patient_email}</p>
                     </div>
 

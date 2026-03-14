@@ -17,6 +17,7 @@ class User(Base):
 
     hobbies = Column(String, nullable=True)
     preferred_games = Column(String, nullable=True)
+    music_interests = Column(String, nullable=True) # JSON or comma-separated string
 
     logs = relationship("EmotionLog", back_populates="user")
     alerts = relationship("DriftAlert", back_populates="user")
@@ -163,3 +164,53 @@ class PrescribedTherapy(Base):
     is_active = Column(Boolean, default=True)
 
     user = relationship("User", back_populates="prescribed_therapies")
+
+class MeditationLog(Base):
+    __tablename__ = "meditation_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    duration_seconds = Column(Integer)
+    session_type = Column(String, default="breathing") # 'breathing', 'focus', 'guided'
+    completed_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="meditation_logs")
+
+User.meditation_logs = relationship("MeditationLog", back_populates="user")
+
+class ChatRoom(Base):
+    __tablename__ = "chat_rooms"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    description = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    messages = relationship("CommunityMessage", back_populates="room", cascade="all, delete-orphan")
+
+class CommunityMessage(Base):
+    __tablename__ = "community_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    room_id = Column(Integer, ForeignKey("chat_rooms.id"), index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    is_anonymous = Column(Boolean, default=False)
+    content = Column(String)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+    room = relationship("ChatRoom", back_populates="messages")
+    user = relationship("User", backref="community_messages")
+
+class HealthMetric(Base):
+    __tablename__ = "health_metrics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    heart_rate = Column(Float, nullable=True) # bpm
+    spo2 = Column(Float, nullable=True)       # percentage
+    blood_pressure_systolic = Column(Float, nullable=True)
+    blood_pressure_diastolic = Column(Float, nullable=True)
+    source = Column(String, default="manual") # 'manual', 'google_fit'
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", backref="health_metrics")

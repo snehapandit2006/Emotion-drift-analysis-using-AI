@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 from typing import List
 import os
 
-# --- HOTFIX: Bypassing Windows terminal environment variable shadowing
+
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 override_key = ""
 override_model = "sarvam-m"
@@ -17,7 +17,7 @@ if os.path.exists(env_path):
         os.environ["LLM_API_KEY"] = override_key
     if override_model:
         os.environ["LLM_MODEL"] = override_model
-# --- END HOTFIX ---
+
 
 
 class Settings(BaseSettings):
@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
         "http://localhost:3000",
         "http://127.0.0.1:3000"
     ]

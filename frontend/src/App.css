@@ -8,15 +8,20 @@ body {
   height: 100%;
   margin: 0;
   overflow: hidden;
+  background: transparent !important;
 }
 
 /* Theme variables are now managed in index.css */
 
-.dashboard {
+.dashboard,
+.pd-container,
+.dashboard-container {
   width: 100%;
   height: 100vh;
-  padding: 24px;
+  padding: 0 24px 24px 24px;
   overflow-y: auto;
+  scroll-behavior: smooth;
+  background: transparent !important;
 }
 
 .frozen {
@@ -30,6 +35,20 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  margin: 0 -24px 24px -24px;
+  padding: 0 24px;
+  height: 80px;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  overflow: visible !important; /* Ensure dropdown is visible */
+  background: var(--nav-bg);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--glass-border);
 }
 
 .header-actions {
@@ -39,9 +58,20 @@ body {
 }
 
 .bell {
-  font-size: 1.6rem;
+  font-size: 1.4rem;
   cursor: pointer;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.bell:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .dot {
@@ -100,14 +130,15 @@ body {
 }
 
 .alert-popup {
-  position: fixed;
-  bottom: 20px;
-  right: 24px;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 10px;
   background: var(--bg-card);
   padding: 16px;
   border-radius: 16px;
   width: 320px;
-  z-index: 100;
+  z-index: 1000;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   border: 1px solid var(--glass-border);
   backdrop-filter: blur(12px);
@@ -141,11 +172,12 @@ textarea {
   padding: 14px 16px;
   border-radius: 12px;
   border: 1px solid var(--border-color);
-  background: var(--bg-input);
-  color: var(--text-main);
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  color: var(--text-heading);
   font-family: inherit;
   font-size: 0.95rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: all 0.3s ease;
 }
 
 input:focus,
@@ -186,34 +218,22 @@ button:disabled {
 }
 
 .card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
   border-radius: 24px;
-  /* Larger radius per reference */
-  padding: 28px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  /* Deeper shadow */
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
 }
 
-/* Optional: Top highlight for 3D effect */
-.card::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-  pointer-events: none;
-}
-
 .card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-  border-color: var(--glass-border);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  border-color: var(--accent-color);
 }
 
 .full {
@@ -230,7 +250,7 @@ button:disabled {
 
 /* Sentia Login Theme */
 .login-screen {
-  background: var(--bg-main);
+  background: transparent !important;
   display: flex;
   height: 100vh;
   overflow-y: auto;
@@ -246,10 +266,9 @@ button:disabled {
   max-width: 400px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
   background: var(--bg-card);
-  /* Use card bg for the box itself if needed, or transparent */
-  padding: 3rem;
+  padding: 2rem;
   border-radius: 16px;
   border: 1px solid var(--border-color);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
@@ -410,9 +429,17 @@ button:disabled {
 
 .login-header p {
   font-size: 0.9rem;
-  color: var(--text-sub);
+  color: var(--text-body);
+  opacity: 0.9;
   margin: 0;
   line-height: 1.4;
+}
+
+.light-mode .login-screen {
+  --text-main: #FFFFFF;
+  --text-sub: #B4BCCF;
+  --text-heading: #FFFFFF;
+  --text-body: #B4BCCF;
 }
 
 .input-group {
@@ -518,15 +545,6 @@ button:disabled {
 }
 
 /* Missing utility classes */
-.glass-panel {
-  background: rgba(19, 20, 31, 0.7);
-  /* Match card-bg but transparent */
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
 
 .range-selector {
   display: flex;
@@ -700,11 +718,13 @@ button:disabled {
 .pd-container {
   padding: 1.5rem 2rem;
   width: 100%;
-  min-height: 100vh;
+  height: 100vh;
   box-sizing: border-box;
   color: var(--text-main);
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  scroll-behavior: smooth;
 }
 
 .pd-header {
@@ -756,6 +776,85 @@ button:disabled {
   transition: filter 0.2s;
 }
 
+/* Responsive Navigation */
+@media (max-width: 1024px) {
+  .desktop-nav {
+    display: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-logo span {
+    display: none;
+  }
+  
+  .header {
+    padding: 0 16px;
+  }
+}
+
+.desktop-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: 1.5rem;
+  overflow-x: auto;
+  white-space: nowrap;
+  padding: 4px 0;
+  flex: 1;
+  min-width: 0; /* Crucial for flex child overflow */
+}
+
+/* Make scrollbar small and stylish instead of hidden */
+.desktop-nav::-webkit-scrollbar {
+  height: 4px;
+  display: block;
+}
+
+.desktop-nav::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 10px;
+}
+
+.desktop-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+
+.nav-item-btn {
+  white-space: nowrap;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  padding: 6px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.nav-item-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  border-color: var(--glass-border);
+}
+
+.nav-item-btn.active {
+  color: var(--accent-color);
+  background: rgba(217, 70, 239, 0.1);
+  border-color: rgba(217, 70, 239, 0.2);
+}
+
+.nav-item-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .pd-btn:hover {
   filter: brightness(1.1);
 }
@@ -769,6 +868,18 @@ button:disabled {
 .pd-btn.outline:hover {
   background: var(--bg-panel);
   border-color: var(--text-main);
+}
+
+.pd::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-blue);
+  box-shadow: 0 0 10px var(--primary-blue);
 }
 
 .pd-btn.secondary {

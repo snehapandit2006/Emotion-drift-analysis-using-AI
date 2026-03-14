@@ -1,6 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&display=swap');
+
 :root {
-  /* Default: Dark Mode (Puzzlebot Theme) */
-  --bg-main: #0B0C15;
+  /* Cinematic Neural Theme - Dark Mode */
+  --bg-neural: #02040A;
+  --text-heading: #FFFFFF;
+  --text-body: #B4BCCF;
+  --accent-glow: rgba(99, 102, 241, 0.4);
+  --glass-bg: rgba(26, 27, 38, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.12);
+  --card-hover: rgba(45, 46, 61, 0.6);
+  --nav-bg: rgba(2, 4, 10, 0.4);
+  --footer-bg: rgba(2, 4, 10, 0.6);
+
+  /* Legacy Compat/Dashboard Vars */
+  --bg-main: var(--bg-neural);
   /* Deepest background */
   --bg-card: #13141F;
   /* Card background */
@@ -61,7 +75,17 @@
   --pd-text-muted: #5C6B58;
   --pd-border: #D1D1C6;
 
-  --bg-main: var(--pd-beige-light);
+  --bg-neural: #FFFFFF;
+  --text-heading: #0F172A;
+  --text-body: #1E293B;
+  --glass-bg: rgba(255, 255, 255, 0.4);
+  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-highlight: rgba(255, 255, 255, 0.9);
+  --card-hover: rgba(255, 255, 255, 0.85);
+  --nav-bg: rgba(255, 255, 255, 0.6);
+  --footer-bg: rgba(241, 245, 249, 0.9);
+
+  --bg-main: var(--bg-neural);
   --bg-card: var(--pd-card-bg);
   --bg-panel: #ffffff;
   --bg-input: #ffffff;
@@ -86,19 +110,90 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Barlow', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color: var(--text-main);
-  background-color: var(--bg-main);
-  /* Force background color */
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  color: var(--text-body);
+  background-color: transparent !important;
   transition: background 0.3s ease, color 0.3s ease;
+}
+
+h1, h2, h3, h4, h5, h6, .serif-heading {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  color: var(--text-heading);
+  font-weight: 400;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+/* --- Reusable Liquid-Glass System --- */
+/* Standardize glass panels to be transparent so neural background shows through */
+.glass-panel {
+  background: var(--glass-bg, rgba(255, 255, 255, 0.03)) !important;
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%); /* Added for webkit compatibility */
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); /* Replaced original box-shadow */
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(circle at top left, rgba(255,255,255,0.05), transparent 50%);
+  pointer-events: none;
+}
+
+.glass-button {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-heading);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  padding: 0.8rem 1.8rem;
+  border-radius: 100px;
+  font-family: 'Barlow', sans-serif;
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: inset 0 1px 1px var(--glass-highlight);
+}
+
+.glass-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 
+      0 10px 20px rgba(0,0,0,0.2), 
+      inset 0 1px 1px var(--glass-highlight);
+}
+
+.glass-button.primary {
+  background: linear-gradient(135deg, var(--text-heading), #94A3B8);
+  color: #02040A;
+  border: none;
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+  font-weight: 600;
+}
+
+.glass-button.primary:hover {
+  background: #FFFFFF;
+  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px) scale(1.02);
+}
+
+.light-mode .glass-button.primary {
+  background: linear-gradient(135deg, var(--pd-olive-deep), var(--pd-olive-medium));
+  color: #fff;
 }
 
 
@@ -121,14 +216,13 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-color);
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 5px;
-  border: 2px solid var(--bg-main);
-  /* Creates padding effect */
+  border: 2px solid transparent;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--primary-blue);
 }
 
 ::-webkit-scrollbar-corner {

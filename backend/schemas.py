@@ -7,6 +7,7 @@ class UserBase(BaseModel):
     role: str = "patient"
     hobbies: Optional[str] = None
     preferred_games: Optional[str] = None
+    music_interests: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
@@ -70,5 +71,49 @@ class PrescribedTherapySchema(PrescribedTherapyBase):
     id: int
     user_id: int
     prescribed_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class MeditationLogBase(BaseModel):
+    duration_seconds: int
+    session_type: str = "breathing"
+
+class MeditationLogCreate(MeditationLogBase):
+    pass
+
+class MeditationLogSchema(MeditationLogBase):
+    id: int
+    user_id: int
+    completed_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class CommunityMessageBase(BaseModel):
+    content: str
+    is_anonymous: bool = False
+
+class CommunityMessageCreate(CommunityMessageBase):
+    room_id: int
+    user_id: int
+
+class CommunityMessageSchema(CommunityMessageBase):
+    id: int
+    room_id: int
+    user_id: int
+    timestamp: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ChatRoomBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class ChatRoomCreate(ChatRoomBase):
+    pass
+
+class ChatRoomSchema(ChatRoomBase):
+    id: int
+    created_at: datetime
+    messages: List[CommunityMessageSchema] = []
 
     model_config = ConfigDict(from_attributes=True)

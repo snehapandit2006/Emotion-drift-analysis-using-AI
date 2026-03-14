@@ -71,6 +71,30 @@ def scrub_tech_tags(text: str) -> str:
     
     return clean
 
+def strip_markdown(text: str) -> str:
+    """Remove markdown formatting characters from text for clean TTS output."""
+    if not text:
+        return ""
+    # Remove bold/italic: ** __ * _
+    clean = re.sub(r'\*{1,3}(.*?)\*{1,3}', r'\1', text)
+    clean = re.sub(r'_{1,3}(.*?)_{1,3}', r'\1', clean)
+    # Remove bullet list characters: * - •
+    clean = re.sub(r'^\s*[\*\-•]\s+', '', clean, flags=re.MULTILINE)
+    # Remove headers: # ## ###
+    clean = re.sub(r'^#{1,6}\s+', '', clean, flags=re.MULTILINE)
+    # Remove extra whitespace
+    clean = re.sub(r'\n{2,}', '. ', clean)
+    clean = re.sub(r'\n', ' ', clean)
+    clean = re.sub(r'\s{2,}', ' ', clean)
+    return clean.strip()
+
+def contains_hindi(text: str) -> bool:
+    """Return True if the text contains a significant amount of Devanagari script."""
+    if not text:
+        return False
+    hindi_chars = sum(1 for c in text if '\u0900' <= c <= '\u097F')
+    return hindi_chars > 10  # More than 10 devanagari chars = Hindi response
+
 def text_to_digit(text: str) -> str:
     """
     Converts verbal numbers (one, two, etc.) to digits (1, 2, etc.) for patient ID parsing.
@@ -455,11 +479,10 @@ def handle_doctor_voice_query(query: str, db, doctor_id: int, context_patient_id
                 "You are Sentia Voice, a clinical data assistant for a psychiatrist.\n"
                 f"The doctor just asked a voice query: '{query}'\n"
                 "CRITICAL RULES for TTS CLARITY:\n"
-                "1. If answering in Hindi, YOU MUST USE DEVANAGARI SCRIPT (हिन्दी लिपि). Do not use Hinglish or English letters for Hindi words.\n"
-                "2. If answering in English, use standard English script.\n"
-                "3. Match the doctor's language perfectly. If they use a mix, choose the dominant one and use its native script.\n"
-                "4. Keep it brief and professional. Directly answer based exclusively on the patient data below.\n"
-                "5. If the emotional drift indicates high anxiety, prolonged sadness, or anger, recommend Music Therapy (e.g. 432Hz Binaural Beats).\n\n"
+                "1. YOU MUST RESPOND IN ENGLISH. ALWAYS use standard English script and vocabulary, unless the doctor explicitly speaks to you in Hindi.\n"
+                "2. DO NOT use any markdown formatting (like asterisks **, bold, or list characters) because your response will be read aloud by a voice engine. Speak in plain, natural sentences.\n"
+                "3. Keep it brief, conversational, and professional. Directly answer based exclusively on the patient data below.\n"
+                "4. If the emotional drift indicates high anxiety, prolonged sadness, or anger, recommend Music Therapy (e.g. 432Hz Binaural Beats).\n\n"
                 f"Patient ID {patient_id} Recent Logs:\n{json.dumps(history_data, indent=2)}"
             )
             print(f"[DOCTOR LLM DEBUG] Calling Sarvam API. Model: {LLM_MODEL} | API Key exists: {bool(LLM_API_KEY)}")
@@ -480,6 +503,27 @@ def handle_doctor_voice_query(query: str, db, doctor_id: int, context_patient_id
                     result = res.json()
                     raw_text = result["choices"][0]["message"]["content"].strip()
                     response_text = scrub_tech_tags(raw_text)
+                    response_text = strip_markdown(response_text)
+                    
+                    # LANGUAGE GUARDRAIL: If the model responded in Hindi despite English query,
+                    # fallback to a clean, English summary from the raw data.
+                    if contains_hindi(response_text):
+                        print(f"[DOCTOR LLM DEBUG] MODEL RESPONDED IN HINDI - Applying English fallback.")
+                        # Build a concise English summary from the structured log data
+                        emotions = [h.get('emotion', 'neutral') for h in history_data]
+                        from collections import Counter
+                        emotion_counts = Counter(emotions)
+                        top_emotion = emotion_counts.most_common(1)[0][0] if emotion_counts else 'neutral'
+                        log_count = len(history_data)
+                        response_text = (
+                            f"Patient {patient_id} has {log_count} recent emotional logs. "
+                            f"The dominant emotion recorded is {top_emotion}. "
+                        )
+                        if top_emotion in ['sadness', 'fear', 'anger']:
+                            response_text += "Given the elevated distress indicators, consider Music Therapy with 432Hz Binaural Beats."
+                        else:
+                            response_text += "Overall emotional state appears relatively stable."
+                    
                     if response_text:
                         print(f"[DOCTOR LLM DEBUG] Success. Summary Length: {len(response_text)}")
                         return response_text

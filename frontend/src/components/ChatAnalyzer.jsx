@@ -87,7 +87,7 @@ const ChatAnalyzer = () => {
 
     return (
         <div className="card full" style={{ minHeight: '80vh' }}>
-            <h1>Chat Analysis & Advice</h1>
+            <h1 className="serif-heading">Chat Analysis & Advice</h1>
             <p style={{ color: 'var(--text-sub)', marginBottom: '2rem' }}>
                 Upload a .zip file containing your chat logs (.txt) to analyze the emotional tone and get advice.
             </p>
@@ -162,7 +162,7 @@ const ChatAnalyzer = () => {
 
                     {/* Left: Stats */}
                     <div className="glass-panel" style={{ padding: '2rem' }}>
-                        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><div className="dot" style={{ background: emotionColors[results.dominant_emotion] || 'var(--text-main)' }}></div> Dominant Emotion: {results.dominant_emotion.toUpperCase()}</h2>
+                        <h2 className="serif-heading" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><div className="dot" style={{ background: emotionColors[results.dominant_emotion] || 'var(--text-main)' }}></div> Dominant Emotion: {results.dominant_emotion.toUpperCase()}</h2>
 
                         <div style={{ height: '300px', marginTop: '1rem' }}>
                             <ResponsiveContainer width="100%" height="100%">
@@ -202,7 +202,7 @@ const ChatAnalyzer = () => {
                     {/* Right: Advice */}
                     <div>
                         <div className="glass-panel" style={{ padding: '2rem', height: '100%', borderTop: `4px solid ${emotionColors[results.dominant_emotion]}` }}>
-                            <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}><MessageSquare /> Advice</h2>
+                            <h2 className="serif-heading" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}><MessageSquare /> Advice</h2>
 
                             <div style={{ marginBottom: '2rem' }}>
                                 <h3 style={{ color: 'var(--accent-color)' }}>{results.advice.strategy_title}</h3>

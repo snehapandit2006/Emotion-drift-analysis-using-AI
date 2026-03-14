@@ -12,42 +12,52 @@ const DoctorVoiceAssistant = ({ patientId = null }) => {
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const [selectedVoice, setSelectedVoice] = useState('ishita');
-    const [lang, setLang] = useState('en-IN'); // Default to en-IN for better Hinglish support
+    const [lang, setLang] = useState('en-IN'); 
+    const [transcript, setTranscript] = useState('');
 
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
     const recognitionRef = useRef(null);
     const audioPlayerRef = useRef(null);
     const transcriptRef = useRef('');
+    // Bug 5 Fix: use a ref to track listening state inside closures (avoids stale closure)
+    const isListeningRef = useRef(false);
     const navigate = useNavigate();
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+    // Bug 4 Fix: Only re-init recognition on language change, NOT on isListening change
+    // This prevents destroying the recognition object while it is actively listening.
     useEffect(() => {
         if (SpeechRecognition) {
             const recognition = new SpeechRecognition();
             recognition.continuous = false;
-            recognition.lang = lang; // Use the selected language
+            recognition.lang = lang;
             recognition.interimResults = true;
 
             recognition.onresult = (event) => {
-                const transcript = Array.from(event.results)
+                const currentTranscript = Array.from(event.results)
                     .map(result => result[0].transcript)
                     .join('');
 
-                transcriptRef.current = transcript;
+                transcriptRef.current = currentTranscript;
+                setTranscript(currentTranscript);
 
                 if (event.results[0].isFinal) {
-                    stopListening(true);
+                    stopListeningRef.current(true);
                 }
             };
 
-            recognition.onerror = () => stopListening(false);
+            recognition.onerror = () => stopListeningRef.current(false);
+            // Bug 5 Fix: use ref instead of stale closure for isListening
             recognition.onend = () => {
-                if (isListening) stopListening(true);
+                if (isListeningRef.current) stopListeningRef.current(true);
             };
             recognitionRef.current = recognition;
         }
-    }, [isListening, lang]); // Re-init on language change
+    }, [lang]); // Re-init ONLY on language change
+
+    // Bug 5 Fix: stable ref to stopListening so it can be called from recognition closures
+    const stopListeningRef = useRef(null);
 
     const startListening = async () => {
         setBotResponse(null);
@@ -55,6 +65,7 @@ const DoctorVoiceAssistant = ({ patientId = null }) => {
         if (audioPlayerRef.current) audioPlayerRef.current.pause();
         setIsSpeaking(false);
         transcriptRef.current = '';
+        setTranscript('');
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -71,6 +82,7 @@ const DoctorVoiceAssistant = ({ patientId = null }) => {
 
             mediaRecorder.start();
             if (recognitionRef.current) recognitionRef.current.start();
+            isListeningRef.current = true;
             setIsListening(true);
         } catch (err) {
             console.error("Mic access denied", err);
@@ -83,11 +95,21 @@ const DoctorVoiceAssistant = ({ patientId = null }) => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop(); // This triggers onstop -> processAudioCommand
         }
+        isListeningRef.current = false;
         setIsListening(false);
         if (!process) setIsOpen(false);
     };
 
+    // Keep ref always up to date with the latest version of stopListening
+    stopListeningRef.current = stopListening;
+
     const toggleVoice = () => {
+        // Resume AudioContext if it exists (for browser autocomplete policies)
+        if (window.AudioContext || window.webkitAudioContext) {
+            const context = new (window.AudioContext || window.webkitAudioContext)();
+            if (context.state === 'suspended') context.resume();
+        }
+        
         if (isListening) stopListening(true);
         else startListening();
     };
@@ -145,6 +167,13 @@ const DoctorVoiceAssistant = ({ patientId = null }) => {
             };
 
             setIsSpeaking(true);
+            // Resume AudioContext to unblock autoplay policy
+            if (window.AudioContext || window.webkitAudioContext) {
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    if (ctx.state === 'suspended') await ctx.resume();
+                } catch (_) {}
+            }
             await audio.play();
         } catch (error) {
             console.error("TTS Audio Failed:", error);
@@ -173,8 +202,8 @@ const DoctorVoiceAssistant = ({ patientId = null }) => {
 
             {/* Chat Bubble Overlay */}
             {isOpen && (
-                <div style={{
-                    background: 'var(--bg-card)',
+                <div className="glass-panel" style={{
+                    background: 'var(--nav-bg)',
                     border: '1px solid var(--primary-blue)',
                     boxShadow: '0 8px 32px rgba(99, 102, 241, 0.2)',
                     borderRadius: '16px',
@@ -225,9 +254,9 @@ const DoctorVoiceAssistant = ({ patientId = null }) => {
                     </div>
 
                     <div style={{ fontSize: '0.95rem', lineHeight: '1.5', minHeight: '60px', display: 'flex', alignItems: 'center' }}>
-                        {isListening && <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>Listening to your command...</span>}
+                        {isListening && <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>Listening: <span style={{ color: 'var(--text-main)' }}>{transcript || "Speak clearly into your microphone..."}</span></span>}
                         {isProcessing && <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '8px' }}><Loader size={14} className="spin" /> Analyzing voice...</span>}
-                        {botResponse && <span>{botResponse}</span>}
+                        {!isListening && !isProcessing && botResponse && <span>{botResponse}</span>}
                     </div>
                 </div>
             )}

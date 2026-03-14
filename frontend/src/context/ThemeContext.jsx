@@ -1,21 +1,18 @@
-import { createContext, useState, useEffect, useContext } from 'react';
+import { createContext, useContext, useEffect } from 'react';
 
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-    const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+    // Force dark mode globally
+    const theme = 'dark';
 
     useEffect(() => {
-        if (theme === 'light') {
-            document.body.classList.add('light-mode');
-        } else {
-            document.body.classList.remove('light-mode');
-        }
-        localStorage.setItem('theme', theme);
-    }, [theme]);
+        document.body.classList.remove('light-mode');
+        localStorage.setItem('theme', 'dark');
+    }, []);
 
     const toggleTheme = () => {
-        setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+        // No-op: brightness/dark mode option removed by user request
     };
 
     return (
@@ -25,5 +22,4 @@ export const ThemeProvider = ({ children }) => {
     );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useTheme = () => useContext(ThemeContext);

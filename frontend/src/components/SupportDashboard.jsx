@@ -1,8 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-
-import { useTheme } from '../context/ThemeContext';
-import { Shield, Phone, MapPin, Info, ArrowLeft, Upload, FileText, Download, Sun, Moon } from 'lucide-react';
+import { Shield, Phone, MapPin, Info, ArrowLeft, Upload, FileText, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchSupportInsights, getMentalHealthInfo, getAlerts, getMedicalRecords, uploadMedicalRecord } from '../api';
 import MedicalLogTable from './MedicalLogTable';
@@ -28,7 +26,6 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 const SupportDashboard = () => {
     const navigate = useNavigate();
-    const { theme, toggleTheme } = useTheme();
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState(null);
     const [consentGiven, setConsentGiven] = useState(false);
@@ -187,7 +184,7 @@ const SupportDashboard = () => {
             right: 0,
             bottom: 0,
             overflowY: 'auto',
-            background: 'var(--bg-main)',
+            background: 'transparent',
             zIndex: 1000
         }}>
             <div className="dashboard-container" style={{ padding: '2rem', width: '100%', color: 'var(--text-main)', minHeight: '100%' }}>
@@ -205,34 +202,23 @@ const SupportDashboard = () => {
                         <ArrowLeft size={16} /> Back to Dashboard
                     </button>
 
-                    <button
-                        className="icon-btn"
-                        onClick={toggleTheme}
-                        title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-                        style={{ color: 'var(--text-main)', background: 'transparent', border: '1px solid var(--border-color)', padding: '8px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >
-                        {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-                    </button>
+
                 </div>
 
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="glass-panel-hero"
+                    className="glass-panel"
                     style={{
                         padding: '3rem', marginBottom: '3rem',
-                        background: `linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(0,0,0,0) 100%)`,
+                        background: `linear-gradient(135deg, ${color}20 0%, transparent 100%)`,
                         borderLeft: `6px solid ${color}`,
-                        borderRadius: '16px',
-                        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
-                        backdropFilter: 'blur(10px)',
-                        border: '1px solid var(--border-color)'
                     }}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1rem' }}>
                         <Shield size={48} color={color} style={{ filter: `drop-shadow(0 0 10px ${color})` }} />
                         <div>
-                            <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: '700', letterSpacing: '-0.02em', color: 'var(--text-main)' }}>Emotional Support & Safety</h1>
+                            <h1 className="serif-heading" style={{ margin: 0, fontSize: '2.5rem', fontWeight: '700', letterSpacing: '-0.02em', color: 'var(--text-main)' }}>Emotional Support & Safety</h1>
                         </div>
                     </div>
                     <p style={{ fontSize: '1.2rem', opacity: 0.8, maxWidth: '600px', lineHeight: '1.6' }}>
@@ -243,18 +229,15 @@ const SupportDashboard = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
                     {/* Severity Card */}
                     <motion.div
-                        className="glass-card"
+                        className="glass-panel"
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.1 }}
                         style={{
                             padding: '2.5rem',
-                            background: 'var(--card-bg)',
-                            borderRadius: '16px',
-                            border: '1px solid var(--border-color)'
                         }}
                     >
-                        <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.5rem', marginBottom: '2rem' }}>
+                        <h2 className="serif-heading" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.5rem', marginBottom: '2rem' }}>
                             <ActivityIcon color={color} /> Pattern Severity
                         </h2>
 
@@ -281,7 +264,7 @@ const SupportDashboard = () => {
 
                     {/* Guidance Card */}
                     <motion.div
-                        className="glass-card"
+                        className="glass-panel"
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.2 }}
@@ -292,7 +275,7 @@ const SupportDashboard = () => {
                             border: '1px solid var(--border-color)'
                         }}
                     >
-                        <h2 style={{ fontSize: '1.5rem', marginBottom: '2rem' }}>Guidance & Insights</h2>
+                        <h2 className="serif-heading" style={{ fontSize: '1.5rem', marginBottom: '2rem' }}>Guidance & Insights</h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                             {resources.guidance_text.map((text, i) => (
                                 <div key={i} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', background: 'var(--card-bg)', padding: '1rem', borderRadius: '10px' }}>
@@ -319,7 +302,7 @@ const SupportDashboard = () => {
                             borderLeft: '6px solid var(--accent-color)'
                         }}
                     >
-                        <h2 style={{ fontSize: '2rem', marginBottom: '1.5rem', color: 'var(--text-main)' }}>Personal Pattern Analysis (Beta)</h2>
+                        <h2 className="serif-heading" style={{ fontSize: '2rem', marginBottom: '1.5rem', color: 'var(--text-main)' }}>Personal Pattern Analysis (Beta)</h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                             {detectedPatterns.map((p, i) => {
                                 let badgeColor = '#4caf50'; // Low
@@ -349,7 +332,7 @@ const SupportDashboard = () => {
                                                     border: '1px solid rgba(244, 67, 54, 0.3)'
                                                 }}
                                             >
-                                                <h2 style={{ fontSize: '2rem', marginBottom: '1.5rem', color: '#e53935' }}>Recent Alerts</h2>
+                                                <h2 className="serif-heading" style={{ fontSize: '2rem', marginBottom: '1.5rem', color: '#e53935' }}>Recent Alerts</h2>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                                     {alerts.map((alert, i) => (
                                                         <div key={i} style={{
@@ -393,7 +376,7 @@ const SupportDashboard = () => {
                             border: '1px solid var(--border-color)'
                         }}
                     >
-                        <h2 style={{ fontSize: '2rem', marginBottom: '1.5rem', color: 'var(--text-main)' }}>Mental Health Conditions & Symptoms</h2>
+                        <h2 className="serif-heading" style={{ fontSize: '2rem', marginBottom: '1.5rem', color: 'var(--text-main)' }}>Mental Health Conditions & Symptoms</h2>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
                             {conditions.map((c, i) => (
                                 <div key={i} style={{ background: 'var(--bg-panel)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
@@ -447,7 +430,7 @@ const SupportDashboard = () => {
                         }}
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ fontSize: '2rem', margin: 0, color: 'var(--text-main)' }}>Medical Files</h2>
+                            <h2 className="serif-heading" style={{ fontSize: '2rem', margin: 0, color: 'var(--text-main)' }}>Medical Files</h2>
                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                 <input
                                     type="file"
@@ -532,7 +515,7 @@ const SupportDashboard = () => {
                             height: '100%'
                         }}
                     >
-                        <h2 style={{ fontSize: '2rem', marginBottom: '1.5rem', color: 'var(--text-main)' }}>Medicine Tracker</h2>
+                        <h2 className="serif-heading" style={{ fontSize: '2rem', marginBottom: '1.5rem', color: 'var(--text-main)' }}>Medicine Tracker</h2>
                         <MedicalLogTable />
                     </motion.div>
                 </div>
@@ -551,7 +534,7 @@ const SupportDashboard = () => {
                     }}
                 >
                     <div style={{ flex: 1, minWidth: '300px' }}>
-                        <h2 style={{ fontSize: '2rem', color: 'var(--primary-blue)', margin: '0 0 1rem 0' }}>{resources.tele_manas.name}</h2>
+                        <h2 className="serif-heading" style={{ fontSize: '2rem', color: 'var(--primary-blue)', margin: '0 0 1rem 0' }}>{resources.tele_manas.name}</h2>
                         <p style={{ margin: 0, fontSize: '1.1rem', opacity: 0.9, lineHeight: '1.6' }}>{resources.tele_manas.description}</p>
                     </div>
                     <div style={{ textAlign: 'center', background: 'var(--border-color)', padding: '1.5rem 3rem', borderRadius: '12px' }}>
@@ -581,7 +564,7 @@ const SupportDashboard = () => {
                         border: '1px solid var(--border-color)'
                     }}
                 >
-                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '2rem', marginBottom: '1.5rem' }}>
+                    <h2 className="serif-heading" style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '2rem', marginBottom: '1.5rem' }}>
                         <MapPin size={32} color="var(--accent-color)" /> Nearby Professionals
                     </h2>
 

@@ -17,9 +17,10 @@ def apply_updates():
         db_url = settings.DATABASE_URL
         if db_url.startswith("sqlite:///"):
             db_path = db_url.replace("sqlite:///", "")
-            # If path is relative, make it absolute based on backend root
+            # Resolve to absolute path based on backend root
+            backend_root = os.path.dirname(os.path.abspath(__file__))
             if not os.path.isabs(db_path):
-                db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), db_path)
+                db_path = os.path.normpath(os.path.join(backend_root, db_path))
             
             print(f"Connecting to SQLite database at: {db_path}")
             conn = sqlite3.connect(db_path)
@@ -44,6 +45,16 @@ def apply_updates():
                     print("Column already exists: doctor_id")
                 else:
                     print(f"Error adding doctor_id: {e}")
+
+            # 3. Add music_interests column
+            try:
+                cursor.execute("ALTER TABLE users ADD COLUMN music_interests VARCHAR")
+                print("Added column: music_interests")
+            except sqlite3.OperationalError as e:
+                if "duplicate column name" in str(e):
+                    print("Column already exists: music_interests")
+                else:
+                    print(f"Error adding music_interests: {e}")
             
             conn.commit()
             conn.close()

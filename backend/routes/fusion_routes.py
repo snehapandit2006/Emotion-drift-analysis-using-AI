@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 
 from db.database import get_db
-from db.models import EmotionLog, FaceEmotionLog, User
+from db.models import EmotionLog, FaceEmotionLog, User, HealthMetric
 from api.deps import get_current_user
 from analysis.fusion import analyze_fusion
 
@@ -19,7 +19,8 @@ def get_fusion_analytics(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Returns fusion analytics (alignment, masking, stability) for the given range.
+    Returns fusion analytics (alignment, masking, stability) for the given range,
+    now including physiological vitals (Phase 4).
     """
     # Fetch logs
     cutoff = datetime.utcnow() - timedelta(days=range_days)
@@ -33,8 +34,13 @@ def get_fusion_analytics(
         FaceEmotionLog.user_id == current_user.id,
         FaceEmotionLog.timestamp >= cutoff
     ).all()
+
+    health_logs = db.query(HealthMetric).filter(
+        HealthMetric.user_id == current_user.id,
+        HealthMetric.timestamp >= cutoff
+    ).all()
     
     # Analyze
-    result = analyze_fusion(text_logs, face_logs, range_days)
+    result = analyze_fusion(text_logs, face_logs, health_logs, range_days)
     
     return result

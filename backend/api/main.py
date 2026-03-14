@@ -12,7 +12,7 @@ from db.models import EmotionLog, FaceEmotionLog, DriftAlert, User
 from db.init_db import init_db
 from analysis.drift import detect_emotion_drift
 from api.deps import get_current_user
-from api.routes import auth, chat_routes, support_routes, doctor_routes, medical_routes, chat_sentia_routes, therapy_routes
+from api.routes import auth, chat_routes, support_routes, doctor_routes, medical_routes, chat_sentia_routes, therapy_routes, wellness, websocket, fitness
 from routes import report_routes, self_emotion_routes, fusion_routes, behavioral_routes
 
 
@@ -45,6 +45,9 @@ app.include_router(support_routes.router)
 app.include_router(doctor_routes.router)
 app.include_router(medical_routes.router)
 app.include_router(therapy_routes.router)
+app.include_router(wellness.router)
+app.include_router(websocket.router)
+app.include_router(fitness.router)
 
 from fastapi.staticfiles import StaticFiles
 import os
