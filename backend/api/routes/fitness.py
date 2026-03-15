@@ -5,8 +5,9 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 from db.database import SessionLocal
-from db.models import User, HealthMetric
+from db.models import User, HealthMetric, VitalAlert
 from api.deps import get_current_user
+from analysis.vital_analyzer import analyze_vitals
 
 router = APIRouter(prefix="/fitness", tags=["Fitness"])
 
@@ -33,6 +34,14 @@ def add_health_metric(
     """
     Manually add or sync a health metric entry (heart rate, SpO2, etc).
     """
+    # Fetch previous metric for fluctuation comparison
+    prev_metric = (
+        db.query(HealthMetric)
+        .filter(HealthMetric.user_id == current_user.id)
+        .order_by(HealthMetric.timestamp.desc())
+        .first()
+    )
+
     new_metric = HealthMetric(
         user_id=current_user.id,
         heart_rate=metric.heart_rate,
@@ -45,7 +54,18 @@ def add_health_metric(
     db.add(new_metric)
     db.commit()
     db.refresh(new_metric)
-    return {"status": "success", "id": new_metric.id}
+
+    # Analyze for alerts
+    raw_alerts = analyze_vitals(new_metric, prev_metric)
+    saved_alerts = []
+    for a in raw_alerts:
+        alert = VitalAlert(user_id=current_user.id, **a)
+        db.add(alert)
+        saved_alerts.append(a)
+    if raw_alerts:
+        db.commit()
+
+    return {"status": "success", "id": new_metric.id, "alerts_raised": len(saved_alerts)}
 
 @router.get("/metrics/history")
 def get_health_history(
@@ -158,4 +178,137 @@ def mock_google_fit_sync(
         db.add(metric)
         
     db.commit()
-    return {"status": "success", "message": "Synchronized 12 new data points from Google Fit (Mock)."}
+
+    # Re-query the newly inserted mock records in order, then analyze each one
+    new_records = (
+        db.query(HealthMetric)
+        .filter(
+            HealthMetric.user_id == current_user.id,
+            HealthMetric.source == "google_fit_mock",
+            HealthMetric.timestamp >= now - timedelta(hours=24)
+        )
+        .order_by(HealthMetric.timestamp.asc())
+        .all()
+    )
+    prev_rec = None
+    total_alerts = 0
+    for rec in new_records:
+        raw_alerts = analyze_vitals(rec, prev_rec)
+        for a in raw_alerts:
+            db.add(VitalAlert(user_id=current_user.id, **a))
+            total_alerts += 1
+        prev_rec = rec
+    if total_alerts > 0:
+        db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Synchronized 12 new data points from Google Fit (Mock). {total_alerts} vital alert(s) generated."
+    }
+
+
+# ─────────────────────────────────────────────────────────
+# Alert Endpoints
+# ─────────────────────────────────────────────────────────
+
+@router.get("/alerts")
+def get_vital_alerts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Return all unacknowledged vital alerts for the current user (most recent 20).
+    """
+    alerts = (
+        db.query(VitalAlert)
+        .filter(
+            VitalAlert.user_id == current_user.id,
+            VitalAlert.acknowledged == False  # noqa: E712
+        )
+        .order_by(VitalAlert.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    return [
+        {
+            "id":             a.id,
+            "metric":         a.metric,
+            "value":          a.value,
+            "prev_value":     a.prev_value,
+            "alert_type":     a.alert_type,
+            "severity":       a.severity,
+            "message":        a.message,
+            "recommendation": a.recommendation,
+            "created_at":     a.created_at.isoformat() + "Z",
+        }
+        for a in alerts
+    ]
+
+
+@router.post("/alerts/{alert_id}/acknowledge")
+def acknowledge_vital_alert(
+    alert_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Mark a specific vital alert as acknowledged (dismissed by user).
+    """
+    alert = db.query(VitalAlert).filter(
+        VitalAlert.id == alert_id,
+        VitalAlert.user_id == current_user.id
+    ).first()
+
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    alert.acknowledged = True
+    db.commit()
+    return {"status": "acknowledged"}
+
+
+@router.get("/alerts/doctor")
+def get_patient_vital_alerts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Doctor-only: returns all unacknowledged vital alerts across assigned patients.
+    """
+    if current_user.role != "psychiatrist":
+        raise HTTPException(status_code=403, detail="Access restricted to doctors.")
+
+    # Get all patient IDs assigned to this doctor
+    patient_ids = [p.id for p in current_user.patients]
+
+    if not patient_ids:
+        return []
+
+    alerts = (
+        db.query(VitalAlert, User)
+        .join(User, VitalAlert.user_id == User.id)
+        .filter(
+            VitalAlert.user_id.in_(patient_ids),
+            VitalAlert.acknowledged == False  # noqa: E712
+        )
+        .order_by(VitalAlert.created_at.desc())
+        .limit(50)
+        .all()
+    )
+
+    return [
+        {
+            "id":             a.id,
+            "patient_email":  u.email,
+            "patient_id":     u.id,
+            "metric":         a.metric,
+            "value":          a.value,
+            "prev_value":     a.prev_value,
+            "alert_type":     a.alert_type,
+            "severity":       a.severity,
+            "message":        a.message,
+            "recommendation": a.recommendation,
+            "created_at":     a.created_at.isoformat() + "Z",
+        }
+        for a, u in alerts
+    ]

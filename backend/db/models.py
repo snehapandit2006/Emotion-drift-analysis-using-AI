@@ -214,3 +214,21 @@ class HealthMetric(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", backref="health_metrics")
+
+
+class VitalAlert(Base):
+    __tablename__ = "vital_alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    metric = Column(String)              # 'heart_rate', 'spo2', 'blood_pressure'
+    value = Column(Float)
+    prev_value = Column(Float, nullable=True)
+    alert_type = Column(String)          # 'critical_threshold' | 'rapid_fluctuation'
+    severity = Column(String)            # 'warning' | 'critical'
+    message = Column(String)
+    recommendation = Column(String)
+    acknowledged = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", backref="vital_alerts")

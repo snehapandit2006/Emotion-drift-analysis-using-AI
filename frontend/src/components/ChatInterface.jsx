@@ -129,127 +129,164 @@ const ChatInterface = ({ otherUserId, otherUserEmail, onClose }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'rgba(2, 4, 10, 0.85)',
-            backdropFilter: 'blur(16px)',
+            background: 'rgba(0,0,0,0.6)',
+            backdropFilter: 'blur(4px)',
         }}>
-            <div className="chat-window glass-panel" style={{
+            {/* WhatsApp Container */}
+            <div style={{
                 position: 'relative',
                 width: '100%',
-                maxWidth: '900px',
+                maxWidth: '600px', // More phone-like scale
                 height: '85vh',
-                bottom: 'auto',
-                right: 'auto',
-                borderRadius: '24px',
-                border: '1px solid rgba(167, 139, 250, 0.2)',
-                boxShadow: '0 25px 80px rgba(0, 0, 0, 0.8), 0 0 40px rgba(99, 102, 241, 0.1)',
+                background: '#efeae2', // WA chat background tone
+                borderRadius: '16px',
                 display: 'flex',
                 flexDirection: 'column',
                 overflow: 'hidden',
-                animation: 'bgSelectorFadeIn 0.3s ease-out'
+                boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+                animation: 'fadeIn 0.2s ease-out'
             }}>
-                {/* Header */}
-                <div className="chat-header" style={{
-                    padding: '20px 24px',
-                    background: 'linear-gradient(90deg, rgba(79, 70, 229, 0.15) 0%, rgba(124, 58, 237, 0.15) 100%)',
-                    borderBottom: '1px solid rgba(255,255,255,0.1)',
-                    backdropFilter: 'none',
+                {/* Header WA Style */}
+                <div style={{
+                    padding: '12px 16px',
+                    background: '#075e54', // WA Dark Green
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                    zIndex: 2
                 }}>
-                    <div style={{ fontWeight: '600', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '12px', color: 'white' }}>
-                        <div style={{ background: 'var(--accent-color)', padding: '8px', borderRadius: '10px', display: 'flex' }}>
-                            <MessageSquare size={20} color="white" strokeWidth={2.5} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'white' }}>
+                        <div style={{ 
+                            width: '40px', height: '40px', 
+                            borderRadius: '50%', background: '#ccc', 
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            overflow: 'hidden'
+                        }}>
+                            <MessageSquare size={20} color="#075e54" />
                         </div>
-                        Chat with {otherUserEmail.split('@')[0]}
+                        <div>
+                            <div style={{ fontWeight: '600', fontSize: '1.1rem' }}>
+                                {otherUserEmail.split('@')[0]}
+                            </div>
+                            <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>online</div>
+                        </div>
                     </div>
                     <button onClick={onClose} style={{ 
-                        background: 'rgba(255, 255, 255, 0.1)', 
-                        border: '1px solid rgba(255, 255, 255, 0.2)', 
-                        borderRadius: '50%',
-                        width: '36px',
-                        height: '36px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        color: '#ffffff',
-                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                        zIndex: 10,
-                        padding: 0
-                    }}
-                    onMouseOver={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
-                        e.currentTarget.style.transform = 'rotate(90deg) scale(1.1)';
-                    }}
-                    onMouseOut={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                        e.currentTarget.style.transform = 'rotate(0deg) scale(1)';
-                    }}
-                    >
-                        <X size={20} strokeWidth={2.5} color="white" />
+                        background: 'transparent', border: 'none', 
+                        cursor: 'pointer', color: 'white', display: 'flex' 
+                    }}>
+                        <X size={24} />
                     </button>
                 </div>
 
-                {/* Messages */}
-                <div className="chat-messages" style={{ padding: '24px', flex: 1, gap: '16px', display: 'flex', flexDirection: 'column' }}>
+                {/* Messages WhatsApp Pattern */}
+                <div style={{ 
+                    padding: '24px 16px', 
+                    flex: 1, 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '4px', // Tighter WA spacing
+                    overflowY: 'auto',
+                    backgroundImage: 'url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png")', // Abstract WA pattern
+                    backgroundSize: 'contain'
+                }}>
                     {messages.map((m, i) => {
                         const isMe = m.senderId === user.id;
+                        // Determine if previous message was from the same sender to group them
+                        const isFirstInGroup = i === 0 || messages[i-1].senderId !== m.senderId;
+
                         return (
-                            <div key={i} className={`chat-bubble ${isMe ? 'sent' : 'received'}`} style={{
-                                maxWidth: '75%',
-                                padding: '14px 18px',
-                                fontSize: '1.05rem',
-                                lineHeight: '1.5',
-                                borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                                background: isMe ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : 'rgba(255,255,255,0.05)',
-                                border: isMe ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                                alignSelf: isMe ? 'flex-end' : 'flex-start'
+                            <div key={i} style={{
+                                maxWidth: '80%',
+                                padding: '8px 12px',
+                                fontSize: '0.95rem',
+                                lineHeight: '1.4',
+                                position: 'relative',
+                                background: isMe ? '#dcf8c6' : '#ffffff', // WA Green vs White
+                                color: '#111b21',
+                                alignSelf: isMe ? 'flex-end' : 'flex-start',
+                                borderRadius: isMe ? '8px 0px 8px 8px' : '0px 8px 8px 8px',
+                                marginTop: isFirstInGroup ? '8px' : '0', // Margin only between different senders
+                                boxShadow: '0 1px 0.5px rgba(0,0,0,0.13)'
                             }}>
-                                {m.text}
+                                {/* Optional decorative tail for first message in group */}
+                                {isFirstInGroup && (
+                                   <div style={{
+                                       position: 'absolute',
+                                       top: 0,
+                                       [isMe ? 'right' : 'left']: '-8px',
+                                       width: 0, height: 0,
+                                       border: '8px solid transparent',
+                                       borderTopColor: isMe ? '#dcf8c6' : '#ffffff',
+                                       borderRightColor: isMe ? 'transparent' : '#ffffff',
+                                       borderLeftColor: isMe ? '#dcf8c6' : 'transparent',
+                                       borderBottomColor: 'transparent',
+                                       zIndex: -1
+                                   }}></div>
+                                )}
+                                
+                                <span style={{ wordWrap: 'break-word' }}>{m.text}</span>
+                                
+                                <div style={{ 
+                                    display: 'flex', justifyContent: 'flex-end', alignItems: 'center', 
+                                    gap: '4px', marginTop: '2px', float: 'right', marginLeft: '12px' 
+                                }}>
+                                    <span style={{ fontSize: '0.65rem', color: '#667781', margin: '4px 0 0 0' }}>
+                                        {new Date(m.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                    {isMe && (
+                                         <svg viewBox="0 0 16 15" width="16" height="15" style={{ marginTop: '3px' }}>
+                                             <path fill="#53bdeb" d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"></path>
+                                         </svg>
+                                    )}
+                                </div>
                             </div>
                         );
                     })}
                     <div ref={messagesEndRef} />
                 </div>
 
-                {/* Input */}
-                <form onSubmit={sendMessage} className="chat-input-area" style={{
-                    padding: '20px',
-                    borderTop: '1px solid rgba(255,255,255,0.05)',
-                    background: 'rgba(0,0,0,0.2)'
+                {/* WA Input Area */}
+                <form onSubmit={sendMessage} style={{
+                    padding: '8px 12px',
+                    background: '#f0f2f5',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
                 }}>
                     <input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Type your message securely..."
-                        className="chat-input"
+                        placeholder="Type a message"
                         style={{
-                            background: 'rgba(255,255,255,0.03)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            padding: '16px 20px',
-                            fontSize: '1.05rem',
-                            borderRadius: '16px',
-                            color: 'white'
+                            flex: 1,
+                            background: '#ffffff',
+                            border: 'none',
+                            padding: '12px 16px',
+                            fontSize: '0.95rem',
+                            borderRadius: '24px',
+                            color: '#111b21',
+                            outline: 'none',
+                            boxShadow: '0 1px 1px rgba(0,0,0,0.1)'
                         }}
                         autoFocus
                     />
-                    <button type="submit" disabled={!input.trim()} className="chat-send-btn" style={{
-                        background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+                    <button type="submit" disabled={!input.trim()} style={{
+                        background: input.trim() ? '#00a884' : '#ccc',
                         border: 'none',
-                        width: '52px',
-                        height: '52px',
-                        borderRadius: '16px',
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: '50%',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: 'white',
-                        opacity: input.trim() ? 1 : 0.5,
                         cursor: input.trim() ? 'pointer' : 'default',
-                        transition: 'opacity 0.2s',
-                        marginLeft: '12px'
+                        transition: 'background 0.2s',
+                        flexShrink: 0
                     }}>
-                        <Send size={20} style={{ marginLeft: '-2px' }} />
+                        <Send size={18} style={{ marginLeft: '-2px' }} />
                     </button>
                 </form>
             </div>

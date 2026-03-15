@@ -7,12 +7,13 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 import os
 from datetime import datetime
 
-# Sentia Theme Colors
-COLOR_BG_DARK = colors.HexColor("#0b0b0b")
-COLOR_ACCENT = colors.HexColor("#e1ff5e") # Neon Green
-COLOR_TEXT_MAIN = colors.HexColor("#ffffff") # For dark backgrounds
-COLOR_TEXT_DARK = colors.HexColor("#1a1a1a") # For light backgrounds
-COLOR_HEADER_BG = colors.HexColor("#1a1a1a")
+# Cinematic Neural VIP Theme Colors
+COLOR_BG_DARK = colors.HexColor("#0f172a") # Slate 900
+COLOR_ACCENT = colors.HexColor("#38bdf8") # Sky 400 (Electric Blue)
+COLOR_TEXT_MAIN = colors.HexColor("#f8fafc") # Slate 50
+COLOR_TEXT_DARK = colors.HexColor("#334155") # Slate 700
+COLOR_HEADER_BG = colors.HexColor("#1e293b") # Slate 800
+COLOR_LIGHT_BG = colors.HexColor("#f1f5f9") # Slate 100
 
 def header_footer(canvas, doc):
     canvas.saveState()
@@ -32,14 +33,14 @@ def header_footer(canvas, doc):
         canvas.drawInlineImage(logo_path, doc.leftMargin, A4[1] - 50, height=40, preserveAspectRatio=True)
     
     # Title
-    canvas.setFont("Helvetica-Bold", 16)
-    canvas.setFillColor(colors.black)
-    canvas.drawRightString(A4[0] - doc.rightMargin, A4[1] - 35, "Emotion Analysis Report")
+    canvas.setFont("Helvetica-Bold", 18)
+    canvas.setFillColor(COLOR_TEXT_DARK)
+    canvas.drawRightString(A4[0] - doc.rightMargin, A4[1] - 35, "Cognitive Emotion Analysis")
     
     # Separator Line
-    canvas.setStrokeColor(colors.black)
-    canvas.setLineWidth(1)
-    canvas.line(doc.leftMargin, A4[1] - 60, A4[0] - doc.rightMargin, A4[1] - 60)
+    canvas.setStrokeColor(COLOR_ACCENT)
+    canvas.setLineWidth(1.5)
+    canvas.line(doc.leftMargin, A4[1] - 55, A4[0] - doc.rightMargin, A4[1] - 55)
     
     # --- Footer ---
     canvas.setFont("Helvetica", 9)
@@ -69,13 +70,13 @@ def generate_pdf(user_id, charts, date_range, report_id, conditions=[]):
     style_section_header = ParagraphStyle(
         'SectionHeader',
         parent=styles['Heading2'],
-        fontSize=14,
-        textColor=colors.black,
-        spaceBefore=20,
-        spaceAfter=10,
-        borderPadding=(0, 0, 5, 0), # padding bottom
+        fontSize=15,
+        textColor=COLOR_TEXT_DARK,
+        spaceBefore=24,
+        spaceAfter=12,
+        borderPadding=(0, 0, 4, 0), # padding bottom
         borderColor=COLOR_ACCENT,
-        borderWidth=2,
+        borderWidth=1.5,
         borderRadius=None
     )
     
@@ -120,14 +121,15 @@ def generate_pdf(user_id, charts, date_range, report_id, conditions=[]):
     
     t_sum = Table(summary_styled_data, colWidths=[200, 150])
     t_sum.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.black),
-        ('TEXTCOLOR', (0, 0), (-1, 0), COLOR_ACCENT), # Neon text on black header
+        ('BACKGROUND', (0, 0), (-1, 0), COLOR_HEADER_BG),
+        ('TEXTCOLOR', (0, 0), (-1, 0), COLOR_ACCENT), # Electric text on slate header
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('PADDING', (0, 0), (-1, -1), 10),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+        ('PADDING', (0, 0), (-1, -1), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), COLOR_LIGHT_BG),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
         ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'), # Bold Metrics
+        ('TEXTCOLOR', (0, 1), (-1, -1), COLOR_TEXT_DARK),
     ]))
     Story.append(t_sum)
     Story.append(Spacer(1, 25))
@@ -173,12 +175,13 @@ def generate_pdf(user_id, charts, date_range, report_id, conditions=[]):
             
         t_alerts = Table(alert_data, colWidths=[150, 100, 200])
         t_alerts.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.black),
+            ('BACKGROUND', (0, 0), (-1, 0), COLOR_HEADER_BG),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [COLOR_LIGHT_BG, colors.white]),
+            ('TEXTCOLOR', (0, 1), (-1, -1), COLOR_TEXT_DARK),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('PADDING', (0, 0), (-1, -1), 8),
+            ('PADDING', (0, 0), (-1, -1), 10),
             ('LINEBELOW', (0, 0), (-1, 0), 2, COLOR_ACCENT), # Accent line under header
         ]))
         Story.append(t_alerts)
@@ -200,9 +203,14 @@ def generate_pdf(user_id, charts, date_range, report_id, conditions=[]):
             
         t_dist = Table(dist_data, colWidths=[150, 100, 100])
         t_dist.setStyle(TableStyle([
-             ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+             ('BACKGROUND', (0, 0), (-1, 0), COLOR_HEADER_BG),
+             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+             ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [COLOR_LIGHT_BG, colors.white]),
+             ('TEXTCOLOR', (0, 1), (-1, -1), COLOR_TEXT_DARK),
              ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+             ('PADDING', (0, 0), (-1, -1), 8),
         ]))
         Story.append(t_dist)
 
@@ -258,10 +266,12 @@ def generate_pdf(user_id, charts, date_range, report_id, conditions=[]):
     
     t_res = Table(resources_data, colWidths=[200, 250])
     t_res.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), COLOR_ACCENT),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('BACKGROUND', (0, 0), (-1, 0), COLOR_HEADER_BG),
+        ('TEXTCOLOR', (0, 0), (-1, 0), COLOR_ACCENT),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('BACKGROUND', (0, 1), (-1, -1), COLOR_LIGHT_BG),
+        ('TEXTCOLOR', (0, 1), (-1, -1), COLOR_TEXT_DARK),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
         ('PADDING', (0, 0), (-1, -1), 12),
     ]))
     Story.append(t_res)
