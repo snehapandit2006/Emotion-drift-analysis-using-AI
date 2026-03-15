@@ -14,6 +14,8 @@ Human emotions are complex and rarely expressed through a single channel. Text a
 
 * **Text Emotion** → What is being expressed in conversations
 * **Face Emotion** → What the individual is experiencing internally
+* **Sentia Virtual Therapist** → AI-powered emotional companion and support
+* **Vital Health** → Physical indicators (Heart Rate, SpO2) as emotional proxies
 * **Fusion** → Long-term patterns and alignment, not instant judgments
 
 ---
@@ -26,8 +28,17 @@ Frontend (React)
 ├── ChatAnalyzer
 │    └── Text-based emotion analysis of conversations
 │
+├── Sentia (Virtual Therapist)
+│    └── AI-driven chat with voice and emotional support
+│
 ├── SelfEmotionMonitor
 │    └── Webcam-based facial emotion capture (individual)
+│
+├── Vitals & Fitness Dashboard
+│    └── Real-time vital monitoring and health data
+│
+├── Media Hub
+│    └── Spotify, YouTube, and Relaxation games (Tetris)
 │
 ├── Dashboard
 │    ├── Emotion timelines
@@ -39,11 +50,14 @@ Backend (FastAPI)
 │
 ├── Routes
 │    ├── /chat-analysis        (text emotion)
+│    ├── /sentia-chat          (virtual therapist)
+│    ├── /fitness-vitals       (health data)
 │    └── /self-emotion/capture (face emotion)
 │
 ├── Inference
 │    ├── text_emotion.py
-│    └── face_emotion.py
+│    ├── face_emotion.py
+│    └── vital_analyzer.py
 │
 ├── Analysis
 │    ├── fusion.py   (late fusion & reasoning)
@@ -51,10 +65,11 @@ Backend (FastAPI)
 │
 ├── Database
 │    ├── chat_emotion_logs
-│    └── face_emotion_logs
+│    ├── face_emotion_logs
+│    └── vital_sign_logs
 │
 └── Analytics Layer
-     └── Temporal fusion of text + face emotion histories
+     └── Temporal fusion of text + face + health histories
 ```
 
 ---
@@ -65,17 +80,33 @@ Backend (FastAPI)
 
 * Text-only emotion detection
 * Designed for analyzing conversations with other people
-* Handles informal language and mixed sentiment
 * Stored for long-term trend analysis
 
-### 2. Self Emotion Monitoring
+### 2. Sentia Virtual Therapist
+
+* AI-powered emotional companion with personalized chat
+* Integrated voice interaction for more natural support
+* Real-time emotional feedback and coping suggestions
+
+### 3. Self Emotion Monitoring
 
 * Webcam-based **snapshot capture** (not continuous streaming)
 * Individual emotion detection using facial cues
 * Explicit user consent and camera toggles
-* Emotion logs stored with timestamps
 
-### 3. Emotion Dashboard
+### 4. Vitals & Health Monitoring
+
+* Real-time monitoring of heart rate and SpO2 levels
+* Critical vital alarms and voice alerts
+* Integration with fitness data for a holistic view of well-being
+
+### 5. Media & Relaxation Hub
+
+* Embedded Spotify and YouTube players for music/video therapy
+* Built-in Tetris game for cognitive distraction and stress relief
+* Seamless integration into the therapeutic workflow
+
+### 6. Emotion Dashboard
 
 * Timeline view of emotional states
 * Emotion distribution over selected time ranges
@@ -150,6 +181,8 @@ This avoids false certainty and ethical overreach.
 * React (Vite)
 * Zustand
 * Axios
+* Framer Motion (Animations)
+* React Icons
 * Chart.js / Recharts
 
 **Backend**
@@ -177,29 +210,25 @@ This avoids false certainty and ethical overreach.
 
 ## 🎬 Demo Flow
 
-1. **Chat Emotion Analysis**
+1. **Cinematic Landing & Discovery**
+   * Experience the "Cinematic Neural" aesthetic with global backgrounds.
+   * Access various modules via a modern, gesture-friendly UI.
 
-   * Upload or paste a conversation
-   * System analyzes text-based emotions
-   * Results are logged for trend analysis
-   * ![Chat Analysis](screenshots/chatanalysis.png)
+2. **Sentia: Your AI Therapist**
+   * Engage in supportive conversations with voice integration.
+   * Receive immediate emotional validation and resources.
 
-2. **Self Emotion Monitoring**
+3. **Vital Signs & Monitoring**
+   * Monitor physical health indicators in real-time.
+   * Set up critical alarms for heart rate and SpO2.
 
-   * User explicitly enables webcam
-   * Snapshot-based facial emotion capture
-   * Emotion and confidence displayed instantly
-   * Data stored for historical analysis
-   * ![Self Emotion Detection](screenshots/selfmonitor.png)
+4. **Chat & Face Analysis**
+   * Parallel analysis of text and facial expressions.
+   * Ethical, snapshot-based capture and logging.
 
-
-3. **Dashboard & Insights**
-
-   * Emotion timeline and distribution graphs
-   * Drift and stability indicators
-   * High-level fused emotional insights
-   * ![Timeline](screenshots/charts.png)
-   * ![Dashboard](screenshots/dashboard.png)
+5. **Dashboard & Analytics**
+   * Explore long-term patterns via intuitive charts.
+   * View fused insights across physical and emotional domains.
 
 4. **Support & Safety Insights**
    

@@ -16,6 +16,12 @@ The system deliberately separates emotion analysis into two domains:
 * **Individual Emotion (Face-Based)**
   Captures *affective state* of the user over time.
 
+* **Virtual Therapist (Sentia Chat)**
+  Provides *personalized support* and redirection through AI companionship.
+
+* **Cross-Domain Proxy (Physical Vitals)**
+  Uses *physiological signals* (Heart Rate, SpO2) as objective indicators of emotional intensity.
+
 This avoids a common design flaw where facial emotion is incorrectly inferred from third-person text conversations.
 
 ---
@@ -45,12 +51,14 @@ Inputs:
 
 * Face emotion logs (time-series)
 * Text emotion logs (time-series)
+* **Vital health logs (time-series metrics)**
 
 Outputs:
 
 * Emotional alignment score
 * Emotional masking indicators
 * Stability and volatility metrics
+* **Physiological-Emotional correlation analysis**
 
 ### Why Not Early Fusion?
 
@@ -146,7 +154,23 @@ Quantitative metrics are complemented with qualitative analysis.
 
 ---
 
-## 10. Why This Design Works for Evaluation
+## 10. Aesthetic Rationale: Cinematic Neural
+
+The system implements a **premium, dark-themed aesthetic** designed to evoke a sense of high-fidelity cognitive science.
+
+### Design Tokens:
+* **Neural Particles**: Global interactive background representing cognitive activity.
+* **Glassmorphism**: UI components use semi-transparency to maintain depth.
+* **Ambient Contrast**: High-contrast text on deep dark backgrounds for focus and clarity.
+
+### Why This Aesthetic?
+* Reducer cognitive load by avoiding the "clinical" look.
+* Increases user engagement through visual feedback.
+* Reinforces the "AI Assistant" persona of the system.
+
+---
+
+## 11. Why This Design Works for Evaluation
 
 This architecture demonstrates:
 
@@ -185,6 +209,10 @@ All user-facing text is audited to be non-diagnostic.
 ### 12.2 Support Routing
 *   **Tele-MANAS Integration**: The system hardcodes the Tele-MANAS helpline (14416) as a verifyable, government-backed support resource.
 *   **Psychologist Lookup**: Optional location-based lookup is gated by explicit user consent. Patterns are never shared with listed professionals.
+
+### 12.3 Physical Data Privacy
+*   **Vitals Monitoring**: Health data is processed locally for analytics and stored securely.
+*   **Alarm Transparency**: Audio alarms and voice alerts for vitals are explained as system indicators, not medical directives.
 
 ---
 
