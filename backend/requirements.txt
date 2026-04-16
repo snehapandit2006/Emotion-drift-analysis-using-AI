@@ -5,7 +5,7 @@ nltk
 matplotlib
 seaborn
 fastapi
-uvicorn
+uvicorn[standard]
 sqlalchemy
 pydantic
 python-jose[cryptography]
@@ -17,8 +17,12 @@ torchvision
 torchaudio
 transformers
 pillow
-opencv-python
+opencv-python-headless
 pydantic-settings
 gunicorn
 psycopg2-binary
 reportlab
+requests
+websockets
+aiofiles
+httpx
