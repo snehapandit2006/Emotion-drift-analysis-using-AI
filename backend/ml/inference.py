@@ -422,38 +422,38 @@ def get_bot_response(text: str, intel: dict, user_id: int, conversation_id: int 
             # 2. Validate Stability
             is_valid, rejection_reason = validate_response_stability(llm_payload["text"], text)
             
-                if is_valid:
-                    response_text = llm_payload["text"]
-                    new_intent = llm_payload.get("intent", "storytelling")
-                    state["last_intent"] = new_intent
-                    dialogue_manager.track_probe(user_id, llm_payload.get("type", "general_probe"), response_text)
+            if is_valid:
+                response_text = llm_payload["text"]
+                new_intent = llm_payload.get("intent", "storytelling")
+                state["last_intent"] = new_intent
+                dialogue_manager.track_probe(user_id, llm_payload.get("type", "general_probe"), response_text)
 
-                    # 3. Resolve game link
-                    game_name = llm_payload.get("prescribed_game")
-                    game_link = None
-                    if game_name and game_name.upper() != "NONE":
-                        from .llm_bridge import GAME_LIBRARY
-                        ginfo = GAME_LIBRARY.get(game_name)
-                        if ginfo:
-                            game_link = ginfo.get("link")
+                # 3. Resolve game link
+                game_name = llm_payload.get("prescribed_game")
+                game_link = None
+                if game_name and game_name.upper() != "NONE":
+                    from .llm_bridge import GAME_LIBRARY
+                    ginfo = GAME_LIBRARY.get(game_name)
+                    if ginfo:
+                        game_link = ginfo.get("link")
 
-                    # 4. Binaural beats recommendation for distress emotions
-                    binaural_link = None
-                    distress_emotions = ["sadness", "fear", "anger"]
-                    if intel.get("base_emotion") in distress_emotions:
-                        binaural_link = "https://www.youtube.com/watch?v=WPni755-Krg"  # 432Hz Alpha Waves
+                # 4. Binaural beats recommendation for distress emotions
+                binaural_link = None
+                distress_emotions = ["sadness", "fear", "anger"]
+                if intel.get("base_emotion") in distress_emotions:
+                    binaural_link = "https://www.youtube.com/watch?v=WPni755-Krg"  # 432Hz Alpha Waves
 
-                    return {
-                        "response": response_text,
-                        "trace": "LLM_OK",
-                        "emotion": llm_payload.get("emotion"),
-                        "prescribed_game": game_name if game_name and game_name.upper() != "NONE" else None,
-                        "game_link": game_link,
-                        "binaural_link": binaural_link,
-                    }
-                else:
-                    trace = f"STABILITY_REJECTED_{rejection_reason.upper()}"
-                    print(f"[TRACE] Stability Rejected: {rejection_reason}")
+                return {
+                    "response": response_text,
+                    "trace": "LLM_OK",
+                    "emotion": llm_payload.get("emotion"),
+                    "prescribed_game": game_name if game_name and game_name.upper() != "NONE" else None,
+                    "game_link": game_link,
+                    "binaural_link": binaural_link,
+                }
+            else:
+                trace = f"STABILITY_REJECTED_{rejection_reason.upper()}"
+                print(f"[TRACE] Stability Rejected: {rejection_reason}")
         else:
             trace = "LLM_FAILED_EMPTY"
             

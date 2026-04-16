@@ -55,6 +55,15 @@ def apply_updates():
                     print("Column already exists: music_interests")
                 else:
                     print(f"Error adding music_interests: {e}")
+            # 4. Add google_refresh_token column
+            try:
+                cursor.execute("ALTER TABLE users ADD COLUMN google_refresh_token VARCHAR")
+                print("Added column: google_refresh_token")
+            except sqlite3.OperationalError as e:
+                if "duplicate column name" in str(e):
+                    print("Column already exists: google_refresh_token")
+                else:
+                    print(f"Error adding google_refresh_token: {e}")
             
             conn.commit()
             conn.close()

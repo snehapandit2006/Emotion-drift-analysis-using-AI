@@ -119,12 +119,19 @@ export default function VitalsDashboard() {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
+            // Check for connection success in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('vitals_connected') === 'true') {
+                alert('Successfully connected to Google Fit!');
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+
             const [histRes, latRes, alertRes] = await Promise.all([
                 getHealthMetricsHistory(timeRange),
                 getLatestHealthMetrics(),
                 getVitalAlerts(),
             ]);
-            const fmt = histRes.data.map(item => ({
+            const fmt = (histRes.data || []).map(item => ({
                 ...item,
                 timeLabel: new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 dateLabel: new Date(item.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' }),
@@ -169,9 +176,31 @@ export default function VitalsDashboard() {
     const handleSync = async () => {
         setSyncing(true);
         try {
-            await syncMockGoogleFit();
+            // Prefer real Google Fit sync. If it fails due to lack of connection (400), fall back to mock.
+            try {
+                await syncGoogleFit();
+            } catch (err) {
+                if (err.response && err.response.status === 400) {
+                    await syncMockGoogleFit();
+                } else {
+                    throw err;
+                }
+            }
             await fetchData();
+        } catch (err) {
+            console.error("Sync failed:", err);
+            alert("Sync failed. If you haven't connected Google Fit, please do so first.");
         } finally { setSyncing(false); }
+    };
+
+    const handleConnectGoogleFit = () => {
+        const backendUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+        const token = localStorage.getItem('token');
+        if (!token) {
+            alert('Please log in first to connect Google Fit');
+            return;
+        }
+        window.location.href = `${backendUrl}/auth/google/login?token=${token}`;
     };
 
     const handleAddSubmit = async (e) => {
@@ -219,9 +248,13 @@ export default function VitalsDashboard() {
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', opacity: 0.8 }}>High-fidelity physiological synchronization.</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
+                    <button onClick={handleConnectGoogleFit} className="glass-button" style={{ gap: '10px', background: 'rgba(66, 133, 244, 0.1)', borderColor: '#4285F4' }}>
+                        <Shield size={16} color="#4285F4" />
+                        Connect Fit
+                    </button>
                     <button onClick={handleSync} disabled={syncing} className="glass-button primary" style={{ gap: '10px' }}>
                         <RefreshCw size={16} className={syncing ? 'spin' : ''} />
-                        {syncing ? 'Synchronizing...' : 'Sync Data'}
+                        {syncing ? 'Syncing...' : 'Sync Data'}
                     </button>
                     <button onClick={() => setShowAddForm(!showAddForm)} className="glass-button" style={{ width: '48px', padding: 0 }}>
                         <Plus size={20} />

@@ -18,6 +18,7 @@ class User(Base):
     hobbies = Column(String, nullable=True)
     preferred_games = Column(String, nullable=True)
     music_interests = Column(String, nullable=True) # JSON or comma-separated string
+    google_refresh_token = Column(String, nullable=True)
 
     logs = relationship("EmotionLog", back_populates="user")
     alerts = relationship("DriftAlert", back_populates="user")

@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     LLM_API_KEY: str = os.environ.get("LLM_API_KEY", "")
     LLM_MODEL: str = os.environ.get("LLM_MODEL", "sarvam-m")
 
+    # GOOGLE FIT CONFIG
+    GOOGLE_CLIENT_ID: str = os.environ.get("GOOGLE_CLIENT_ID", "335657228266-4pro0cc8215aivg0k85t4ht41tqnt9ko.apps.googleusercontent.com")
+    GOOGLE_CLIENT_SECRET: str = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+    GOOGLE_REDIRECT_URI: str = os.environ.get("GOOGLE_REDIRECT_URI", "http://localhost:8000/api/v1/auth/google/callback")
+
     class Config:
         env_file = ".env"
         extra = "allow"

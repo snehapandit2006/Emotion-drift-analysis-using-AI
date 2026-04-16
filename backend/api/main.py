@@ -12,7 +12,7 @@ from db.models import EmotionLog, FaceEmotionLog, DriftAlert, User
 from db.init_db import init_db
 from analysis.drift import detect_emotion_drift
 from api.deps import get_current_user
-from api.routes import auth, chat_routes, support_routes, doctor_routes, medical_routes, chat_sentia_routes, therapy_routes, wellness, websocket, fitness
+from api.routes import auth, chat_routes, support_routes, doctor_routes, medical_routes, chat_sentia_routes, therapy_routes, wellness, websocket, fitness, auth_google
 from routes import report_routes, self_emotion_routes, fusion_routes, behavioral_routes
 
 
@@ -37,6 +37,7 @@ app.add_middleware(
 
 app.include_router(report_routes.router)
 app.include_router(auth.router)
+app.include_router(auth_google.router)
 app.include_router(chat_routes.router)
 app.include_router(chat_sentia_routes.router)
 app.include_router(self_emotion_routes.router)

@@ -152,6 +152,7 @@ export const getMatchedRoom = () => API.get("/rooms/match");
 // Fitness / Vitals
 export const getHealthMetricsHistory = (range = "7d") => API.get("/fitness/metrics/history", { params: { range } });
 export const getLatestHealthMetrics = () => API.get("/fitness/metrics/latest");
+export const syncGoogleFit = () => API.post("/fitness/sync/google_fit");
 export const syncMockGoogleFit = () => API.post("/fitness/sync/google_fit/mock");
 export const addHealthMetric = (data) => API.post("/fitness/metrics", data);
 
