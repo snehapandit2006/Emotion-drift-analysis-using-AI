@@ -1,6 +1,21 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
 
+const getEmotionColor = (emotion) => {
+    const emotionColors = {
+      joy: "var(--emotion-happy)",
+      happy: "var(--emotion-happy)",
+      fear: "var(--emotion-fear)",
+      sadness: "var(--emotion-sadness)",
+      anger: "var(--emotion-anger)",
+      surprise: "var(--emotion-surprise)",
+      neutral: "var(--emotion-neutral)",
+      love: "var(--emotion-love)",
+      disgust: "var(--emotion-disgust)"
+    };
+    return emotionColors[emotion?.toLowerCase()] || "var(--text-main)";
+};
+
 export default function TransitionArrows({ previous, current }) {
     if (!previous || !current) return null;
 
@@ -9,23 +24,38 @@ export default function TransitionArrows({ previous, current }) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '1rem',
-            background: 'var(--bg-panel)',
-            padding: '1rem',
-            borderRadius: '16px',
-            margin: '1rem 0',
-            border: '1px solid var(--glass-border)'
+            gap: '2.5rem',
+            margin: '1.5rem 0',
+            position: 'relative'
         }}>
             <div style={{ textAlign: 'center' }}>
-                <span style={{ fontSize: '0.8rem', opacity: 0.7, color: 'var(--text-secondary)' }}>Previous</span>
-                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{previous}</div>
+                <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontWeight: '700' }}>Initial</div>
+                <div style={{ 
+                    fontSize: '1rem', 
+                    fontWeight: '800', 
+                    color: getEmotionColor(previous),
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                }}>
+                    {previous}
+                </div>
             </div>
 
-            <ArrowRight color="var(--accent-color)" size={24} />
+            <div style={{ opacity: 0.2, display: 'flex', alignItems: 'center' }}>
+                <ArrowRight size={18} strokeWidth={1} />
+            </div>
 
             <div style={{ textAlign: 'center' }}>
-                <span style={{ fontSize: '0.8rem', opacity: 0.7, color: 'var(--text-secondary)' }}>Current</span>
-                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{current}</div>
+                <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontWeight: '700' }}>Current</div>
+                <div style={{ 
+                    fontSize: '1rem', 
+                    fontWeight: '800', 
+                    color: getEmotionColor(current),
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                }}>
+                    {current}
+                </div>
             </div>
         </div>
     );

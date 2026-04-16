@@ -8,23 +8,23 @@ import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, AreaChart, Area, ReferenceLine
 } from 'recharts';
-import { Activity, Heart, Droplet, RefreshCw, Plus, AlertTriangle, X, Phone } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Activity, Heart, Droplet, RefreshCw, Plus, AlertTriangle, X, Phone, Bell, BellOff, Shield } from 'lucide-react';
 
-// ─── Severity colour palette ───────────────────────────────────────────────
 const SEV = {
     critical: {
-        bg:     'rgba(239, 68, 68, 0.12)',
-        border: '#ef4444',
-        badge:  '#ef4444',
-        icon:   '#ef4444',
-        label:  '🚨 CRITICAL',
+        bg:     'rgba(232, 132, 132, 0.05)',
+        border: 'var(--emotion-anger)',
+        badge:  'var(--emotion-anger)',
+        icon:   'var(--emotion-anger)',
+        label:  'CRITICAL',
     },
     warning: {
-        bg:     'rgba(251, 191, 36, 0.1)',
-        border: '#f59e0b',
-        badge:  '#f59e0b',
-        icon:   '#f59e0b',
-        label:  '⚠️ WARNING',
+        bg:     'rgba(232, 212, 132, 0.03)',
+        border: 'var(--accent-gold)',
+        badge:  'var(--accent-gold)',
+        icon:   'var(--accent-gold)',
+        label:  'WARNING',
     },
 };
 
@@ -35,85 +35,70 @@ const METRIC_LABELS = {
     blood_pressure_diastolic:'Diastolic BP',
 };
 
-// ─── Single alert card ──────────────────────────────────────────────────────
 function AlertCard({ alert, onAcknowledge }) {
     const s = SEV[alert.severity] || SEV.warning;
     return (
-        <div style={{
+        <div className="glass-panel" style={{
             background:    s.bg,
-            border:        `1px solid ${s.border}`,
-            borderRadius:  '12px',
-            padding:       '1.2rem 1.5rem',
-            marginBottom:  '1rem',
+            borderColor:   s.border,
+            padding:       '0.75rem',
+            marginBottom:  '0.75rem',
             position:      'relative',
-            animation:     'fadeIn 0.4s ease',
+            animation:     'fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+            boxShadow:     `0 10px 30px -10px ${s.border}22`
         }}>
-            {/* dismiss */}
             <button
                 onClick={() => onAcknowledge(alert.id)}
-                title="Acknowledge & dismiss"
                 style={{
-                    position:  'absolute', top: '0.8rem', right: '0.8rem',
-                    background:'transparent', border: 'none', cursor: 'pointer',
-                    color:     '#94a3b8', fontSize: '1.1rem', lineHeight: 1,
+                    position:  'absolute', top: '1rem', right: '1rem',
+                    background:'none', border: 'none', cursor: 'pointer',
+                    color:     'var(--text-secondary)', transition: 'color 0.2s'
                 }}
             ><X size={18} /></button>
 
-            {/* header row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', marginBottom: '0.6rem' }}>
-                <AlertTriangle size={20} color={s.icon} />
-                <span style={{ fontWeight: 700, color: s.badge, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                <AlertTriangle size={18} color={s.icon} />
+                <span style={{ fontWeight: '800', color: s.badge, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '2px' }}>
                     {s.label}
                 </span>
-                <span style={{ fontSize: '0.78rem', color: '#94a3b8', marginLeft: 'auto', paddingRight: '1.5rem' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: 'auto', opacity: 0.6 }}>
                     {new Date(alert.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
             </div>
 
-            {/* metric + value */}
-            <p style={{ margin: '0 0 0.5rem', color: 'var(--text-main)', fontWeight: 600 }}>
+            <p style={{ margin: '0 0 0.75rem', color: 'var(--text-main)', fontSize: '1.1rem', fontWeight: '700' }}>
                 {METRIC_LABELS[alert.metric] || alert.metric}
-                {' '}&nbsp;
-                <span style={{ color: s.badge }}>
+                <span style={{ color: s.badge, marginLeft: '10px', fontSize: '1.25rem' }}>
                     {alert.value}{alert.metric === 'heart_rate' ? ' bpm' : alert.metric === 'spo2' ? '%' : ' mmHg'}
                 </span>
-                {alert.prev_value != null && (
-                    <span style={{ color: '#94a3b8', fontWeight: 400, fontSize: '0.85rem' }}>
-                        {' '}(was {alert.prev_value})
-                    </span>
-                )}
             </p>
 
-            {/* message */}
-            <p style={{ margin: '0 0 0.8rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+            <p style={{ margin: '0 0 1.25rem', color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.5 }}>
                 {alert.message}
             </p>
 
-            {/* recommendation */}
             <div style={{
-                background:   'rgba(0,0,0,0.25)',
+                background:   'rgba(255,255,255,0.03)',
                 borderLeft:   `3px solid ${s.border}`,
-                borderRadius: '6px',
-                padding:      '0.8rem 1rem',
-                fontSize:     '0.9rem',
+                borderRadius: '8px',
+                padding:      '1rem',
+                fontSize:     '0.85rem',
                 color:        'var(--text-main)',
-                lineHeight:   1.55,
-                marginBottom: '0.8rem',
+                lineHeight:   1.6,
+                marginBottom: '1.25rem',
             }}>
+                <span style={{ fontWeight: '800', color: s.badge, textTransform: 'uppercase', fontSize: '0.7rem', display: 'block', marginBottom: '4px' }}>Recommendation</span>
                 {alert.recommendation}
             </div>
 
-            {/* emergency numbers */}
-            <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.82rem', color: '#94a3b8' }}>
-                <span><Phone size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />Emergency: <strong style={{ color: '#f87171' }}>112</strong></span>
-                <span><Phone size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />Tele-MANAS: <strong style={{ color: '#f87171' }}>14416</strong></span>
-                <span><Phone size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />Vandrevala: <strong style={{ color: '#f87171' }}>9999 666 555</strong></span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)', opacity: 0.8 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Phone size={14} />Emergency: <strong style={{ color: 'var(--emotion-anger)' }}>112</strong></span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Phone size={14} />Tele-MANAS: <strong style={{ color: 'var(--emotion-anger)' }}>14416</strong></span>
             </div>
         </div>
     );
 }
 
-// ─── Main Dashboard ─────────────────────────────────────────────────────────
 export default function VitalsDashboard() {
     const [history,    setHistory]    = useState([]);
     const [latest,     setLatest]     = useState(null);
@@ -129,10 +114,8 @@ export default function VitalsDashboard() {
         blood_pressure_systolic: '', blood_pressure_diastolic: ''
     });
 
-    // Track which alert IDs we've already fired the alarm for
     const seenAlertIds = useRef(new Set());
 
-    /* ── fetch all three streams ── */
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
@@ -151,345 +134,265 @@ export default function VitalsDashboard() {
             const newAlerts = alertRes.data || [];
             setAlerts(newAlerts);
 
-            // Trigger alarm only for alerts we haven't seen before
             if (!isMutedRef.current) {
                 const unseenAlerts = newAlerts.filter(a => !seenAlertIds.current.has(a.id));
                 if (unseenAlerts.length > 0) {
-                    // Pick the most severe one to announce
                     const top = unseenAlerts.find(a => a.severity === 'critical') || unseenAlerts[0];
                     triggerVitalAlarm(top);
-                    // No need to setIsMuted(false) here, as if it was already false, we are here.
-                    // If we want new alerts to ALWAYS unmute, we can do it here.
+                    unseenAlerts.forEach(a => seenAlertIds.current.add(a.id));
                 }
-                unseenAlerts.forEach(a => seenAlertIds.current.add(a.id));
             } else {
-                // Still track seen IDs even when muted
-                (newAlerts).forEach(a => seenAlertIds.current.add(a.id));
+                newAlerts.forEach(a => seenAlertIds.current.add(a.id));
             }
         } catch (err) {
             console.error('Failed to fetch health data:', err);
         } finally {
             setLoading(false);
         }
-    }, [timeRange]); // Removed isMuted to prevent re-fetch on mute
+    }, [timeRange]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
+    
+    useEffect(() => {
+        const interval = setInterval(() => { fetchData(); }, 30000);
+        return () => clearInterval(interval);
+    }, [fetchData]);
 
-    /* ── acknowledge ── */
     const handleAcknowledge = async (id) => {
         stopAlarm();
         try {
             await acknowledgeVitalAlert(id);
             setAlerts(prev => prev.filter(a => a.id !== id));
-        } catch (err) {
-            console.error('Failed to acknowledge alert:', err);
-        }
+        } catch (err) { console.error(err); }
     };
 
-    /* ── acknowledge all ── */
-    const handleAcknowledgeAll = async () => {
-        stopAlarm();
-        await Promise.allSettled(alerts.map(a => acknowledgeVitalAlert(a.id)));
-        setAlerts([]);
-    };
-
-    const toggleMute = () => {
-        if (isMuted) {
-            setIsMuted(false);
-            isMutedRef.current = false;
-        } else {
-            stopAlarm();
-            setIsMuted(true);
-            isMutedRef.current = true;
-        }
-    };
-
-    /* ── sync ── */
     const handleSync = async () => {
         setSyncing(true);
         try {
-            const res = await syncMockGoogleFit();
+            await syncMockGoogleFit();
             await fetchData();
-            alert(res.data.message || 'Google Fit sync complete!');
-        } catch {
-            alert('Failed to sync with Google Fit.');
-        } finally {
-            setSyncing(false);
-        }
+        } finally { setSyncing(false); }
     };
 
-    /* ── manual add ── */
     const handleAddSubmit = async (e) => {
         e.preventDefault();
         try {
             const payload = {
-                heart_rate:               formData.heart_rate               ? parseFloat(formData.heart_rate)               : null,
-                spo2:                     formData.spo2                     ? parseFloat(formData.spo2)                     : null,
-                blood_pressure_systolic:  formData.blood_pressure_systolic  ? parseFloat(formData.blood_pressure_systolic)  : null,
+                heart_rate: formData.heart_rate ? parseFloat(formData.heart_rate) : null,
+                spo2: formData.spo2 ? parseFloat(formData.spo2) : null,
+                blood_pressure_systolic: formData.blood_pressure_systolic ? parseFloat(formData.blood_pressure_systolic) : null,
                 blood_pressure_diastolic: formData.blood_pressure_diastolic ? parseFloat(formData.blood_pressure_diastolic) : null,
                 source: 'manual',
             };
-            const res = await addHealthMetric(payload);
+            await addHealthMetric(payload);
             setFormData({ heart_rate: '', spo2: '', blood_pressure_systolic: '', blood_pressure_diastolic: '' });
             setShowAddForm(false);
             await fetchData();
-            if (res.data.alerts_raised > 0) {
-                // alerts already loaded via fetchData, just scroll to top
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-        } catch {
-            alert('Failed to save metric.');
-        }
+        } catch { alert('Failed to save metric.'); }
     };
 
-    const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-    /* ── tooltip ── */
     const CustomTooltip = ({ active, payload }) => {
         if (!active || !payload?.length) return null;
         return (
-            <div style={{ background: 'var(--bg-panel)', padding: '1rem', border: '1px solid var(--border-color)', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.15)' }}>
-                <p style={{ margin: '0 0 0.5rem', color: 'var(--text-secondary)' }}>
+            <div className="glass-panel" style={{ padding: '0.75rem', border: '1px solid var(--glass-highlight)' }}>
+                <p style={{ margin: '0 0 0.5rem', color: 'var(--text-secondary)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '800' }}>
                     {payload[0].payload.dateLabel} {payload[0].payload.timeLabel}
                 </p>
                 {payload.map((entry, i) => (
-                    <p key={i} style={{ margin: '0.2rem 0', color: entry.color, fontWeight: 'bold' }}>
-                        {entry.name}: {entry.value}
+                    <p key={i} style={{ margin: '0.2rem 0', color: entry.color, fontWeight: '800', fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                        <span>{entry.name}:</span>
+                        <span>{entry.value}</span>
                     </p>
                 ))}
-                <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    Source: {payload[0].payload.source}
-                </p>
             </div>
         );
     };
 
-    const criticalAlerts = alerts.filter(a => a.severity === 'critical');
-    const warningAlerts  = alerts.filter(a => a.severity === 'warning');
-
-    /* ─────────────────── RENDER ─────────────────── */
     return (
-        <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-
-            {/* ── Alert Banner Section ──────────────────────────────── */}
-            {alerts.length > 0 && (
-                <div style={{ marginBottom: '2rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <h2 style={{
-                            margin: 0, color: criticalAlerts.length ? '#ef4444' : '#f59e0b',
-                            display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.2rem'
-                        }}>
-                            <AlertTriangle size={22} />
-                            Vital Alerts ({alerts.length})
-                        </h2>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <button
-                                onClick={toggleMute}
-                                title={isMuted ? "Unmute alarm sound" : "Mute alarm sound"}
-                                style={{
-                                    padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.82rem',
-                                    background: isMuted ? 'rgba(100,116,139,0.3)' : 'transparent',
-                                    border: '1px solid #475569', color: isMuted ? '#64748b' : '#94a3b8',
-                                    cursor: 'pointer',
-                                }}
-                            >{isMuted ? '🔕 Muted' : '🔔 Mute'}</button>
-                            <button
-                                onClick={handleAcknowledgeAll}
-                                style={{
-                                    padding: '0.4rem 1rem', borderRadius: '8px', fontSize: '0.82rem',
-                                    background: 'transparent', border: '1px solid #475569',
-                                    color: '#94a3b8', cursor: 'pointer',
-                                }}
-                            >Dismiss All</button>
-                        </div>
-                    </div>
-                    {/* Critical first, then warnings */}
-                    {[...criticalAlerts, ...warningAlerts].map(alert => (
-                        <AlertCard key={alert.id} alert={alert} onAcknowledge={handleAcknowledge} />
-                    ))}
-                </div>
-            )}
-
-            {/* ── Header ───────────────────────────────────────────── */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ padding: '0 2rem', maxWidth: '1200px', margin: '0 auto' }}>
+            {/* Header Area */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem', paddingTop: '1rem' }}>
                 <div>
-                    <h1 style={{ margin: 0, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Activity size={28} style={{ color: 'var(--emotion-joy)' }} />
-                        Physical Vitals Dashboard
+                    <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '2.5rem', fontWeight: '900', letterSpacing: '-1.5px', marginBottom: '0.5rem' }}>
+                        Vitals <span style={{ color: 'var(--text-secondary)', fontWeight: '400' }}>Hub</span>
                     </h1>
-                    <p style={{ margin: '0.5rem 0 0', color: 'var(--text-secondary)' }}>
-                        Track your physiological stats. Automatic alerts on critical changes.
-                    </p>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', opacity: 0.8 }}>High-fidelity physiological synchronization.</p>
                 </div>
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    <select
-                        value={timeRange}
-                        onChange={e => setTimeRange(e.target.value)}
-                        style={{ padding: '0.5rem 1rem', borderRadius: '8px', background: 'var(--bg-input)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
-                    >
-                        <option value="24h">Last 24 Hours</option>
-                        <option value="7d">Last 7 Days</option>
-                        <option value="30d">Last 30 Days</option>
-                    </select>
-                    <button
-                        onClick={() => setShowAddForm(!showAddForm)}
-                        style={{ padding: '0.5rem 1rem', borderRadius: '8px', background: 'var(--bg-input)', color: 'var(--text-main)', border: '1px solid var(--border-color)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                    >
-                        <Plus size={16} /> Add Entry
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                    <button onClick={handleSync} disabled={syncing} className="glass-button primary" style={{ gap: '10px' }}>
+                        <RefreshCw size={16} className={syncing ? 'spin' : ''} />
+                        {syncing ? 'Synchronizing...' : 'Sync Data'}
                     </button>
-                    <button
-                        onClick={handleSync}
-                        disabled={syncing}
-                        style={{ padding: '0.5rem 1rem', borderRadius: '8px', background: 'var(--brand-google)', color: 'white', border: 'none', cursor: syncing ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}
-                    >
-                        <RefreshCw size={16} className={syncing ? 'spin-animation' : ''} />
-                        {syncing ? 'Syncing...' : 'Sync Google Fit'}
+                    <button onClick={() => setShowAddForm(!showAddForm)} className="glass-button" style={{ width: '48px', padding: 0 }}>
+                        <Plus size={20} />
                     </button>
                 </div>
             </div>
 
-            {/* ── Quick Stats ───────────────────────────────────────── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-                <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ padding: '1rem', background: 'rgba(255,107,107,0.1)', borderRadius: '50%', color: '#ff6b6b' }}>
-                        <Heart size={32} />
+            {/* Bento Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gridAutoRows: 'minmax(140px, auto)', gap: '1.5rem' }}>
+                
+                {/* Real-time Stats */}
+                <div className="glass-panel" style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                        <div style={{ padding: '0.75rem', background: 'rgba(232, 132, 132, 0.1)', borderRadius: '12px', color: 'var(--emotion-anger)' }}>
+                            <Heart size={20} />
+                        </div>
+                        <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-secondary)', letterSpacing: '1px' }}>HEART RATE</span>
                     </div>
-                    <div>
-                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Latest Heart Rate</div>
-                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: latest?.heart_rate > 100 ? '#ef4444' : latest?.heart_rate < 50 ? '#f59e0b' : 'var(--text-main)' }}>
-                            {latest?.heart_rate ? `${latest.heart_rate} bpm` : '--'}
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '3rem', fontWeight: '900', fontFamily: 'var(--font-heading)' }}>{latest?.heart_rate || '--'}</span>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '600' }}>BPM</span>
+                    </div>
+                </div>
+
+                <div className="glass-panel" style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                        <div style={{ padding: '0.75rem', background: 'rgba(99, 102, 241, 0.1)', borderRadius: '12px', color: 'var(--accent-blue)' }}>
+                            <Droplet size={20} />
+                        </div>
+                        <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-secondary)', letterSpacing: '1px' }}>OXYGEN SATURATION</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '3rem', fontWeight: '900', fontFamily: 'var(--font-heading)' }}>{latest?.spo2 || '--'}</span>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '600' }}>%</span>
+                    </div>
+                </div>
+
+                <div className="glass-panel" style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                        <div style={{ padding: '0.75rem', background: 'rgba(136, 209, 170, 0.1)', borderRadius: '12px', color: 'var(--accent-green)' }}>
+                            <Activity size={20} />
+                        </div>
+                        <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-secondary)', letterSpacing: '1px' }}>BLOOD PRESSURE</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '2.5rem', fontWeight: '900', fontFamily: 'var(--font-heading)' }}>
+                            {latest?.blood_pressure_systolic ? `${latest.blood_pressure_systolic}/${latest.blood_pressure_diastolic}` : '--'}
+                        </span>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '600' }}>mmHg</span>
+                    </div>
+                </div>
+
+                {/* Main Visualizer (Chart) */}
+                <div className="glass-panel" style={{ gridColumn: 'span 8', gridRow: 'span 2', padding: '2.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+                        <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.1rem', fontWeight: '800' }}>NEURAL SYNC ANALYSIS</h3>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            {['24h', '7d', '30d'].map((r) => (
+                                <button 
+                                    key={r} 
+                                    onClick={() => setTimeRange(r)}
+                                    style={{
+                                        background: 'none', border: 'none', color: timeRange === r ? 'var(--text-main)' : 'var(--text-secondary)',
+                                        fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer', transition: 'all 0.3s',
+                                        opacity: timeRange === r ? 1 : 0.4
+                                    }}
+                                >
+                                    {r.toUpperCase()}
+                                </button>
+                            ))}
                         </div>
                     </div>
-                </div>
-                <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ padding: '1rem', background: 'rgba(72,219,251,0.1)', borderRadius: '50%', color: '#48dbfb' }}>
-                        <Droplet size={32} />
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Latest SpO₂</div>
-                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: latest?.spo2 < 90 ? '#ef4444' : latest?.spo2 < 95 ? '#f59e0b' : 'var(--text-main)' }}>
-                            {latest?.spo2 ? `${latest.spo2}%` : '--'}
-                        </div>
-                    </div>
-                </div>
-                <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ padding: '1rem', background: 'rgba(29,209,161,0.1)', borderRadius: '50%', color: '#1dd1a1' }}>
-                        <Activity size={32} />
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Blood Pressure</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: latest?.blood_pressure_systolic > 140 ? '#ef4444' : 'var(--text-main)' }}>
-                            {latest?.blood_pressure_systolic && latest?.blood_pressure_diastolic
-                                ? `${latest.blood_pressure_systolic}/${latest.blood_pressure_diastolic}`
-                                : '--/--'}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* ── Manual Add Form ───────────────────────────────────── */}
-            {showAddForm && (
-                <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', animation: 'fadeIn 0.3s' }}>
-                    <h3 style={{ margin: '0 0 1rem', color: 'var(--text-main)' }}>Submit Manual Vitals</h3>
-                    <form onSubmit={handleAddSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', alignItems: 'end' }}>
-                        {[
-                            { label: 'Heart Rate (bpm)', name: 'heart_rate', min: 10, max: 300 },
-                            { label: 'SpO₂ (%)',          name: 'spo2',       min: 0,  max: 100 },
-                            { label: 'Systolic (mmHg)',   name: 'blood_pressure_systolic',  min: 40, max: 300 },
-                            { label: 'Diastolic (mmHg)',  name: 'blood_pressure_diastolic', min: 20, max: 200 },
-                        ].map(({ label, name, min, max }) => (
-                            <div key={name}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{label}</label>
-                                <input
-                                    type="number" name={name} value={formData[name]}
-                                    onChange={handleChange} min={min} max={max}
-                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-main)', boxSizing: 'border-box' }}
-                                />
-                            </div>
-                        ))}
-                        <button type="submit" style={{ padding: '0.8rem', borderRadius: '8px', background: 'var(--accent-color)', color: 'var(--accent-text)', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
-                            Save Entry
-                        </button>
-                    </form>
-                </div>
-            )}
-
-            {/* ── Charts ───────────────────────────────────────────── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
-
-                {/* Heart Rate with danger reference lines */}
-                <div className="glass-panel" style={{ padding: '1.5rem', height: '420px' }}>
-                    <h3 style={{ margin: '0 0 0.3rem', color: 'var(--text-main)' }}>Heart Rate Trend</h3>
-                    <p style={{ margin: '0 0 1.2rem', fontSize: '0.8rem', color: '#64748b' }}>
-                        Normal: 50–100 bpm &nbsp;|&nbsp; <span style={{ color: '#f59e0b' }}>⚠ Warning: &lt;50 or &gt;100</span> &nbsp;|&nbsp; <span style={{ color: '#ef4444' }}>🚨 Critical: &lt;40 or &gt;140</span>
-                    </p>
-                    {loading ? (
-                        <div style={{ height: '80%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>Loading chart data...</div>
-                    ) : history.length === 0 ? (
-                        <div style={{ height: '80%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>No heart rate data. Click 'Sync Google Fit' to generate demo data.</div>
-                    ) : (
-                        <ResponsiveContainer width="100%" height="85%">
+                    <div style={{ height: '300px', width: '100%' }}>
+                        <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={history}>
                                 <defs>
                                     <linearGradient id="colorHr" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%"  stopColor="#ff6b6b" stopOpacity={0.8} />
-                                        <stop offset="95%" stopColor="#ff6b6b" stopOpacity={0} />
+                                        <stop offset="5%" stopColor="var(--emotion-anger)" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="var(--emotion-anger)" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
-                                <XAxis dataKey="timeLabel" stroke="var(--text-secondary)" tick={{ fill: 'var(--text-secondary)' }} />
-                                <YAxis domain={['auto', 'auto']} stroke="var(--text-secondary)" tick={{ fill: 'var(--text-secondary)' }} />
-                                <Tooltip content={<CustomTooltip />} />
-                                {/* Warning lines */}
-                                <ReferenceLine y={100} stroke="#f59e0b" strokeDasharray="6 3" label={{ value: '⚠ 100', fill: '#f59e0b', fontSize: 11 }} />
-                                <ReferenceLine y={50}  stroke="#f59e0b" strokeDasharray="6 3" label={{ value: '⚠ 50',  fill: '#f59e0b', fontSize: 11 }} />
-                                {/* Critical lines */}
-                                <ReferenceLine y={140} stroke="#ef4444" strokeDasharray="4 2" label={{ value: '🚨 140', fill: '#ef4444', fontSize: 11 }} />
-                                <ReferenceLine y={40}  stroke="#ef4444" strokeDasharray="4 2" label={{ value: '🚨 40',  fill: '#ef4444', fontSize: 11 }} />
-                                <Area type="monotone" dataKey="heart_rate" name="Heart Rate (bpm)" stroke="#ff6b6b" strokeWidth={3} fillOpacity={1} fill="url(#colorHr)" connectNulls />
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                                <XAxis dataKey="timeLabel" hide />
+                                <YAxis hide domain={['auto', 'auto']} />
+                                <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }} />
+                                <Area type="monotone" dataKey="heart_rate" name="Heart Rate" stroke="var(--emotion-anger)" strokeWidth={3} fillOpacity={1} fill="url(#colorHr)" animationDuration={1500} />
                             </AreaChart>
                         </ResponsiveContainer>
-                    )}
+                    </div>
                 </div>
 
-                {/* SpO2 & BP */}
-                <div className="glass-panel" style={{ padding: '1.5rem', height: '340px' }}>
-                    <h3 style={{ margin: '0 0 0.3rem', color: 'var(--text-main)' }}>SpO₂ & Blood Pressure</h3>
-                    <p style={{ margin: '0 0 1.2rem', fontSize: '0.8rem', color: '#64748b' }}>
-                        SpO₂ normal: ≥95% &nbsp;|&nbsp; Systolic normal: 90–140 mmHg
-                    </p>
-                    {loading ? (
-                        <div style={{ height: '80%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>Loading chart data...</div>
-                    ) : history.length === 0 ? (
-                        <div style={{ height: '80%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>No data available.</div>
-                    ) : (
-                        <ResponsiveContainer width="100%" height="85%">
-                            <LineChart data={history}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
-                                <XAxis dataKey="timeLabel" stroke="var(--text-secondary)" tick={{ fill: 'var(--text-secondary)' }} />
-                                <YAxis yAxisId="left"  domain={[85, 100]} stroke="var(--text-secondary)" />
-                                <YAxis yAxisId="right" orientation="right" domain={[50, 200]} stroke="var(--text-secondary)" />
-                                <Tooltip content={<CustomTooltip />} />
-                                {/* SpO2 critical threshold */}
-                                <ReferenceLine yAxisId="left"  y={95} stroke="#f59e0b" strokeDasharray="6 3" />
-                                <ReferenceLine yAxisId="left"  y={90} stroke="#ef4444" strokeDasharray="4 2" />
-                                {/* BP warning */}
-                                <ReferenceLine yAxisId="right" y={140} stroke="#f59e0b" strokeDasharray="6 3" />
-                                <ReferenceLine yAxisId="right" y={180} stroke="#ef4444" strokeDasharray="4 2" />
-                                <Line yAxisId="left"  type="monotone" dataKey="spo2"                     name="SpO₂ (%)"    stroke="#48dbfb" strokeWidth={3} dot={{ r: 4 }} connectNulls />
-                                <Line yAxisId="right" type="monotone" dataKey="blood_pressure_systolic"  name="Systolic BP" stroke="#1dd1a1" strokeWidth={2} connectNulls />
-                                <Line yAxisId="right" type="step"     dataKey="blood_pressure_diastolic" name="Diastolic BP" stroke="#ff9f43" strokeWidth={2} connectNulls />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    )}
+                {/* Alerts/Insights Area */}
+                <div className="glass-panel" style={{ gridColumn: 'span 4', gridRow: 'span 2', padding: '2rem', display: 'flex', flexDirection: 'column' }}>
+                    <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', fontWeight: '800', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <Bell size={18} style={{ color: 'var(--accent-gold)' }} /> DIAGNOSTICS
+                    </h3>
+                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {alerts.length === 0 ? (
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.3, textAlign: 'center' }}>
+                                <Shield size={48} style={{ marginBottom: '1rem' }} />
+                                <p style={{ fontSize: '0.85rem' }}>No anomalies detected in recent cycles.</p>
+                            </div>
+                        ) : (
+                            alerts.map(alert => (
+                                <div key={alert.id} style={{ 
+                                    padding: '1.25rem', borderRadius: '14px', background: 'rgba(255,255,255,0.03)', 
+                                    borderLeft: `3px solid ${alert.severity === 'critical' ? 'var(--emotion-anger)' : 'var(--accent-gold)'}`,
+                                    position: 'relative'
+                                }}>
+                                    <div style={{ fontSize: '0.65rem', fontWeight: '900', color: alert.severity === 'critical' ? 'var(--emotion-anger)' : 'var(--accent-gold)', marginBottom: '0.5rem', letterSpacing: '1px' }}>
+                                        {alert.severity.toUpperCase()}
+                                    </div>
+                                    <p style={{ fontSize: '0.9rem', margin: 0, fontWeight: '700', lineHeight: 1.4 }}>{alert.message}</p>
+                                    <button 
+                                        onClick={() => handleAcknowledge(alert.id)}
+                                        style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', opacity: 0.5 }}
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
+
+                {/* Manual Entry Form (Overlay or Slide-in feel) */}
+                <AnimatePresence>
+                {showAddForm && (
+                    <>
+                     <motion.div
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 999, backdropFilter: 'blur(4px)' }}
+                        onClick={() => setShowAddForm(false)}
+                     />
+                     <motion.div 
+                        initial={{ opacity: 0, x: '-50%', y: '-40%' }} animate={{ opacity: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, x: '-50%', y: '-40%' }}
+                        className="glass-panel" 
+                        style={{ 
+                            position: 'fixed', top: '50%', left: '50%', zIndex: 1000,
+                            width: '90%', maxWidth: '800px',
+                            padding: '2.5rem', background: 'rgba(20,20,30,0.95)', border: '1px solid var(--glass-highlight)',
+                            boxShadow: '0 20px 60px rgba(0,0,0,0.8)'
+                        }}
+                     >
+                        <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: '900', marginBottom: '2rem' }}>MANUAL CALIBRATION</h3>
+                        <form onSubmit={handleAddSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '2rem' }}>
+                            {[
+                                { label: 'Heart Rate', name: 'heart_rate' },
+                                { label: 'SpO₂ %', name: 'spo2' },
+                                { label: 'Systolic BP', name: 'blood_pressure_systolic' },
+                                { label: 'Diastolic BP', name: 'blood_pressure_diastolic' },
+                            ].map(f => (
+                                <div key={f.name}>
+                                    <label style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--text-secondary)', marginBottom: '0.75rem', display: 'block' }}>{f.label.toUpperCase()}</label>
+                                    <input 
+                                        type="number" value={formData[f.name]}
+                                        onChange={(e) => setFormData({...formData, [f.name]: e.target.value})}
+                                        style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--glass-border)', padding: '1rem', borderRadius: '12px', color: 'var(--text-main)', outline: 'none' }}
+                                    />
+                                </div>
+                            ))}
+                            <div style={{ gridColumn: 'span 4', display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
+                                <button type="button" onClick={() => setShowAddForm(false)} className="glass-button">Cancel</button>
+                                <button type="submit" className="glass-button primary">Register Metrics</button>
+                            </div>
+                        </form>
+                     </motion.div>
+                    </>
+                )}
+                </AnimatePresence>
             </div>
-
-            <style>{`
-                .spin-animation { animation: spin 1s linear infinite; }
-                @keyframes spin   { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-            `}</style>
         </div>
     );
 }

@@ -57,8 +57,9 @@ const WelcomeScreen = () => {
                         width: '100%',
                         height: '100%',
                         objectFit: 'contain',
-                        clipPath: 'inset(0 0 27% 0)',
-                        filter: 'drop-shadow(0 0 20px var(--accent-color))'
+                        clipPath: 'inset(0 0 28.3% 0)', // Exclude bottom 28.3% (shows top 71.7%)
+                        filter: 'drop-shadow(0 0 20px var(--accent-color))',
+                        zIndex: 1
                     }}
                 />
                 {/* Bottom Layer: Text (Adaptive Color) */}
@@ -72,8 +73,9 @@ const WelcomeScreen = () => {
                         width: '100%',
                         height: '100%',
                         objectFit: 'contain',
-                        clipPath: 'inset(73% 0 0 0)',
-                        filter: 'brightness(0) invert(1) drop-shadow(0 0 20px var(--accent-color))'
+                        clipPath: 'inset(71.7% 0 0 0)', // Exclude top 71.7% (shows bottom 28.3%)
+                        filter: 'invert(1) brightness(1.5) drop-shadow(0 0 10px rgba(255,255,255,0.5))',
+                        zIndex: 2
                     }}
                 />
             </motion.div>

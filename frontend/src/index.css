@@ -1,68 +1,50 @@
-@import url('https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Inter:wght@100..900&display=swap');
 
 :root {
-  /* Cinematic Neural Theme - Dark Mode */
-  --bg-neural: #02040A;
+  /* Refined Color Palette - High-End Dark UI */
+  --bg-main: #0F1117;          /* Deep Charcoal/Navy */
+  --bg-card: #1A1D26;          /* Slightly lighter grey */
+  --bg-panel: #1A1D26;
+  --bg-input: #11141D;
+  
+  --text-main: #E0E0E0;        /* Off-white */
+  --text-secondary: #9BA1B0;   /* Dimmed Grey labels */
   --text-heading: #FFFFFF;
-  --text-body: #B4BCCF;
-  --accent-glow: rgba(99, 102, 241, 0.4);
-  --glass-bg: rgba(26, 27, 38, 0.4);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-highlight: rgba(255, 255, 255, 0.12);
-  --card-hover: rgba(45, 46, 61, 0.6);
-  --nav-bg: rgba(2, 4, 10, 0.4);
-  --footer-bg: rgba(2, 4, 10, 0.6);
+  
+  /* Accents - Soft Neons */
+  --accent-purple: #A084E8;    /* Muted Amethyst */
+  --accent-green: #88D1AA;     /* Soft Sage Green */
+  --accent-gold: #E8C884;      /* Muted Gold */
+  --accent-blue: #6366F1;
+  
+  /* Glassmorphism & Borders */
+  --glass-bg: rgba(26, 29, 38, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  --glass-highlight: rgba(255, 255, 255, 0.08);
+  --glass-blur: blur(16px);
+  
+  /* Emotion Colors - Muted Pastel */
+  --emotion-happy: #88D1AA;    /* Sage Green */
+  --emotion-fear: #A084E8;     /* Amethyst Purple */
+  --emotion-sadness: #7DB9E8;
+  --emotion-anger: #E88484;
+  --emotion-surprise: #E8C884;
+  --emotion-neutral: #9BA1B0;
+  --emotion-love: #E884B9;
+  --emotion-disgust: #E8A884;
 
-  /* Legacy Compat/Dashboard Vars */
-  --bg-main: var(--bg-neural);
-  /* Deepest background */
-  --bg-card: #13141F;
-  /* Card background */
-  --bg-panel: #1A1B26;
-  /* Slightly lighter panel/hover */
-  --bg-input: #1A1B26;
-  /* Inputs match panels */
-
-  --text-main: #F8FAFC;
-  /* Slate-50 */
-  --text-secondary: #94A3B8;
-  /* Slate-400 */
-
-  --border-color: #2D2E3D;
-  /* Subtle border */
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --shadow-color: rgba(0, 0, 0, 0.4);
-
-  /* Accents */
-  --primary-blue: #6366F1;
-  /* Indigo-500 (Buttons/Links) */
-  --accent-color: #D946EF;
-  /* Fuchsia-500 (Brand/Highlight) */
-  --accent-color-rgb: 217, 70, 239;
-  --accent-text: #FFFFFF;
-
-  /* Emotion Colors (Neon/Vibrant) */
-  --emotion-happy: #4ADE80;
-  /* Green */
-  --emotion-fear: #A855F7;
-  /* Purple */
-  --emotion-sadness: #38BDF8;
-  /* Sky Blue */
-  --emotion-anger: #F87171;
-  /* Red */
-  --emotion-surprise: #FACC15;
-  /* Yellow */
-  --emotion-neutral: #94A3B8;
-  /* Slate */
-  --emotion-love: #F472B6;
-  /* Pink */
-  --emotion-disgust: #FB923C;
-  /* Orange */
+  /* Fonts */
+  --font-heading: 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'Inter', sans-serif;
 
   /* Aliases */
-  --card-bg: var(--bg-card);
-  --text-sub: var(--text-secondary);
+  --primary-blue: var(--accent-blue);
+  --accent-color: var(--accent-purple);
+  --border-radius: 16px;
+  --shadow-subtle: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --shadow-premium: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
 }
+
 
 .light-mode {
   /* Olive/Beige Theme */
@@ -106,89 +88,129 @@
   --text-sub: var(--text-secondary);
 }
 
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  font-family: 'Barlow', system-ui, -apple-system, sans-serif;
-  line-height: 1.5;
+  font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.6;
   font-weight: 400;
-
-  color: var(--text-body);
-  background-color: transparent !important;
+  color: var(--text-main);
+  background-color: var(--bg-main) !important;
   transition: background 0.3s ease, color 0.3s ease;
+  letter-spacing: 0.01em;
 }
 
-h1, h2, h3, h4, h5, h6, .serif-heading {
-  font-family: 'Instrument Serif', serif;
-  font-style: italic;
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
   color: var(--text-heading);
-  font-weight: 400;
+  font-weight: 700;
   margin: 0;
-  letter-spacing: -0.02em;
 }
 
-/* --- Reusable Liquid-Glass System --- */
-/* Standardize glass panels to be transparent so neural background shows through */
+.serif-heading {
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+}
+
+/* --- Bento & Glass System --- */
 .glass-panel {
-  background: var(--glass-bg, rgba(255, 255, 255, 0.03)) !important;
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%); /* Added for webkit compatibility */
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); /* Replaced original box-shadow */
-  border-radius: 20px;
+  box-shadow: var(--shadow-premium);
+  border-radius: var(--border-radius);
   position: relative;
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-panel:hover {
+  border-color: var(--glass-highlight);
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6);
+  transform: translateY(-2px);
 }
 
 .glass-panel::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: radial-gradient(circle at top left, rgba(255,255,255,0.05), transparent 50%);
+  background: radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 60%);
   pointer-events: none;
 }
 
 .glass-button {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text-heading);
   border: 1px solid var(--glass-border);
   backdrop-filter: blur(12px);
   padding: 0.8rem 1.8rem;
   border-radius: 100px;
-  font-family: 'Barlow', sans-serif;
-  font-weight: 500;
-  font-size: 0.95rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.9rem;
   cursor: pointer;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: inset 0 1px 1px var(--glass-highlight);
+  letter-spacing: 0.02em;
 }
 
 .glass-button:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   transform: translateY(-2px);
+  border-color: var(--glass-highlight);
   box-shadow: 
-      0 10px 20px rgba(0,0,0,0.2), 
+      0 12px 24px rgba(0,0,0,0.3), 
       inset 0 1px 1px var(--glass-highlight);
 }
 
 .glass-button.primary {
-  background: linear-gradient(135deg, var(--text-heading), #94A3B8);
-  color: #02040A;
+  background: linear-gradient(135deg, #FFFFFF, #94A3B8);
+  color: #0F1117;
   border: none;
-  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
-  font-weight: 600;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  font-weight: 700;
 }
 
 .glass-button.primary:hover {
   background: #FFFFFF;
-  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.4);
-  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 12px 28px rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px) scale(1.03);
+}
+
+.is-loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.is-loading::after {
+  content: "";
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+  margin-left: 8px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .light-mode .glass-button.primary {
@@ -206,25 +228,7 @@ h1, h2, h3, h4, h5, h6, .serif-heading {
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg-main);
-  border-left: 1px solid var(--border-color);
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 5px;
-  border: 2px solid transparent;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-blue);
-}
-
-::-webkit-scrollbar-corner {
-  background: var(--bg-main);
+  display: none;
+  width: 0;
+  height: 0;
 }

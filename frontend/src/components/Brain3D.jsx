@@ -4,8 +4,8 @@ import { Points, PointMaterial, Float } from '@react-three/drei';
 import * as THREE from 'three';
 
 // --- Configuration & Constants ---
-const NODE_COUNT = 1200;
-const CONNECTION_COUNT = 160;
+const NODE_COUNT = 700;
+const CONNECTION_COUNT = 100;
 const BRAIN_SCALE = 2.8;
 const SCATTER_RADIUS = 20;
 
@@ -119,7 +119,10 @@ function NeuralNetwork({ progress }) {
   useFrame((state) => {
     const time = state.clock.getElapsedTime();
     const p = getProgress();
-    const t = THREE.MathUtils.smoothstep(p, 0.0, 1.0); 
+    const t = THREE.MathUtils.smoothstep(p, 0.0, 1.0);
+    const angleOffset = (1 - t) * 4.0;
+    const cosA = Math.cos(angleOffset);
+    const sinA = Math.sin(angleOffset);
     
     // Update Node Vertices
     if (pointsRef.current && shellRef.current) {
@@ -130,19 +133,20 @@ function NeuralNetwork({ progress }) {
       
       for (let i = 0; i < NODE_COUNT; i++) {
         const idx = i * 3;
-        const angleOffset = (1 - t) * 4.0;
         const sX = data.scattered[idx];
         const sZ = data.scattered[idx + 2];
         
-        const rotatedX = sX * Math.cos(angleOffset) - sZ * Math.sin(angleOffset);
-        const rotatedZ = sX * Math.sin(angleOffset) + sZ * Math.cos(angleOffset);
+        const rotatedX = sX * cosA - sZ * sinA;
+        const rotatedZ = sX * sinA + sZ * cosA;
 
-        const assembleNoise = Math.sin(time * 0.5 + i) * 0.08 * (1 - t);
+        // Only apply noise for assembling phase, skip it once fully formed
+        const assembleNoise = t < 0.95 ? Math.sin(time * 0.5 + i) * 0.08 * (1 - t) : 0;
         
         positions[idx] = THREE.MathUtils.lerp(rotatedX, data.targets[idx], t) + assembleNoise;
         positions[idx + 1] = THREE.MathUtils.lerp(data.scattered[idx + 1], data.targets[idx + 1], t) + assembleNoise;
         positions[idx + 2] = THREE.MathUtils.lerp(rotatedZ, data.targets[idx + 2], t) + assembleNoise;
 
+        // Shell just scales core positions — no separate lerp needed
         shellPositions[idx] = positions[idx] * 1.015;
         shellPositions[idx + 1] = positions[idx + 1] * 1.015;
         shellPositions[idx + 2] = positions[idx + 2] * 1.015;

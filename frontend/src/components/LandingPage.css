@@ -65,13 +65,13 @@
     color: var(--text-heading);
 }
 
-.nav-links {
+.landing-nav-links {
     display: flex;
     gap: 2.5rem;
     align-items: center;
 }
 
-.nav-item {
+.landing-nav-item {
     color: var(--text-body);
     text-decoration: none;
     font-size: 0.95rem;
@@ -80,7 +80,7 @@
     transition: color 0.3s;
 }
 
-.nav-item:hover {
+.landing-nav-item:hover {
     color: var(--text-heading);
 }
 
@@ -335,7 +335,7 @@
 }
 
 /* Bento Grid */
-.bento-section {
+.landing-bento-section {
     padding: 6rem 4rem;
     max-width: 1400px;
     margin: 0 auto;
@@ -344,35 +344,35 @@
     background: transparent;
 }
 
-.bento-grid {
+.landing-bento-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     grid-template-rows: repeat(2, 300px);
     gap: 1.5rem;
 }
 
-.bento-item {
+.landing-bento-item {
     padding: 2.5rem;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
 }
 
-.bento-item.large {
+.landing-bento-item.large {
     grid-column: span 2;
     grid-row: span 2;
 }
 
-.bento-item.medium {
+.landing-bento-item.medium {
     grid-column: span 2;
     grid-row: span 1;
 }
 
-.bento-item h3 {
+.landing-bento-item h3 {
     font-size: 2rem;
 }
 
-.bento-item.large h3 {
+.landing-bento-item.large h3 {
     font-size: 3.5rem;
 }
 
@@ -494,11 +494,11 @@
 
 /* Responsive Overrides */
 @media (max-width: 1024px) {
-    .architecture-section, .bento-grid {
+    .architecture-section, .landing-bento-grid {
         grid-template-columns: 1fr;
     }
     
-    .bento-item.large, .bento-item.medium {
+    .landing-bento-item.large, .landing-bento-item.medium {
         grid-column: span 1;
     }
     
@@ -515,7 +515,7 @@
     .landing-nav {
         padding: 1rem 2rem;
     }
-    .nav-links {
+    .landing-nav-links {
         display: none; /* simple mobile hide for now */
     }
     

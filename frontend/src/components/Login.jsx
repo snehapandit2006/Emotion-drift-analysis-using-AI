@@ -1,306 +1,225 @@
-import { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import AuthContext from '../context/AuthContext';
+import { motion } from 'framer-motion';
+import { 
+    Mail, Lock, ArrowRight, Github, Chrome, 
+    Sparkles, Compass
+} from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
-import AppleLogin from 'react-apple-login';
-import logoFinal from '../assets/logo_final.png';
-import { forgotPassword, resetPassword } from '../api';
+import AuthContext from '../context/AuthContext';
 
 const Login = () => {
-    const [view, setView] = useState('login'); // 'login', 'forgot', 'reset'
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [newPassword, setNewPassword] = useState('');
-    const [resetToken, setResetToken] = useState('');
-    const [error, setError] = useState('');
-    const [message, setMessage] = useState('');
-
-    const { login, googleLogin } = useContext(AuthContext);
     const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
+    const { login, googleLogin } = useContext(AuthContext);
+    const [formData, setFormData] = useState({ email: '', password: '' });
+    const [role, setRole] = useState('patient');
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
 
-    const [rememberMe, setRememberMe] = useState(false);
-
-    useEffect(() => {
-        const savedEmail = localStorage.getItem('rememberedEmail');
-        if (savedEmail) {
-            setEmail(savedEmail);
-            setRememberMe(true);
-        }
-    }, []);
-
-    const handleLogin = async () => {
-        setLoading(true);
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsLoading(true);
         setError('');
         try {
-            const success = await login(email, password);
-            if (success) {
-                if (rememberMe) {
-                    localStorage.setItem('rememberedEmail', email);
-                } else {
-                    localStorage.removeItem('rememberedEmail');
-                }
-                navigate('/welcome');
+            const result = await login(formData.email, formData.password);
+            if (result && result.role === 'psychiatrist') {
+                navigate('/doctor-dashboard');
             } else {
-                setError('Invalid email or password');
+                navigate('/dashboard');
             }
         } catch (err) {
-            setError(err.message || 'Login failed');
-        } finally {
-            setLoading(false);
+            setError(err.message || 'Invalid credentials. Please attempt synchronization again.');
+            setIsLoading(false);
         }
     };
 
-    const handleForgot = async () => {
-        setLoading(true);
-        setError('');
-        setMessage('');
-        try {
-            await forgotPassword(email);
-            setMessage('If the account exists, a reset code has been sent (check console).');
-            setView('reset');
-        } catch {
-            setError('Failed to process request.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleReset = async () => {
-        setLoading(true);
-        setError('');
-        setMessage('');
-        try {
-            await resetPassword(resetToken, newPassword);
-            setMessage('Password reset successfully! Please login.');
-            setView('login');
-            setPassword('');
-        } catch {
-            setError('Failed to reset password. Invalid or expired token.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const loginGoogle = useGoogleLogin({
+    const handleGoogleLogin = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
-            console.log("Google Login Success, Token:", tokenResponse);
-            try {
-                const success = await googleLogin(tokenResponse.access_token);
-                if (success) {
-                    navigate('/dashboard');
+            setIsLoading(true);
+            const result = await googleLogin(tokenResponse.access_token);
+            if (result && result.success) {
+                if (result.role === 'psychiatrist') {
+                    navigate('/doctor-dashboard');
                 } else {
-                    alert("Backend Google Login Failed. Check console.");
-                    setError('Google login failed at backend');
+                    navigate('/dashboard');
                 }
-            } catch (err) {
-                console.error("Backend Google Login Error:", err);
-                alert(`Backend Error: ${err.message || 'Unknown'}`);
-                setError(err.message || 'Google login failed');
+            } else {
+                setError('Google authentication failed.');
+                setIsLoading(false);
             }
         },
-        onError: error => {
-            console.error("Google Popup/Auth Failed:", error);
-            alert(`Google Auth Failed: ${error.error_description || error.type || JSON.stringify(error)}`);
-            setError(`Google Auth Failed: ${error.error_description || 'Unknown error'}`);
+        onError: () => {
+            setError('Google login failed.');
+            setIsLoading(false);
         }
     });
 
-
-
     return (
-        <div className="login-screen">
-            <div className="login-box glass-panel">
-                {/* Logo Replacement */}
-                {/* Logo - Styles moved to App.css for theme consistency */}
-                <div className="logo-container" style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-                    <div style={{ position: 'relative', height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {/* Spacer to establish width */}
-                        <img src={logoFinal} alt="" style={{ height: '120px', opacity: 0 }} />
+        <div style={{ 
+            minHeight: '100vh', width: '100vw', background: '#0F1117',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            position: 'relative', overflow: 'hidden', color: 'white'
+        }}>
+            {/* Background Typography Watermark */}
+            <div style={{ 
+                position: 'absolute', right: '-5vw', top: '25%', 
+                fontSize: '12vw', fontWeight: '900', lineHeight: 0.9,
+                opacity: 0.03, pointerEvents: 'none', userSelect: 'none',
+                fontFamily: 'var(--font-heading)', textAlign: 'right'
+            }}>
+                CALM<br/>DRIFT<br/>FLOW
+            </div>
 
-                        {/* Top Layer: Robot (Original Colors) - Shows top 73% */}
-                        <img
-                            src={logoFinal}
-                            alt="Sentia Robot"
-                            style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: '50%',
-                                transform: 'translateX(-50%)',
-                                height: '100%',
-                                clipPath: 'inset(0 0 27% 0)',
-                                zIndex: 2
-                            }}
-                        />
+            {/* Ambient Background Glows */}
+            <div style={{ position: 'absolute', top: '10%', left: '10%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', bottom: '10%', right: '10%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(160, 132, 232, 0.1) 0%, transparent 70%)', filter: 'blur(60px)', pointerEvents: 'none' }} />
 
-                        {/* Bottom Layer: Text (White in Dark Mode) - Shows bottom 27% */}
-                        <img
-                            src={logoFinal}
-                            alt="Sentia Text"
-                            style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: '50%',
-                                transform: 'translateX(-50%)',
-                                height: '100%',
-                                clipPath: 'inset(50% 0 0 0)',
-                                filter: 'brightness(0) invert(1)',
-                                transition: 'filter 0.3s ease',
-                                zIndex: 1
+            <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+                style={{ zIndex: 10, width: '100%', maxWidth: '440px', padding: '2rem' }}
+            >
+                <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                        <Compass className="text-blue-500" size={28} />
+                        <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.5rem', fontWeight: '900', letterSpacing: '-0.5px', margin: 0 }}>Emotion Drift</h1>
+                    </div>
+                    <p style={{ fontSize: '0.75rem', fontWeight: '700', opacity: 0.4, letterSpacing: '2px', textTransform: 'uppercase' }}>Premium Sanctuary</p>
+                </div>
+
+                <div className="glass-panel" style={{ padding: '2.5rem', borderRadius: '32px', border: '1px solid var(--glass-highlight)', background: 'rgba(255, 255, 255, 0.02)' }}>
+                    <div style={{ marginBottom: '2rem' }}>
+                        <h2 style={{ fontSize: '1.75rem', fontWeight: '800', marginBottom: '0.5rem' }}>Welcome back</h2>
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Resume your journey toward inner clarity.</p>
+                    </div>
+
+                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div style={{ position: 'relative' }}>
+                            <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', opacity: 0.6 }}>
+                                <Mail size={18} />
+                            </div>
+                            <input 
+                                type="email"
+                                placeholder="Email address"
+                                required
+                                value={formData.email}
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                style={{ 
+                                    width: '100%', padding: '1.1rem 1rem 1.1rem 3.5rem', borderRadius: '16px',
+                                    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)',
+                                    color: 'white', fontSize: '1rem', outline: 'none', transition: 'all 0.3s'
+                                }}
+                            />
+                        </div>
+
+                        <div style={{ position: 'relative' }}>
+                            <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', opacity: 0.6 }}>
+                                <Lock size={18} />
+                            </div>
+                            <input 
+                                type="password"
+                                placeholder="Password"
+                                required
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                style={{ 
+                                    width: '100%', padding: '1.1rem 1rem 1.1rem 3.5rem', borderRadius: '16px',
+                                    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)',
+                                    color: 'white', fontSize: '1rem', outline: 'none', transition: 'all 0.3s'
+                                }}
+                            />
+                        </div>
+
+                        {/* Role Selector */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem', marginTop: '0.5rem' }}>
+                            <button
+                                type="button"
+                                onClick={() => setRole('patient')}
+                                style={{
+                                    padding: '0.8rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: '800', border: '1px solid',
+                                    borderColor: role === 'patient' ? '#60A5FA' : 'rgba(255,255,255,0.05)',
+                                    background: role === 'patient' ? 'rgba(96, 165, 250, 0.1)' : 'rgba(255,255,255,0.02)',
+                                    color: role === 'patient' ? '#60A5FA' : 'rgba(255,255,255,0.4)',
+                                    cursor: 'pointer', transition: 'all 0.3s'
+                                }}
+                            >
+                                Patient
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setRole('psychiatrist')}
+                                style={{
+                                    padding: '0.8rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: '800', border: '1px solid',
+                                    borderColor: role === 'psychiatrist' ? '#A084E8' : 'rgba(255,255,255,0.05)',
+                                    background: role === 'psychiatrist' ? 'rgba(160, 132, 232, 0.1)' : 'rgba(255,255,255,0.02)',
+                                    color: role === 'psychiatrist' ? '#A084E8' : 'rgba(255,255,255,0.4)',
+                                    cursor: 'pointer', transition: 'all 0.3s'
+                                }}
+                            >
+                                Doctor
+                            </button>
+                        </div>
+
+                        {error && (
+                            <div style={{ color: 'var(--emotion-anger)', fontSize: '0.75rem', textAlign: 'center', marginTop: '0.5rem', fontWeight: '600' }}>
+                                {error}
+                            </div>
+                        )}
+
+                        <button 
+                            type="submit" 
+                            disabled={isLoading}
+                            className="glass-button primary"
+                            style={{ 
+                                marginTop: '1rem', padding: '1.1rem', borderRadius: '16px',
+                                background: 'linear-gradient(135deg, #60A5FA, #3B82F6)',
+                                border: 'none', color: 'white', fontWeight: '800', fontSize: '1rem',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
+                                boxShadow: '0 10px 25px rgba(59, 130, 246, 0.3)', cursor: 'pointer'
                             }}
-                        />
+                        >
+                            {isLoading ? 'Synchronizing...' : (
+                                <>Enter Sanctuary <ArrowRight size={18} /></>
+                            )}
+                        </button>
+                    </form>
+
+                    <div style={{ margin: '2rem 0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.05)' }} />
+                        <span style={{ fontSize: '0.65rem', fontWeight: '800', opacity: 0.3, letterSpacing: '1px' }}>OR CONTINUE WITH</span>
+                        <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.05)' }} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <button 
+                            onClick={() => handleGoogleLogin()}
+                            style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: '700', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', color: 'white', borderRadius: '12px', cursor: 'pointer' }}
+                        >
+                            <Chrome size={18} /> Google
+                        </button>
+                        <button style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: '700', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', color: 'white', borderRadius: '12px', cursor: 'pointer' }}>
+                            <Github size={18} /> Github
+                        </button>
                     </div>
                 </div>
 
-                {view === 'login' && (
-                    <>
-                        <div className="login-header">
-                            <h1 className="serif-heading">Welcome Back!</h1>
-                            <p style={{ color: 'var(--text-body)', opacity: 0.8 }}>Sign in to access smart, personalized emotional monitoring made for you.</p>
-                        </div>
+                <div style={{ textAlign: 'center', marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div className="glass-panel" style={{ display: 'inline-flex', alignSelf: 'center', padding: '0.5rem 1rem', borderRadius: '100px', alignItems: 'center', gap: '8px', fontSize: '0.65rem', fontWeight: '800', letterSpacing: '0.5px', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.1)' }}>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-green)', boxShadow: '0 0 10px var(--accent-green)' }} />
+                        CURRENT ATMOSPHERE: <span style={{ color: 'var(--accent-green)' }}>SERENE</span>
+                    </div>
 
-                        {error && <p style={{ color: '#ff4d4d', textAlign: 'center' }}>{error}</p>}
-                        {message && <p style={{ color: '#4CAF50', textAlign: 'center' }}>{message}</p>}
-
-                        <div className="input-group">
-                            <label>Email address*</label>
-                            <input
-                                className="sentia-input"
-                                type="email"
-                                placeholder="example@gmail.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="input-group">
-                            <label>Password*</label>
-                            <input
-                                className="sentia-input"
-                                type="password"
-                                placeholder="•••••••••"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                            />
-                        </div>
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#888' }}>
-                            <label style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                <input 
-                                    type="checkbox" 
-                                    checked={rememberMe}
-                                    onChange={(e) => setRememberMe(e.target.checked)}
-                                /> Remember me
-                            </label>
-                            <span
-                                style={{ cursor: 'pointer', color: 'var(--accent-color)' }}
-                                onClick={() => setView('forgot')}
-                            >
-                                Forgot Password?
-                            </span>
-                        </div>
-
-                        <button className="glass-button primary" style={{ width: '100%', padding: '1rem', marginTop: '1rem' }} onClick={handleLogin} disabled={loading}>
-                            {loading ? "Signing in..." : "Sign in"}
-                        </button>
-
-                        <div className="divider"><span>Or continue with</span></div>
-
-                        <div className="social-btns">
-                            <button className="social-btn" onClick={() => loginGoogle()}>
-                                {/* Google SVG */}
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M23.5 12.2857C23.5 11.4589 23.4255 10.6625 23.2946 9.89285H12V14.5179H18.4625C18.1821 15.9929 17.3071 17.25 16.0357 18.1V21.0714H19.9071C22.175 18.9857 23.5 15.9179 23.5 12.2857Z" fill="#4285F4" />
-                                    <path d="M12 24C15.2321 24 17.9429 22.9286 19.9107 21.0714L16.0357 18.1C14.9607 18.8143 13.5893 19.2321 12 19.2321C8.875 19.2321 6.225 17.1214 5.275 14.275H1.275V17.375C3.25 21.3 7.31071 24 12 24Z" fill="#34A853" />
-                                    <path d="M5.275 14.275C5.025 13.5536 4.88929 12.7821 4.88929 12C4.88929 11.2179 5.025 10.4464 5.275 9.725V6.625H1.275C0.460714 8.24286 0 10.075 0 12C0 13.925 0.460714 15.7571 1.275 17.375L5.275 14.275Z" fill="#FBBC05" />
-                                    <path d="M12 4.76786C13.7571 4.76786 15.3286 5.37143 16.5679 6.56071L20.0071 3.12143C17.9393 1.19286 15.2286 0 12 0C7.31071 0 3.25 2.69643 1.275 6.625L5.275 9.725C6.225 6.87857 8.875 4.76786 12 4.76786Z" fill="#EA4335" />
-                                </svg>
-                                Google
-                            </button>
-                            {/* Apple Login Placeholder */}
-                            <AppleLogin
-                                clientId="YOUR_CLIENT_ID"
-                                redirectURI="YOUR_REDIRECT_URL"
-                                render={renderProps => (
-                                    <button className="social-btn" onClick={renderProps.onClick} disabled={renderProps.disabled}>
-                                        <svg width="24" height="24" viewBox="0 0 384 512" fill="white" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 52.3-11.4 69.5-34.3z" />
-                                        </svg>
-                                        Apple
-                                    </button>
-                                )}
-                            />
-                        </div>
-                        <p className="signup-link">
-                            Don't have an account? <Link to="/signup"><span>Sign up</span></Link>
-                        </p>
-                    </>
-                )}
-
-                {view === 'forgot' && (
-                    <>
-                        <div className="login-header">
-                            <h1>Forgot Password</h1>
-                            <p>Enter your email to receive a reset code.</p>
-                        </div>
-                        {error && <p style={{ color: '#ff4d4d', textAlign: 'center' }}>{error}</p>}
-                        <div className="input-group">
-                            <label>Email address*</label>
-                            <input
-                                className="sentia-input"
-                                type="email"
-                                placeholder="example@gmail.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                            />
-                        </div>
-                        <button className="sentia-btn" onClick={handleForgot} disabled={loading}>
-                            {loading ? "Sending..." : "Send Reset Link"}
-                        </button>
-                        <p className="signup-link">
-                            <span onClick={() => setView('login')}>Back to Login</span>
-                        </p>
-                    </>
-                )}
-
-                {view === 'reset' && (
-                    <>
-                        <div className="login-header">
-                            <h1>Reset Password</h1>
-                            <p>Enter the code sent to your email (console) and your new password.</p>
-                        </div>
-                        {error && <p style={{ color: '#ff4d4d', textAlign: 'center' }}>{error}</p>}
-                        {message && <p style={{ color: '#4CAF50', textAlign: 'center' }}>{message}</p>}
-
-                        <div className="input-group">
-                            <label>Reset Token*</label>
-                            <input
-                                className="sentia-input"
-                                type="text"
-                                placeholder="Paste token here"
-                                value={resetToken}
-                                onChange={(e) => setResetToken(e.target.value)}
-                            />
-                        </div>
-                        <div className="input-group">
-                            <label>New Password*</label>
-                            <input
-                                className="sentia-input"
-                                type="password"
-                                placeholder="New password"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                            />
-                        </div>
-                        <button className="sentia-btn" onClick={handleReset} disabled={loading}>
-                            {loading ? "Resetting..." : "Reset Password"}
-                        </button>
-                        <p className="signup-link">
-                            <span onClick={() => setView('login')}>Back to Login</span>
-                        </p>
-                    </>
-                )}
-            </div>
+                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                        Don't have an account? <Link to="/signup" style={{ color: '#3B82F6', fontWeight: '700', textDecoration: 'none' }}>Create an Account</Link>
+                    </div>
+                    
+                    <div style={{ opacity: 0.3, fontSize: '0.6rem', fontWeight: '800', letterSpacing: '2px', display: 'flex', justifyContent: 'center', gap: '2rem' }}>
+                        <span>PRIVACY</span>
+                        <span>TERMS</span>
+                        <span>SUPPORT</span>
+                    </div>
+                </div>
+            </motion.div>
         </div>
     );
 };

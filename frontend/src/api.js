@@ -155,8 +155,19 @@ export const getLatestHealthMetrics = () => API.get("/fitness/metrics/latest");
 export const syncMockGoogleFit = () => API.post("/fitness/sync/google_fit/mock");
 export const addHealthMetric = (data) => API.post("/fitness/metrics", data);
 
+// Vital Alerts
+export const getVitalAlerts = () => API.get("/fitness/alerts");
+export const acknowledgeVitalAlert = (id) => API.post(`/fitness/alerts/${id}/acknowledge`);
+export const getDoctorVitalAlerts = () => API.get("/fitness/alerts/doctor");
+
 export const getWebSocketUrl = () => {
-  // If we are in dev (localhost with port 5173), Vite proxy will forward '/ws' 
-  // to the backend. In production, we'll hit the API_URL directly.
-  return window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${window.location.host}`;
+    let url = API_URL;
+    if (url.startsWith('http://')) {
+        url = url.replace('http://', 'ws://');
+    } else if (url.startsWith('https://')) {
+        url = url.replace('https://', 'wss://');
+    } else {
+        url = window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${window.location.host}`;
+    }
+    return url;
 };

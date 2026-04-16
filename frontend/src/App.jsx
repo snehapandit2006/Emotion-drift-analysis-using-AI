@@ -8,6 +8,10 @@ import {
   Tooltip,
   LineChart,
   Line,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
   CartesianGrid,
   Cell,
 } from "recharts";
@@ -16,8 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SupportDashboard from "./components/SupportDashboard";
 import LandingPage from "./components/LandingPage";
 import NeuralBackground from "./components/NeuralBackground";
-import BackgroundSelector, { getStoredBackground } from "./components/BackgroundSelector";
-import { Download, Table as TableIcon, Activity, LogOut, MessageSquare, Sun, Moon, Shield, Menu, X, Play, Timer, Music, Settings, Layout, Sparkles, Layers } from 'lucide-react';
+import { Download, Table as TableIcon, Activity, LogOut, MessageSquare, Sun, Moon, Shield, Menu, X, Play, Timer, Music, Settings, Layout, Sparkles, Layers, Users, User, Camera, Headphones, Compass, MapPin, BookHeart, ShieldAlert } from 'lucide-react';
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
@@ -41,8 +44,6 @@ import logoFinal from './assets/logo_final.png';
 
 import "./App.css";
 // Lazy load non-critical components
-const Background3D = lazy(() => import("./components/Background3D"));
-const Brain3D = lazy(() => import("./components/Brain3D"));
 const DriftGraph = lazy(() => import("./components/DriftGraph"));
 const LogTable = lazy(() => import("./components/LogTable"));
 const TransitionArrows = lazy(() => import("./components/TransitionArrows"));
@@ -61,6 +62,10 @@ const MeditationTimer = lazy(() => import("./components/MeditationTimer"));
 const MediaHub = lazy(() => import("./components/MediaHub"));
 const CommunityChat = lazy(() => import("./components/CommunityChat"));
 const VitalsDashboard = lazy(() => import("./components/VitalsDashboard"));
+const MedicalLogTable = lazy(() => import("./components/MedicalLogTable"));
+const DriftInsights = lazy(() => import("./components/DriftInsights"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 
 import AuthContext, { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -144,6 +149,7 @@ function Dashboard() {
   const [drift, setDrift] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [showAlerts, setShowAlerts] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [comparison, setComparison] = useState(null);
   const [selfHistory, setSelfHistory] = useState([]);
   const [selfDistribution, setSelfDistribution] = useState({});
@@ -161,8 +167,6 @@ function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [monitoring, setMonitoring] = useState(true);
   const [viewMode, setViewMode] = useState('dashboard'); // 'dashboard', 'table', 'chat', 'settings', 'meditation', 'media', 'community'
-  const [showDoctorChat, setShowDoctorChat] = useState(false);
-  const [showSentia, setShowSentia] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const dashboardRef = useRef(null);
@@ -207,10 +211,19 @@ function Dashboard() {
     load();
   }, [load]);
 
-  // Listen for global refresh events (e.g. from FloatingRobot)
+  // Periodic sync every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log("Auto-syncing dashboard...");
+      load();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [load]);
+
+  // Listen for global refresh events (e.g. from Sentia or Mirror)
   useEffect(() => {
     const handleRefresh = () => {
-      console.log("Refreshing dashboard data...");
+      console.log("Refreshing dashboard data via event...");
       load();
     };
     window.addEventListener('refresh-dashboard', handleRefresh);
@@ -231,12 +244,63 @@ function Dashboard() {
   // Listener for global doctor chat open event
   useEffect(() => {
     const handleOpenDoctorChat = () => {
-      console.log("Toggling doctor chat from global event...");
-      setShowDoctorChat(prev => !prev);
+      console.log("Activating doctor chat view from global event...");
+      setViewMode('doctor-chat');
     };
     window.addEventListener('open-doctor-chat', handleOpenDoctorChat);
     return () => window.removeEventListener('open-doctor-chat', handleOpenDoctorChat);
   }, []);
+
+  // Listener for global sentia session open event
+  useEffect(() => {
+    const handleOpenSentia = () => {
+      console.log("Activating Sentia view from global event...");
+      setViewMode('sentia');
+    };
+    window.addEventListener('open-sentia', handleOpenSentia);
+    return () => window.removeEventListener('open-sentia', handleOpenSentia);
+  }, []);
+
+  const handleExportReport = async () => {
+    if (!user || exporting) return;
+    setExporting(true);
+    try {
+      const now = new Date();
+      let fromDate = new Date();
+      if (range === '1h') fromDate.setHours(now.getHours() - 1);
+      else if (range === '24h') fromDate.setDate(now.getDate() - 1);
+      else if (range === '7d') fromDate.setDate(now.getDate() - 7);
+
+      const payload = {
+        user_id: user.id.toString(),
+        from_date: fromDate.toISOString(),
+        to_date: now.toISOString(),
+        report_type: "emotion_summary"
+      };
+
+      const res = await generateReport(payload);
+      const reportId = res.data.report_id;
+      
+      // Fetch the file with auth token
+      const downloadRes = await API.get(`/reports/download/${reportId}`, {
+        responseType: 'blob'
+      });
+
+      const url = window.URL.createObjectURL(new Blob([downloadRes.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `emotion_report_${reportId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Export failed", e);
+      alert("Failed to export report. please check connection.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const submit = async () => {
     if (!text.trim() || !monitoring) return;
@@ -247,45 +311,6 @@ function Dashboard() {
     setLoading(false);
   };
 
-  const handleExportPDF = async () => {
-    try {
-      // Calculate date range based on 'range' state
-      const now = new Date();
-      let fromDate = new Date();
-
-      if (range === "1h") fromDate.setHours(now.getHours() - 1);
-      else if (range === "24h") fromDate.setDate(now.getDate() - 1);
-      else if (range === "7d") fromDate.setDate(now.getDate() - 7);
-
-      const payload = {
-        user_id: String(user.id), // Ensure string for backend Pydantic model
-        from_date: fromDate.toISOString(),
-        to_date: now.toISOString(),
-        report_type: "emotion_summary"
-      };
-
-      const { data } = await generateReport(payload);
-
-      // Trigger download securely using authenticated API
-      // We need to fetch the file blob with auth headers
-      const downloadResponse = await API.get(data.download_url, {
-        responseType: 'blob'
-      });
-
-      const downloadUrl = window.URL.createObjectURL(new Blob([downloadResponse.data]));
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.setAttribute('download', `emotion_report_${user.email}_${now.toISOString().split('T')[0]}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(downloadUrl);
-
-    } catch (e) {
-      console.error("PDF Generation failed", e);
-      alert(`Failed to generate PDF report: ${e.response?.data?.detail || e.message}`);
-    }
-  };
 
   const stopTherapyAudio = useCallback(() => {
     setActiveTherapyId(null); // Clear active UI state
@@ -377,19 +402,51 @@ function Dashboard() {
             return; // Exit early on error
         }
     } else {
-        // Fallback to playing a pleasant ambient track if it's not binaural
-        const audio = new Audio('https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg');
+        // Smart ambient sound mapping based on therapy type
+        // Using reliable, CDN-hosted ambient sounds from mixkit & soundjay
+        const AMBIENT_SOUNDS = {
+            rain:         'https://www.soundjay.com/nature/sounds/rain-01.mp3',
+            'white noise':'https://www.soundjay.com/nature/sounds/white-noise-1.mp3',
+            nature:       'https://www.soundjay.com/nature/sounds/birds-in-forest-1.mp3',
+            forest:       'https://www.soundjay.com/nature/sounds/birds-in-forest-1.mp3',
+            sleep:        'https://www.soundjay.com/nature/sounds/white-noise-1.mp3',
+            focus:        'https://www.soundjay.com/nature/sounds/crickets-1.mp3',
+            meditation:   'https://www.soundjay.com/nature/sounds/birds-in-forest-1.mp3',
+            ocean:        'https://www.soundjay.com/miscellaneous/sounds/ocean-wave-1.mp3',
+            waves:        'https://www.soundjay.com/miscellaneous/sounds/ocean-wave-1.mp3',
+        };
+        
+        // Find matching sound based on therapy name or type
+        const searchStr = `${therapy.name || ''} ${therapy.therapy_type || ''}`.toLowerCase();
+        let ambientUrl = null;
+        
+        for (const [key, url] of Object.entries(AMBIENT_SOUNDS)) {
+            if (searchStr.includes(key)) {
+                ambientUrl = url;
+                break;
+            }
+        }
+        
+        // Fallback to rain (calming default)
+        ambientUrl = ambientUrl || AMBIENT_SOUNDS['rain'];
+        
+        const audio = new Audio(ambientUrl);
         audio.crossOrigin = "anonymous";
         audio.loop = true;
-        audio.volume = 0.5;
+        audio.volume = 0.45;
         audioFileRef.current = audio;
         audio.play().catch(e => {
-            console.error("Error playing audio files", e);
-            setActiveTherapyId(null);
+            console.error("Error playing ambient audio:", e);
+            // Try Google fallback
+            const fallback = new Audio('https://actions.google.com/sounds/v1/ambiences/forest_with_night_insects.ogg');
+            fallback.loop = true;
+            fallback.volume = 0.45;
+            audioFileRef.current = fallback;
+            fallback.play().catch(e2 => {
+                console.error("Fallback also failed:", e2);
+                setActiveTherapyId(null);
+            });
         });
-        
-        // If there's an error on standard play, activeTherapyId is null, we can return early there too, 
-        // but `audio.play()` is a promise. It's fine to let the timer set, if we stop early it clears itself.
     }
     
     // Auto-stop after prescribed duration
@@ -444,620 +501,537 @@ function Dashboard() {
   console.log("Current User ID:", user?.id);
 
   return (
-    <div className="dashboard" style={{ background: 'transparent' }} ref={dashboardRef}>
-      <header className="header glass-panel">
-        <div className="header-logo" style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setViewMode('dashboard')}>
-          <span className="serif-heading" style={{ fontSize: '1.8rem', letterSpacing: '2px', fontWeight: 'bold', color: 'var(--primary-blue)', fontStyle: 'normal' }}>SENTIA</span>
+    <div className="dashboard" ref={dashboardRef}>
+      {/* Sidebar Navigation */}
+      <aside className="sidebar">
+        <div className="sidebar-logo" style={{ padding: '0 24px 32px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '32px', height: '32px', background: 'var(--accent-purple)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: '#fff' }}>S</div>
         </div>
-
-        {/* Desktop Features Bar - Compact & Complete */}
-        <nav className="desktop-nav">
-          {[
-            { id: 'dashboard', label: 'Analytics', icon: Activity },
-            { id: 'settings', label: 'Profile', icon: Settings },
-            { id: 'meditation', label: 'Therapy', icon: Timer },
-            { id: 'media', label: 'Media', icon: Music },
-            { id: 'support', label: 'Support', icon: Shield, action: () => window.location.href = '/support-dashboard' },
-            { id: 'community', label: 'Community', icon: MessageSquare },
-            { id: 'vitals', label: 'Vitals', icon: Activity },
-            { id: 'sentia', label: 'Sentia (Therapist)', icon: Sparkles, action: () => setShowSentia(true) },
-            { id: 'chat', label: 'Analysis', icon: MessageSquare, disabled: !monitoring },
-            { id: 'dr', label: 'Dr Chat', icon: MessageSquare, action: () => setShowDoctorChat(true), hidden: !user.doctor_id },
-            { id: 'toggle', label: viewMode === 'table' ? 'Dashboard' : 'Table', icon: viewMode === 'table' ? Layout : TableIcon, action: () => setViewMode(viewMode === 'dashboard' ? 'table' : 'dashboard'), disabled: !monitoring },
-            { id: 'export', label: 'Export', icon: Download, action: () => handleExportPDF(), disabled: !monitoring }
-          ].filter(item => !item.hidden).map(item => (
-            <button
-              key={item.id}
-              onClick={item.action || (() => setViewMode(item.id))}
-              disabled={item.disabled}
-              className={`nav-item-btn ${viewMode === item.id && !item.action ? 'active' : ''}`}
-            >
-              <item.icon size={16} />
-              <span>{item.label}</span>
-            </button>
-          ))}
+        
+        <nav className="nav-links">
+          <div className={`nav-item ${viewMode === 'dashboard' ? 'active' : ''}`} onClick={() => setViewMode('dashboard')}>
+            <Layout size={18} /> <span>Home</span>
+          </div>
+          <div className={`nav-item ${viewMode === 'vitals' ? 'active' : ''}`} onClick={() => setViewMode('vitals')}>
+            <Activity size={18} /> <span>Vitals</span>
+          </div>
+          <div className={`nav-item ${viewMode === 'sentia' ? 'active' : ''}`} onClick={() => setViewMode('sentia')}>
+            <Sparkles size={18} /> <span>Virtual Therapist</span>
+          </div>
+          <div className={`nav-item ${viewMode === 'community' ? 'active' : ''}`} onClick={() => setViewMode('community')}>
+            <MessageSquare size={18} /> <span>Community Chat</span>
+          </div>
+          <div className={`nav-item ${viewMode === 'media' ? 'active' : ''}`} onClick={() => setViewMode('media')}>
+            <Music size={18} /> <span>Music</span>
+          </div>
+          <div className={`nav-item ${viewMode === 'therapy' ? 'active' : ''}`} onClick={() => setViewMode('therapy')}>
+            <Timer size={18} /> <span>Breathing Exercise</span>
+          </div>
+          {user?.doctor_id && (
+              <div className={`nav-item ${viewMode === 'doctor-chat' ? 'active' : ''}`} onClick={() => setViewMode('doctor-chat')}>
+                <MessageSquare size={18} /> <span>Chat with Doctor</span>
+              </div>
+          )}
+          <div className={`nav-item ${viewMode === 'face' ? 'active' : ''}`} onClick={() => setViewMode('face')}>
+            <Camera size={18} /> <span>Face Analyzer</span>
+          </div>
+          <div className={`nav-item ${viewMode === 'binaural' ? 'active' : ''}`} onClick={() => setViewMode('binaural')}>
+            <Headphones size={18} /> <span>Binaural Beats</span>
+          </div>
+          <div className={`nav-item ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')}>
+            <Layers size={18} /> <span>Logs</span>
+          </div>
+          <div className={`nav-item ${viewMode === 'insights' ? 'active' : ''}`} onClick={() => setViewMode('insights')}>
+            <ShieldAlert size={18} /> <span>Drift Insights</span>
+          </div>
+          <div className={`nav-item ${viewMode === 'medtracker' ? 'active' : ''}`} onClick={() => setViewMode('medtracker')}>
+            <BookHeart size={18} /> <span>Med Tracker</span>
+          </div>
+          <div className={`nav-item ${viewMode === 'map' ? 'active' : ''}`} onClick={() => setViewMode('map')}>
+            <MapPin size={18} /> <span>Nearby Help</span>
+          </div>
+          <div className={`nav-item ${viewMode === 'settings' ? 'active' : ''}`} onClick={() => setViewMode('settings')}>
+            <Settings size={18} /> <span>Settings</span>
+          </div>
         </nav>
+      </aside>
 
-        {/* Center spacer if needed or just let space-between handle it */}
-        <div style={{ flex: 1 }}></div>
-
-        <div className="header-actions">
-          {/* Always visible: Theme & Alerts */}
-
-
-          <div className="bell" style={{ position: 'relative' }} onClick={() => setShowAlerts(!showAlerts)}>
-            🔔{alerts.length > 0 && <span className="dot" />}
-            {showAlerts && (
-              <div className="alert-popup glass-panel" style={{ position: 'absolute', top: '100%', right: 0, marginTop: '10px' }}>
-                {alerts.length === 0 ? (
-                  <div className="alert-empty">No drift alerts</div>
-                ) : (
-                  alerts.slice(0, 5).map((a, i) => {
-                    const [t, d] = severityText(a.severity);
-                    return (
-                      <div key={i} className="alert-item" style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
-                        <strong>{t}</strong>
-                        <small>{d}</small>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            )}
+      <main className="main-content">
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Compass className="text-blue-500" size={24} />
+                <h2 style={{ fontSize: '1.25rem', fontWeight: '900', letterSpacing: '-0.5px', margin: 0, color: 'white', fontFamily: 'var(--font-heading)' }}>
+                   Emotion Drift
+                </h2>
+             </div>
+             <div className="glass-panel" style={{ 
+               padding: '6px 14px', 
+               borderRadius: '100px', 
+               fontSize: '0.65rem', 
+               fontWeight: '800', 
+               color: 'rgba(255,255,255,0.4)', 
+               letterSpacing: '1px',
+               display: 'flex', 
+               alignItems: 'center', 
+               gap: '8px',
+               background: 'rgba(16, 185, 129, 0.05)',
+               border: '1px solid rgba(16, 185, 129, 0.1)'
+             }}>
+               <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-green)', boxShadow: '0 0 10px var(--accent-green)' }} />
+               CURRENT ATMOSPHERE: <span style={{ color: 'var(--accent-green)' }}>SERENE</span>
+             </div>
           </div>
-
-          {/* Hamburger Menu */}
-          <div style={{ position: 'relative' }}>
-            <button
-              className="icon-btn"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              style={{ color: 'var(--text-main)' }}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', position: 'relative' }}>
+            <div 
+              className="bell" 
+              style={{ position: 'relative', cursor: 'pointer' }} 
+              onClick={(e) => {
+                 e.stopPropagation();
+                 setShowAlerts(prev => !prev);
+              }}
             >
-              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-
-            {/* Dropdown Menu - System Actions Only */}
-            {isMenuOpen && (
-              <div className="glass-panel" style={{
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                marginTop: '10px',
-                padding: '1rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1rem',
-                minWidth: '180px',
-                zIndex: 1000,
-                background: 'var(--bg-card)',
-                border: '1px solid var(--glass-border)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
-              }}>
-                <button
-                  className={`monitor-toggle ${monitoring ? "on" : "off"}`}
-                  onClick={() => { setMonitoring(!monitoring); setIsMenuOpen(false); }}
-                  style={{ justifyContent: 'center', width: '100%' }}
+              <Activity size={20} color="var(--text-secondary)" />
+              {alerts.length > 0 && <div style={{ position: 'absolute', top: -2, right: -2, width: '8px', height: '8px', background: '#ff4757', borderRadius: '50%', border: '2px solid #0D0E12' }} />}
+            </div>
+            
+            <AnimatePresence>
+              {showAlerts && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="alert-popup glass-panel"
+                  style={{ position: 'absolute', top: '40px', right: '100px', width: '320px', padding: '1.2rem', zIndex: 100 }}
                 >
-                  {monitoring ? "Monitoring ON" : "Monitoring OFF"}
-                </button>
-
-                <div style={{ height: '1px', background: 'var(--border-color)', margin: '0.5rem 0' }}></div>
-
-                <button
-                  className="icon-btn"
-                  onClick={logout}
-                  style={{ justifyContent: 'flex-start', width: '100%', borderRadius: '8px', padding: '10px', gap: '10px', color: 'var(--emotion-anger)' }}
-                >
-                  <LogOut size={20} /> <span>Logout</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* View Switcher Content */}
-      <div className={!monitoring ? "monitoring-paused" : ""}>
-        {viewMode === 'chat' ? (
-          <div style={{ marginTop: '2rem' }}>
-            <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
-              &larr; Back to Dashboard
-            </button>
-            <ChatAnalyzer />
-          </div>
-        ) : viewMode === 'meditation' ? (
-          <div style={{ marginTop: '2rem' }}>
-            <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
-              &larr; Back to Dashboard
-            </button>
-            <Suspense fallback={<div>Loading Meditation...</div>}>
-              <MeditationTimer onComplete={() => load()} />
-            </Suspense>
-          </div>
-        ) : viewMode === 'media' ? (
-          <div style={{ marginTop: '2rem' }}>
-            <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
-              &larr; Back to Dashboard
-            </button>
-            <Suspense fallback={<div>Loading Media...</div>}>
-              <MediaHub />
-            </Suspense>
-          </div>
-        ) : viewMode === 'community' ? (
-          <div style={{ marginTop: '2rem' }}>
-            <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
-              &larr; Back to Dashboard
-            </button>
-            <Suspense fallback={<div>Loading Community Chat...</div>}>
-              <CommunityChat />
-            </Suspense>
-          </div>
-        ) : viewMode === 'vitals' ? (
-          <div style={{ marginTop: '2rem' }}>
-            <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
-              &larr; Back to Dashboard
-            </button>
-            <Suspense fallback={<div>Loading Vitals Dashboard...</div>}>
-              <VitalsDashboard />
-            </Suspense>
-          </div>
-        ) : viewMode === 'settings' ? (
-          <div style={{ marginTop: '2rem' }}>
-            <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
-              &larr; Back to Dashboard
-            </button>
-            <div className="glass-panel" style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-                <h2 className="serif-heading" style={{ marginBottom: '1.5rem', color: 'var(--text-main)' }}>Profile Settings</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <label style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>My Hobbies</label>
-                        <textarea 
-                            value={user.hobbies || ''}
-                            onChange={(e) => updateUserProfile({ hobbies: e.target.value })}
-                            placeholder="e.g. Playing guitar, Painting, Reading sci-fi novels..."
-                            style={{ 
-                                background: 'var(--bg-input)', 
-                                border: '1px solid var(--border-color)', 
-                                padding: '1rem', 
-                                borderRadius: '8px', 
-                                color: 'var(--text-main)',
-                                minHeight: '100px',
-                                resize: 'vertical'
-                            }}
-                        />
-                        <p style={{ fontSize: '0.8rem', opacity: 0.6 }}>Sentia will gently check in about these to help maintain your routine.</p>
-                    </div>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <label style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Preferred Anti-Anxiety Games</label>
-                        <textarea 
-                            value={(() => {
-                                try {
-                                    const parsed = JSON.parse(user.preferred_games);
-                                    if (Array.isArray(parsed)) return parsed.map(g => g.name).join(', ');
-                                    return user.preferred_games || '';
-                                } catch(e) {
-                                    return user.preferred_games || '';
-                                }
-                            })()}
-                            onChange={(e) => updateUserProfile({ preferred_games: e.target.value })}
-                            placeholder="e.g. Tetris, Stardew Valley, Cozy Grove..."
-                            style={{ 
-                                background: 'var(--bg-input)', 
-                                border: '1px solid var(--border-color)', 
-                                padding: '1rem', 
-                                borderRadius: '8px', 
-                                color: 'var(--text-main)',
-                                minHeight: '80px',
-                                resize: 'vertical'
-                            }}
-                        />
-                        <p style={{ fontSize: '0.8rem', opacity: 0.6 }}>Sentia will suggest these or new grounding games during anxiety.</p>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <label style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Music & Media Interests</label>
-                        <textarea 
-                            value={user.music_interests || ''}
-                            onChange={(e) => updateUserProfile({ music_interests: e.target.value })}
-                            placeholder="e.g. Lofi hip hop for focus, Classical for sleep, YouTube links to favorite yoga channels..."
-                            style={{ 
-                                background: 'var(--bg-input)', 
-                                border: '1px solid var(--border-color)', 
-                                padding: '1rem', 
-                                borderRadius: '8px', 
-                                color: 'var(--text-main)',
-                                minHeight: '80px',
-                                resize: 'vertical'
-                            }}
-                        />
-                        <p style={{ fontSize: '0.8rem', opacity: 0.6 }}>Linked YouTube/Spotify content will be suggested for mood regulation.</p>
-                    </div>
-                    
-                    <button 
-                        onClick={async () => {
-                            try {
-                                setLoading(true);
-                                await updateProfile({
-                                    hobbies: user.hobbies,
-                                    preferred_games: user.preferred_games,
-                                    music_interests: user.music_interests
-                                });
-                                alert("Preferences saved successfully!");
-                            } catch (e) {
-                                console.error(e);
-                                alert("Failed to save preferences.");
-                            } finally {
-                                setLoading(false);
-                            }
-                        }}
-                        disabled={loading}
-                        style={{ 
-                            padding: '1rem', 
-                            background: 'var(--accent-color)', 
-                            border: 'none', 
-                            borderRadius: '8px', 
-                            fontWeight: 'bold', 
-                            cursor: 'pointer', 
-                            color: 'var(--accent-text)',
-                            marginTop: '1rem'
-                        }}
-                    >
-                        {loading ? "Saving..." : "Save Preferences"}
-                    </button>
-                </div>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Self Emotion Monitor (Webcam) */}
-            <div style={{ marginBottom: '20px' }}>
-              <SelfEmotionMonitor />
-            </div>
-
-            <div className="input-card glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
-              <input
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder={monitoring ? `How are you feeling, ${user.email.split('@')[0]}?` : "Monitoring paused"}
-                disabled={!monitoring}
-                className="sentia-input"
-                style={{ flex: 1 }}
-              />
-              <button 
-                onClick={submit} 
-                disabled={loading || !text.trim() || !monitoring} 
-                className="glass-button primary"
-                style={{ height: '54px', minWidth: '150px' }}
-              >
-                {loading ? "Analyzing..." : "Analyze"}
-              </button>
-            </div>
-
-            <div className="range-selector">
-              {["1h", "24h", "7d"].map((r) => (
-                <button
-                  key={r}
-                  className={range === r ? "active" : ""}
-                  onClick={() => setRange(r)}
-                  disabled={!monitoring}
-                  style={range === r ? { background: 'var(--accent-color)', color: 'var(--accent-text)' } : {}}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-
-            {viewMode === 'table' ? (
-              <LogTable logs={timelineData} />
-            ) : (
-              <div className="grid">
-                <motion.div className="card glass-panel" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}>
-                  <h2 className="serif-heading">Drift Analysis</h2>
-                  {lastEmotion ? (
-                    <>
-                      <TransitionArrows previous={prevEmotion} current={lastEmotion} />
-                      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
-                        <DriftGraph severity={drift?.details?.severity || 0} />
-                      </div>
-                      <p style={{ textAlign: 'center', marginTop: '1rem' }}>
-                        {severityText(drift?.details?.severity)[1]}
-                      </p>
-                    </>
+                  <h3 className="serif-heading" style={{ fontSize: '0.85rem', marginBottom: '1rem', color: 'var(--text-main)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    Vital Alerts
+                    <span style={{ background: 'var(--emotion-anger)', color: '#fff', fontSize: '0.65rem', padding: '2px 8px', borderRadius: '100px' }}>{alerts.length}</span>
+                  </h3>
+                  {alerts.length === 0 ? (
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'center', margin: '1rem 0' }}>All systems stable. No active alerts.</p>
                   ) : (
-                    <p className="empty">No data required</p>
-                  )}
-                </motion.div>
-
-                <motion.div className="card glass-panel" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, delay: 0.1 }}>
-                  <h2 className="serif-heading">Emotion Distribution</h2>
-                  <ResponsiveContainer height={260}>
-                    <BarChart data={distData}>
-                      <XAxis dataKey="emotion" stroke="var(--text-secondary)" />
-                      <YAxis stroke="var(--text-secondary)" />
-                      <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px' }} itemStyle={{ color: 'var(--text-main)' }} cursor={{ fill: 'var(--bg-panel)' }} />
-                      <Bar dataKey="count">
-                        {distData.map((d, i) => (
-                          <Cell key={i} fill={emotionColors[d.emotion] || '#888'} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </motion.div>
-              </div>
-            )}
-
-            {viewMode === 'dashboard' && (
-              <>
-                <motion.div className="card full glass-panel" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-                  <h2 className="serif-heading">Timeline</h2>
-                  <ResponsiveContainer height={300}>
-                    <LineChart data={timelineData}>
-                      <CartesianGrid stroke="var(--glass-border)" />
-                      <XAxis dataKey="time" stroke="var(--text-secondary)" />
-                      <YAxis domain={[0, 1]} stroke="var(--text-secondary)" />
-                      <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--text-secondary)' }} />
-                      <Line type="monotone" dataKey="confidence" stroke="var(--accent-color)" strokeWidth={3} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </motion.div>
-
-                <motion.div className="card full glass-panel" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
-                  <h2 className="serif-heading">Historical Comparison</h2>
-                  {comparison?.meta?.current_count === 0 ? (
-                    <p className="empty">Not enough data</p>
-                  ) : (
-                    <ResponsiveContainer height={300}>
-                      <BarChart data={comparisonData}>
-                        <XAxis dataKey="emotion" stroke="var(--text-secondary)" />
-                        <YAxis domain={[0, 1]} stroke="var(--text-secondary)" />
-                        <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px' }} itemStyle={{ color: 'var(--text-main)' }} cursor={{ fill: 'var(--bg-panel)' }} />
-                        <Bar dataKey="previous" fill="var(--text-secondary)" name="Previous Period" />
-                        <Bar dataKey="current" fill="var(--accent-color)" name="Current Period" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  )}
-                </motion.div>
-
-                <motion.div className="card full glass-panel" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }}>
-                  <h2 className="serif-heading">Face Emotion Trend</h2>
-                  <ResponsiveContainer height={300}>
-                    <LineChart data={selfHistoryData}>
-                      <CartesianGrid stroke="var(--glass-border)" />
-                      <XAxis dataKey="time" stroke="var(--text-secondary)" hide />
-                      <YAxis domain={[0, 1]} stroke="var(--text-secondary)" />
-                      <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--text-secondary)' }} />
-                      <Line type="monotone" dataKey="confidence" stroke="var(--primary-blue)" strokeWidth={3} dot={{ r: 4 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </motion.div>
-
-                <motion.div className="card full glass-panel" layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.3 }}>
-                  <h2 className="serif-heading">Face Emotion Distribution</h2>
-                  <ResponsiveContainer height={260}>
-                    <BarChart data={selfDistData}>
-                      <XAxis dataKey="emotion" stroke="var(--text-secondary)" />
-                      <YAxis stroke="var(--text-secondary)" tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} />
-                      <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px' }} itemStyle={{ color: 'var(--text-main)' }} formatter={(v) => `${(v * 100).toFixed(1)}%`} cursor={{ fill: 'var(--bg-panel)' }} />
-                      <Bar dataKey="count">
-                        {selfDistData.map((d, i) => (
-                          <Cell key={i} fill={emotionColors[d.emotion] || '#888'} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </motion.div>
-
-
-                <motion.div className="card full glass-panel" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-                  <h2 className="serif-heading">Fusion Insights</h2>
-                  {fusion ? (
-                    <div className="fusion-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', textAlign: 'center' }}>
-                      <div style={{ padding: '1rem', background: 'var(--bg-panel)', borderRadius: '8px' }}>
-                        <h3>Alignment Score</h3>
-                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: fusion.alignment_score > 0.7 ? 'var(--accent-color)' : 'var(--emotion-anger)' }}>
-                          {(fusion.alignment_score * 100).toFixed(0)}%
-                        </div>
-                        <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>Face vs Text Consistency</p>
-                      </div>
-                      <div style={{ padding: '1rem', background: 'var(--bg-panel)', borderRadius: '8px' }}>
-                        <h3>Stability Index</h3>
-                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: fusion.stability_score > 0.7 ? 'var(--accent-color)' : 'var(--emotion-surprise)' }}>
-                          {(fusion.stability_score * 100).toFixed(0)}%
-                        </div>
-                        <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>Emotional Volatility</p>
-                      </div>
-                      <div style={{ padding: '1rem', background: 'var(--bg-panel)', borderRadius: '8px' }}>
-                        <h3>Masking Alert</h3>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: fusion.masking_detected ? 'var(--emotion-anger)' : 'var(--emotion-happy)' }}>
-                          {fusion.masking_detected ? "DETECTED" : "None"}
-                        </div>
-                        {fusion.masking_detected && <p style={{ fontSize: '0.8rem', color: 'var(--emotion-anger)' }}>Possible emotional suppression</p>}
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="empty">Loading insights...</p>
-                  )}
-                </motion.div>
-
-                {/* Patient Therapies Render */}
-                {therapies.length > 0 && (
-                  <motion.div className="card full glass-panel" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-                    <h2 className="serif-heading" style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span role="img" aria-label="music">🎵</span> Doctor Prescribed Therapies
-                      </div>
-                      {activeTherapyId && (
-                         <button 
-                           onClick={() => stopTherapyAudio()} 
-                           style={{ background: 'var(--emotion-anger)', color: 'white', border: 'none', padding: '5px 15px', borderRadius: '20px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold' }}
-                         >
-                           ⏹ Stop Audio
-                         </button>
-                      )}
-                    </h2>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
-                      {therapies.map(t => {
-                        const isPlaying = activeTherapyId === t.id;
-                        return (
-                          <div 
-                            key={t.id} 
-                            style={{ 
-                              padding: '1.5rem', 
-                              background: isPlaying ? 'rgba(59, 130, 246, 0.1)' : 'var(--bg-panel)', 
-                              borderRadius: '12px', 
-                              border: isPlaying ? '2px solid var(--primary-blue)' : '1px solid var(--glass-border)',
-                              transition: 'all 0.3s ease',
-                              cursor: 'pointer',
-                              position: 'relative',
-                              overflow: 'hidden'
-                            }}
-                            onClick={() => isPlaying ? stopTherapyAudio() : playTherapyAudio(t)}
-                          >
-                            {isPlaying && (
-                              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.05), transparent)', animation: 'wave 2s infinite linear', pointerEvents: 'none' }} />
-                            )}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                               <h3 style={{ margin: 0, color: 'var(--primary-blue)' }}>{t.name}</h3>
-                               <div style={{ padding: '8px', borderRadius: '50%', background: isPlaying ? 'var(--primary-blue)' : 'rgba(255,255,255,0.05)', color: isPlaying ? 'white' : 'var(--text-secondary)' }}>
-                                   {isPlaying ? <Activity size={16} className="animate-pulse" /> : <Play size={16} />}
-                               </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '10px', marginBottom: '1rem' }}>
-                              <span style={{ fontSize: '0.8rem', padding: '4px 8px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.2)', color: 'var(--primary-blue)' }}>
-                                 {t.therapy_type}
-                              </span>
-                              {t.frequency_hz && (
-                                <span style={{ fontSize: '0.8rem', padding: '4px 8px', borderRadius: '4px', background: 'rgba(139, 92, 246, 0.2)', color: '#8b5cf6' }}>
-                                   {t.frequency_hz} Hz
-                                </span>
-                              )}
-                              <span style={{ fontSize: '0.8rem', padding: '4px 8px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.2)', color: '#10b981' }}>
-                                 {t.duration_minutes} Mins
-                              </span>
-                            </div>
-                            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t.description}</p>
-                            <p style={{ margin: '1rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-sub)' }}>
-                              Prescribed: {new Date(t.prescribed_at).toLocaleDateString()}
-                            </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
+                      {alerts.map((alert, idx) => (
+                        <div key={idx} style={{ padding: '0.85rem', background: 'rgba(232, 132, 132, 0.1)', border: '1px solid rgba(232, 132, 132, 0.3)', borderRadius: '12px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--emotion-anger)' }}>{alert.metric_type?.toUpperCase()} ALERT</span>
+                              <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>{new Date(alert.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                           </div>
-                        );
-                      })}
+                          <p style={{ margin: '0', fontSize: '0.8rem', color: 'var(--text-main)', lineHeight: '1.4' }}>{alert.message}</p>
+                        </div>
+                      ))}
                     </div>
-                  </motion.div>
-                )}
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-                {/* AI Prescribed Grounding Games */}
-                {user.preferred_games && (
-                  <motion.div className="card full" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
-                    <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span role="img" aria-label="game">🎮</span> Digital Prescription: Grounding Games
-                    </h2>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                      Sentia has recommended these games to help you ground yourself when anxiety levels are high.
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingLeft: '12px', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
+               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                 <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-main)' }}>{user?.email.split('@')[0] || 'Alex Mercer'}</span>
+                 <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', letterSpacing: '0.5px' }}>PREMIUM SANCTUARY</span>
+               </div>
+               <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid var(--accent-purple)', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-purple)' }}>
+                 <User size={18} />
+               </div>
+            </div>
+            
+            <button 
+              className="glass-button" 
+              onClick={handleExportReport}
+              disabled={exporting}
+              style={{ fontSize: '0.75rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '8px', opacity: exporting ? 0.5 : 1 }}
+            >
+              <Download size={14} className={exporting ? "animate-spin" : ""} /> {exporting ? "Exporting..." : "Export Report"}
+            </button>
+          </div>
+        </header>
+
+        {/* View Switcher Content */}
+        <div className={!monitoring ? "monitoring-paused" : ""}>
+          {monitoring ? (
+            <>
+              {viewMode === 'chat' ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+                    &larr; Back to Dashboard
+                  </button>
+                  <ChatAnalyzer />
+                </div>
+              ) : viewMode === 'doctor-chat' ? (
+                <div style={{ marginTop: '1rem', height: '100%', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+                    &larr; Back to Dashboard
+                  </button>
+                  <div style={{ flex: 1, minHeight: '600px' }}>
+                     <ChatInterface otherUserId={user?.doctor_id} otherUserEmail="Your Doctor" isEmbedded={true} onClose={() => {}} />
+                  </div>
+                </div>
+              ) : viewMode === 'therapy' ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+                    &larr; Back to Dashboard
+                  </button>
+                  <Suspense fallback={<div>Loading Meditation...</div>}>
+                    <MeditationTimer onComplete={() => load()} />
+                  </Suspense>
+                </div>
+              ) : viewMode === 'media' ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+                    &larr; Back to Dashboard
+                  </button>
+                  <Suspense fallback={<div>Loading Media...</div>}>
+                    <MediaHub />
+                  </Suspense>
+                </div>
+              ) : viewMode === 'community' ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+                    &larr; Back to Dashboard
+                  </button>
+                  <Suspense fallback={<div>Loading Community Chat...</div>}>
+                    <CommunityChat />
+                  </Suspense>
+                </div>
+              ) : viewMode === 'vitals' ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+                    &larr; Back to Dashboard
+                  </button>
+                  <Suspense fallback={<div>Loading Vitals Dashboard...</div>}>
+                    <VitalsDashboard />
+                  </Suspense>
+                </div>
+              ) : viewMode === 'face' ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+                    &larr; Back to Dashboard
+                  </button>
+                  <Suspense fallback={<div>Loading Face Analyzer...</div>}>
+                    <SelfEmotionMonitor />
+                  </Suspense>
+                </div>
+              ) : viewMode === 'binaural' ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+                    &larr; Back to Dashboard
+                  </button>
+                  <div className="glass-panel" style={{ padding: '3rem', maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
+                     <Headphones size={48} color="var(--accent-purple)" style={{ marginBottom: '1rem' }} />
+                     <h2 className="serif-heading" style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Binaural Beats Therapy</h2>
+                     <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+                         Deeply relaxing 432Hz base frequency mixed with a 10Hz offset to induce Alpha wave states for relaxation and focus.
+                     </p>
+                     <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+                       <button className="glass-button primary" onClick={() => playTherapyAudio({ id: 'binaural-manual', therapy_type: 'binaural', duration_minutes: 15 })}>
+                         Start 15m Session
+                       </button>
+                       <button className="glass-button" onClick={() => stopTherapyAudio()} style={{ background: 'rgba(232, 132, 132, 0.1)', borderColor: 'var(--emotion-anger)', color: 'var(--emotion-anger)' }}>
+                         Stop
+                       </button>
+                     </div>
+                  </div>
+                </div>
+              ) : viewMode === 'sentia' ? (
+                <SentiaFullScreenChat onClose={() => setViewMode('dashboard')} />
+              ) : viewMode === 'settings' ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+                    &larr; Back to Dashboard
+                  </button>
+                  <div className="glass-panel" style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
+                      <h2 className="serif-heading" style={{ marginBottom: '1.5rem', color: 'var(--text-main)' }}>Profile Settings</h2>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                              <label style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>My Hobbies</label>
+                              <textarea 
+                                  value={user.hobbies || ''}
+                                  onChange={(e) => updateUserProfile({ hobbies: e.target.value })}
+                                  placeholder="e.g. Playing guitar, Painting, Reading sci-fi novels..."
+                                  style={{ 
+                                      background: 'var(--bg-input)', 
+                                      border: '1px solid var(--border-color)', 
+                                      padding: '1rem', 
+                                      borderRadius: '8px', 
+                                      color: 'var(--text-main)',
+                                      minHeight: '100px',
+                                      resize: 'vertical'
+                                  }}
+                              />
+                          </div>
+                          
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                              <label style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Preferred Anti-Anxiety Games</label>
+                              <textarea 
+                                  value={(() => {
+                                      try {
+                                          const parsed = JSON.parse(user.preferred_games);
+                                          if (Array.isArray(parsed)) return parsed.map(g => g.name).join(', ');
+                                          return user.preferred_games || '';
+                                      } catch(e) {
+                                          return user.preferred_games || '';
+                                      }
+                                  })()}
+                                  onChange={(e) => updateUserProfile({ preferred_games: e.target.value })}
+                                  placeholder="e.g. Tetris, Stardew Valley, Cozy Grove..."
+                                  style={{ 
+                                      background: 'var(--bg-input)', 
+                                      border: '1px solid var(--border-color)', 
+                                      padding: '1rem', 
+                                      borderRadius: '8px', 
+                                      color: 'var(--text-main)',
+                                      minHeight: '80px',
+                                      resize: 'vertical'
+                                  }}
+                              />
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                              <label style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Music & Media Interests</label>
+                              <textarea 
+                                  value={user.music_interests || ''}
+                                  onChange={(e) => updateUserProfile({ music_interests: e.target.value })}
+                                  placeholder="e.g. Lofi hip hop for focus..."
+                                  style={{ 
+                                      background: 'var(--bg-input)', 
+                                      border: '1px solid var(--border-color)', 
+                                      padding: '1rem', 
+                                      borderRadius: '8px', 
+                                      color: 'var(--text-main)',
+                                      minHeight: '80px',
+                                      resize: 'vertical'
+                                  }}
+                              />
+                          </div>
+                      </div>
+                      <button className="accent-btn" onClick={() => setViewMode('dashboard')} style={{ marginTop: '1.5rem' }}>Save & Return</button>
+                  </div>
+                </div>
+              ) : viewMode === 'table' ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+                    &larr; Back to Dashboard
+                  </button>
+                  <LogTable logs={timelineData} />
+                </div>
+              ) : viewMode === 'insights' ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+                    &larr; Back to Dashboard
+                  </button>
+                  <Suspense fallback={<div>Loading Drift Insights...</div>}>
+                    <DriftInsights />
+                  </Suspense>
+                </div>
+              ) : viewMode === 'medtracker' ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+                    &larr; Back to Dashboard
+                  </button>
+                  <Suspense fallback={<div>Loading Med Tracker...</div>}>
+                    <MedicalLogTable />
+                  </Suspense>
+                </div>
+              ) : viewMode === 'map' ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+                    &larr; Back to Dashboard
+                  </button>
+                  <div className="glass-panel" style={{ padding: '2rem', maxWidth: '900px', margin: '0 auto' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.5rem' }}>
+                      <MapPin size={24} color="var(--accent-purple)" />
+                      <div>
+                        <h2 className="serif-heading" style={{ fontSize: '1rem', letterSpacing: '3px', color: 'var(--accent-purple)', opacity: 1 }}>NEARBY MENTAL HEALTH SUPPORT</h2>
+                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Find therapists, clinics, and wellness centers near you.</p>
+                      </div>
+                    </div>
+                    <div style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--glass-border)', height: '480px', position: 'relative', background: '#0F1117', backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.1) 0%, transparent 60%), linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '100% 100%, 40px 40px, 40px 40px' }}>
+                        {/* Mock Map Pins */}
+                        <div style={{ position: 'absolute', top: '30%', left: '40%' }}>
+                            <div style={{ width: '12px', height: '12px', background: 'var(--accent-green)', borderRadius: '50%', boxShadow: '0 0 15px var(--accent-green)' }}></div>
+                            <div style={{ position: 'absolute', top: '-30px', left: '-50px', background: 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', color: '#fff', border: '1px solid var(--accent-green)', whiteSpace: 'nowrap' }}>Serenity Clinic</div>
+                        </div>
+                        <div style={{ position: 'absolute', top: '60%', left: '70%' }}>
+                            <div style={{ width: '12px', height: '12px', background: 'var(--accent-purple)', borderRadius: '50%', boxShadow: '0 0 15px var(--accent-purple)' }}></div>
+                            <div style={{ position: 'absolute', top: '-30px', left: '-60px', background: 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', color: '#fff', border: '1px solid var(--accent-purple)', whiteSpace: 'nowrap' }}>Dr. Mercer's Office</div>
+                        </div>
+                        <div style={{ position: 'absolute', top: '45%', left: '20%' }}>
+                            <div style={{ width: '12px', height: '12px', background: 'var(--accent-blue)', borderRadius: '50%', boxShadow: '0 0 15px var(--accent-blue)' }}></div>
+                            <div style={{ position: 'absolute', top: '-30px', left: '-40px', background: 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', color: '#fff', border: '1px solid var(--accent-blue)', whiteSpace: 'nowrap' }}>Wellness Center</div>
+                        </div>
+                        
+                        {/* Interactive Overlay */}
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15, 17, 23, 0.4)', backdropFilter: 'blur(2px)' }}>
+                            <a href="https://www.google.com/maps/search/mental+health+clinic+near+me" target="_blank" rel="noopener noreferrer" className="glass-panel" style={{ padding: '24px 32px', textAlign: 'center', textDecoration: 'none', transition: 'all 0.3s ease', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <MapPin size={32} color="var(--accent-purple)" style={{ marginBottom: '12px' }} />
+                                <h3 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', color: '#fff', fontFamily: 'var(--font-heading)' }}>View Nearby Support</h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Click to open interactive map in a new tab</p>
+                            </a>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
+                      <a href="https://www.google.com/maps/search/psychiatrist+near+me" target="_blank" rel="noopener noreferrer" className="glass-button" style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem' }}>
+                        <MapPin size={14} style={{ marginRight: '6px' }} /> Find Psychiatrists
+                      </a>
+                      <a href="https://www.google.com/maps/search/mental+health+clinic+near+me" target="_blank" rel="noopener noreferrer" className="glass-button" style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem' }}>
+                        <MapPin size={14} style={{ marginRight: '6px' }} /> Mental Health Clinics
+                      </a>
+                      <a href="https://www.google.com/maps/search/yoga+wellness+center+near+me" target="_blank" rel="noopener noreferrer" className="glass-button" style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem' }}>
+                        <MapPin size={14} style={{ marginRight: '6px' }} /> Wellness Centers
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ paddingBottom: '80px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  <div style={{ marginBottom: '16px' }}>
+                    <h1 style={{ fontSize: '2.5rem', fontWeight: '800', margin: '0 0 12px 0', letterSpacing: '-0.5px' }}>
+                       Welcome Back, {(user?.email.split('@')[0] || "Alex").replace(/^[a-z]/, c => c.toUpperCase())}.
+                    </h1>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', maxWidth: '600px', margin: 0, lineHeight: 1.6 }}>
+                       The emotional landscape is shifting towards tranquility. Your current drift is within optimal parameters.
                     </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
-                      {(() => {
-                        try {
-                          const gameList = JSON.parse(user.preferred_games);
-                          if (!Array.isArray(gameList)) throw new Error("Not a list");
-                          return gameList.map((game, idx) => (
-                            <div 
-                              key={idx}
-                              className="glass-panel"
-                              style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}
-                            >
-                              <div style={{
-                                  width: '60px', height: '60px', borderRadius: '12px',
-                                  background: `hsl(${(game.name?.charCodeAt(0) || 200) * 137 % 360}, 60%, 35%)`,
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  flexShrink: 0, overflow: 'hidden'
-                              }}>
-                                  {game.logo ? (
-                                      <img 
-                                          src={game.logo} 
-                                          alt={game.name} 
-                                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                          onError={(e) => {
-                                              // Hide broken image and show fallback emoji
-                                              e.target.style.display = 'none';
-                                              e.target.nextSibling.style.display = 'flex';
-                                          }}
-                                      />
-                                  ) : null}
-                                  <span style={{ 
-                                      display: game.logo ? 'none' : 'flex',
-                                      fontSize: '1.8rem', 
-                                      alignItems: 'center', 
-                                      justifyContent: 'center',
-                                      width: '100%', height: '100%'
-                                  }}>🎮</span>
-                              </div>
-                              <div style={{ flex: 1 }}>
-                                <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>{game.name}</h3>
-                                <p style={{ fontSize: '0.75rem', opacity: 0.6, margin: '4px 0 10px 0' }}>Prescribed: {new Date(game.prescribed_at).toLocaleDateString()}</p>
-                                <a 
-                                  href={game.link} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="accent-btn"
-                                  style={{ padding: '6px 15px', fontSize: '0.85rem', display: 'inline-block', textDecoration: 'none', background: 'var(--primary-blue)', color: 'white', borderRadius: '6px' }}
-                                >
-                                  Play Now
-                                </a>
-                              </div>
-                            </div>
-                          ));
-                        } catch (e) {
-                          // Fallback for legacy plain text data
-                          return (
-                            <div className="glass-panel" style={{ padding: '1rem', color: 'var(--text-secondary)' }}>
-                              <p>Legacy preferences: {user.preferred_games}</p>
-                              <p style={{ fontSize: '0.8rem' }}>Sentia will update these with rich cards the next time she recommends a game!</p>
-                            </div>
-                          );
-                        }
-                      })()}
-                    </div>
-                  </motion.div>
-                )}
-              </>
-            )}
-          </>
-        )}
-      </div>
+                  </div>
 
-      <div style={{
-        position: 'fixed',
-        bottom: '1rem',
-        left: '2rem',
-        fontSize: '0.85rem',
-        color: 'var(--text-sub)',
-        zIndex: 100,
-        background: 'var(--bg-card)',
-        padding: '0.5rem 1rem',
-        borderRadius: '20px',
-        border: '1px solid var(--glass-border)',
-        backdropFilter: 'blur(10px)'
-      }}>
-        Logged in as: <span style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}>{user.email}</span>
-      </div>
+                  <div className="premium-bento-grid">
+                     {/* Daily Emotional State */}
+                     <motion.div className="glass-panel stat-card" style={{ gridArea: 'state', padding: '24px', display: 'flex', flexDirection: 'column' }}>
+                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                         <div style={{ fontSize: '0.75rem', letterSpacing: '2px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: '700' }}>Daily Emotional State</div>
+                         <Activity size={16} color="var(--text-secondary)" opacity={0.5} />
+                       </div>
+                       <div style={{ display: 'flex', gap: '32px', flex: 1, alignItems: 'center' }}>
+                          <div className="score-ring-wrapper">
+                             <div className="score-ring-inner">
+                                <div className="score-number">{(fusion?.stability_score * 100 || 84).toFixed(0)}</div>
+                                <div className="score-label">STABLE</div>
+                             </div>
+                             <svg className="ring-svg" viewBox="0 0 100 100">
+                                <circle className="ring-bg" cx="50" cy="50" r="46" />
+                                <circle className="ring-progress" cx="50" cy="50" r="46" strokeDasharray="289" strokeDashoffset={289 * (1 - (fusion?.stability_score || 0.84))} />
+                             </svg>
+                          </div>
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                             <p style={{ fontSize: '1.05rem', lineHeight: 1.6, color: 'var(--text-main)', margin: '0 0 24px 0' }}>
+                               Your state is <span style={{ color: 'var(--accent-green)', fontWeight: '600' }}>remarkably serene</span> today. Consistent meditation and voice logging have contributed to a 12% increase in stability.
+                             </p>
+                             <div style={{ display: 'flex', gap: '16px' }}>
+                               <div className="stat-sub-card">
+                                 <div className="stat-sub-label">Drift Variance</div>
+                                 <div className="stat-sub-val">{(drift?.details?.variance || 0.04).toFixed(2)} <span style={{ color: 'var(--accent-green)', fontSize: '0.75rem' }}>↓2%</span></div>
+                               </div>
+                               <div className="stat-sub-card">
+                                 <div className="stat-sub-label">Peak Intensity</div>
+                                 <div className="stat-sub-val" style={{ color: 'var(--text-main)' }}>Moderate</div>
+                               </div>
+                             </div>
+                          </div>
+                       </div>
+                     </motion.div>
 
-      {
-        showDoctorChat && user.doctor_id && (
-          <ChatInterface
-            otherUserId={user.doctor_id}
-            otherUserEmail="Doctor" // We might not have doc email, just say Doctor for now
-            onClose={() => setShowDoctorChat(false)}
-          />
-        )
-      }
-      {
-        showSentia && (
-          <SentiaFullScreenChat onClose={() => setShowSentia(false)} />
-        )
-      }
-    </div >
+                     {/* Deep Insight */}
+                     <motion.div className="glass-panel" style={{ gridArea: 'insight', padding: '24px', display: 'flex', flexDirection: 'column', position: 'relative', background: 'linear-gradient(145deg, rgba(26,29,38,0.8), rgba(26,29,38,0.4))' }}>
+                       <div className="sparkle-icon"><Sparkles size={18} color="#fff" /></div>
+                       <h3 style={{ fontSize: '1.25rem', marginTop: '16px', marginBottom: '12px', fontWeight: '700' }}>Deep Insight</h3>
+                       <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6, flex: 1, marginBottom: '24px' }}>
+                         "Your emotional drift is currently low. Introspection is high today—consider a voice session to capture the subtle nuances of this clarity."
+                       </p>
+                       <button className="glass-button action-btn-purple" onClick={() => setViewMode('sentia')} style={{ width: '100%', padding: '12px' }}>
+                         Start Deep Dive
+                       </button>
+                     </motion.div>
+
+                     {/* Weekly Trends */}
+                     <motion.div className="glass-panel" style={{ gridArea: 'trends', padding: '24px' }}>
+                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                         <div>
+                           <div style={{ fontSize: '0.65rem', letterSpacing: '1px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', fontWeight: '700' }}>Weekly Trends</div>
+                           <h3 style={{ fontSize: '1.25rem', margin: 0, fontWeight: '700' }}>Stability Timeline</h3>
+                         </div>
+                         <div style={{ display: 'flex', background: 'var(--bg-input)', borderRadius: '24px', padding: '4px' }}>
+                           <button className="tab-pill active">7 Days</button>
+                           <button className="tab-pill">30 Days</button>
+                         </div>
+                       </div>
+                       <ResponsiveContainer height={200}>
+                          <BarChart data={[
+                            { day: 'MON', val: 0.6 }, { day: 'TUE', val: 0.4 }, { day: 'WED', val: 0.5 }, 
+                            { day: 'THU', val: 0.65 }, { day: 'FRI', val: 0.3 }, { day: 'SAT', val: 0.55 }, { day: 'SUN', val: 0.8 }
+                          ]} barSize={32}>
+                             <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-secondary)' }} dy={10} />
+                             <Tooltip cursor={{ fill: 'rgba(255,255,255,0.02)' }} contentStyle={{ background: 'var(--bg-card)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px' }} />
+                             <Bar dataKey="val" radius={[4,4,4,4]}>
+                               { [0.6, 0.4, 0.5, 0.65, 0.3, 0.55, 0.8].map((entry, index) => (
+                                 <Cell key={`cell-${index}`} fill={index === 6 ? 'var(--accent-blue)' : `rgba(255,255,255,0.08)`} />
+                               ))}
+                             </Bar>
+                          </BarChart>
+                       </ResponsiveContainer>
+                     </motion.div>
+
+                     {/* Ratio */}
+                     <motion.div className="glass-panel" style={{ gridArea: 'ratio', padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                       <div style={{ fontSize: '0.75rem', letterSpacing: '2px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '12px', alignSelf: 'flex-start', fontWeight: '700' }}>Stability Vs. Drift</div>
+                       
+                       <div className="ratio-donut-wrap">
+                          <ResponsiveContainer width={180} height={180}>
+                             <PieChart>
+                                <Pie data={[{ name: 'Anchored', value: 86 }, { name: 'Drifting', value: 14 }]} cx="50%" cy="50%" innerRadius={65} outerRadius={85} stroke="none" cornerRadius={10} dataKey="value">
+                                   <Cell fill="var(--accent-green)" />
+                                   <Cell fill="var(--bg-card)" />
+                                </Pie>
+                                <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px' }} />
+                             </PieChart>
+                          </ResponsiveContainer>
+                          <div className="ratio-center">
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', letterSpacing: '1px', fontWeight: '700' }}>RATIO</span>
+                            <span style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-main)', marginTop: '-4px' }}>0.14</span>
+                          </div>
+                       </div>
+                       
+                       <div style={{ display: 'flex', gap: '32px', marginTop: '16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600' }}><div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-green)' }} /> ANCHORED</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600' }}><div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--bg-card)' }} /> DRIFTING</div>
+                       </div>
+                     </motion.div>
+                  </div>
+
+                  {/* Horizontal Action Bars */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) minmax(200px, 1fr) minmax(200px, 1fr)', gap: '16px', marginTop: '0' }}>
+                    <button className="glass-panel dash-action-btn" onClick={() => setViewMode('table')}>
+                      <div className="dash-action-icon blue"><Activity size={20} color="#fff" /></div>
+                      <span>Log Mood</span>
+                    </button>
+                    <button className="glass-panel dash-action-btn" onClick={() => setViewMode('sentia')}>
+                      <div className="dash-action-icon pink"><Activity size={20} color="#fff" /></div>
+                      <span>Voice Session</span>
+                    </button>
+                    <button className="glass-panel dash-action-btn" onClick={() => setViewMode('vitals')}>
+                      <div className="dash-action-icon green"><Activity size={20} color="#fff" /></div>
+                      <span>View Vitals</span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </>
+          ) : (
+            <div className="empty-state" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+              <h2 className="serif-heading" style={{ fontSize: '2rem', marginBottom: '1rem' }}>Core Offline</h2>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>Activate the neural bridge to begin real-time emotion analysis.</p>
+              <button className="glass-button primary pulse" onClick={() => setMonitoring(true)} style={{ padding: '1rem 3rem' }}>Initialize Connection</button>
+            </div>
+          )}
+        </div>
+
+        {/* Global Modal Layer Removed; chat is now embedded in doctor-chat viewMode */}
+        
+        <div style={{ position: 'fixed', bottom: '1.5rem', left: '1.5rem', fontSize: '0.75rem', opacity: 0.5, zIndex: 100 }}>
+          Protocol v2.4 // NODE: {user.email}
+        </div>
+      </main>
+    </div>
   );
 }
 
@@ -1069,28 +1043,11 @@ function MainContent() {
   const location = useLocation();
   const isLandingPage = location.pathname === '/';
   const showBackground = !AUTH_ROUTES.includes(location.pathname);
-  const [activeBg, setActiveBg] = useState(getStoredBackground);
-
-  useEffect(() => {
-    const handler = (e) => setActiveBg(e.detail.background);
-    window.addEventListener('background-change', handler);
-    return () => window.removeEventListener('background-change', handler);
-  }, []);
 
   return (
     <>
-      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: -1, background: '#02040A', transition: 'background 0.3s ease' }}>
-        {showBackground && activeBg === 'neural' && <NeuralBackground theme="dark" />}
-        {showBackground && activeBg === 'particles' && (
-          <Suspense fallback={null}>
-            <Background3D />
-          </Suspense>
-        )}
-        {showBackground && activeBg === 'brain3d' && (
-          <Suspense fallback={null}>
-            <Brain3D progress={1} />
-          </Suspense>
-        )}
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: -1, background: '#0F1117', transition: 'background 0.3s ease' }}>
+        {showBackground && <NeuralBackground theme="dark" />}
       </div>
       <Suspense fallback={
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'white', flexDirection: 'column', gap: '1rem' }}>
@@ -1130,10 +1087,15 @@ function MainContent() {
               <Suspense fallback={null}><PatientDetailView /></Suspense>
             </RequireDoctorAuth>
           } />
+          <Route path="/ps-detail/:id" element={<RequireDoctorAuth><PatientDetailView /></RequireDoctorAuth>} />
+          
+          {/* Legal Routes */}
+          <Route path="/privacy" element={<Suspense fallback={<div className="min-h-screen bg-[#02040A]" />}><PrivacyPolicy /></Suspense>} />
+          <Route path="/terms" element={<Suspense fallback={<div className="min-h-screen bg-[#02040A]" />}><TermsOfService /></Suspense>} />
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <GlobalDoctorFloatingButton />
-        {showBackground && <BackgroundSelector />}
       </Suspense>
     </>
   );
@@ -1164,16 +1126,10 @@ function GlobalDoctorFloatingButton() {
   if (!shouldShow) return null;
 
   // We need a way to open the doctor chat from here
-  // Since we're in App, we can't easily access Dashboard's setShowDoctorChat
-  // BUT we can use the navigation menu or just let the dashboard handle its own floating button if we prefer
-  // Wait, the user asked for "in place of virtaul assitant robo put the chat with dr"
+  // We trigger a global event which the Dashboard listens to to switch viewMode to 'doctor-chat'
   
-  // To make it fully functional globally, we might need a GlobalChatContext or similar.
-  // For now, let's just make it trigger the chat if we are on the dashboard.
-  // Actually, Dashboard is where showDoctorChat lives.
-  
-  // If we want it truly global, we should move showDoctorChat to a context.
-  // But let's see if we can trigger it via a custom event like refresh-dashboard.
+  // If we want it truly global, we should move the chat state to a context.
+  // But for now, triggering it via a custom event works well for the dashboard.
   
   const handleClick = () => {
     window.dispatchEvent(new CustomEvent('open-doctor-chat'));

@@ -3,7 +3,7 @@ import { API, getChatHistory } from '../api';
 import AuthContext from '../context/AuthContext';
 import { Send, MessageSquare, X } from 'lucide-react';
 
-const ChatInterface = ({ otherUserId, otherUserEmail, onClose }) => {
+const ChatInterface = ({ otherUserId, otherUserEmail, onClose, isEmbedded = false }) => {
     const { user } = useContext(AuthContext);
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
@@ -120,124 +120,123 @@ const ChatInterface = ({ otherUserId, otherUserEmail, onClose }) => {
 
     return (
         <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            zIndex: 9999,
+            position: isEmbedded ? 'relative' : 'fixed',
+            top: isEmbedded ? 'auto' : 0,
+            left: isEmbedded ? 'auto' : 0,
+            width: isEmbedded ? '100%' : '100vw',
+            height: isEmbedded ? '100%' : '100vh',
+            zIndex: isEmbedded ? 'auto' : 9999,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'rgba(0,0,0,0.6)',
-            backdropFilter: 'blur(4px)',
+            background: isEmbedded ? 'transparent' : 'rgba(0,0,0,0.7)',
+            backdropFilter: isEmbedded ? 'none' : 'blur(8px)',
         }}>
-            {/* WhatsApp Container */}
+            {/* Dark Theme Chat Container */}
             <div style={{
                 position: 'relative',
                 width: '100%',
-                maxWidth: '600px', // More phone-like scale
-                height: '85vh',
-                background: '#efeae2', // WA chat background tone
-                borderRadius: '16px',
+                maxWidth: isEmbedded ? '100%' : '600px',
+                height: isEmbedded ? '100%' : '85vh',
+                background: '#0d1117',
+                borderRadius: '20px',
                 display: 'flex',
                 flexDirection: 'column',
                 overflow: 'hidden',
-                boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+                boxShadow: isEmbedded ? 'none' : '0 20px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.06)',
                 animation: 'fadeIn 0.2s ease-out'
             }}>
-                {/* Header WA Style */}
+                {/* Header - Dark Theme */}
                 <div style={{
-                    padding: '12px 16px',
-                    background: '#075e54', // WA Dark Green
+                    padding: '16px 20px',
+                    background: 'rgba(13, 17, 23, 0.95)',
+                    borderBottom: '1px solid rgba(255,255,255,0.08)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                    zIndex: 2
+                    backdropFilter: 'blur(12px)',
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'white' }}>
                         <div style={{ 
-                            width: '40px', height: '40px', 
-                            borderRadius: '50%', background: '#ccc', 
+                            width: '42px', height: '42px', 
+                            borderRadius: '50%', 
+                            background: 'linear-gradient(135deg, #6366F1, #D946EF)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            overflow: 'hidden'
                         }}>
-                            <MessageSquare size={20} color="#075e54" />
+                            <MessageSquare size={20} color="white" />
                         </div>
                         <div>
-                            <div style={{ fontWeight: '600', fontSize: '1.1rem' }}>
-                                {otherUserEmail.split('@')[0]}
+                            <div style={{ fontWeight: '600', fontSize: '1rem', color: '#f8fafc' }}>
+                                {otherUserEmail?.split('@')[0] || 'Doctor'}
                             </div>
-                            <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>online</div>
+                            <div style={{ fontSize: '0.75rem', color: '#4ADE80', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ADE80', display: 'inline-block' }}></span>
+                                online
+                            </div>
                         </div>
                     </div>
-                    <button onClick={onClose} style={{ 
-                        background: 'transparent', border: 'none', 
-                        cursor: 'pointer', color: 'white', display: 'flex' 
-                    }}>
-                        <X size={24} />
-                    </button>
+                    {!isEmbedded && (
+                        <button onClick={onClose} style={{ 
+                            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', 
+                            cursor: 'pointer', color: '#9ca3af', display: 'flex',
+                            padding: '8px', borderRadius: '10px', transition: 'all 0.2s'
+                        }}>
+                            <X size={20} />
+                        </button>
+                    )}
                 </div>
 
-                {/* Messages WhatsApp Pattern */}
+                {/* Messages Area - Dark Theme */}
                 <div style={{ 
-                    padding: '24px 16px', 
+                    padding: '20px 16px', 
                     flex: 1, 
                     display: 'flex', 
                     flexDirection: 'column', 
-                    gap: '4px', // Tighter WA spacing
+                    gap: '6px',
                     overflowY: 'auto',
-                    backgroundImage: 'url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png")', // Abstract WA pattern
-                    backgroundSize: 'contain'
+                    background: 'linear-gradient(180deg, #0d1117 0%, #111827 100%)',
                 }}>
+                    {messages.length === 0 && (
+                        <div style={{ textAlign: 'center', margin: 'auto', opacity: 0.4, color: '#9ca3af' }}>
+                            <MessageSquare size={40} style={{ margin: '0 auto 10px' }} />
+                            <p style={{ fontSize: '0.9rem' }}>No messages yet. Start the conversation!</p>
+                        </div>
+                    )}
                     {messages.map((m, i) => {
                         const isMe = m.senderId === user.id;
-                        // Determine if previous message was from the same sender to group them
                         const isFirstInGroup = i === 0 || messages[i-1].senderId !== m.senderId;
 
                         return (
                             <div key={i} style={{
-                                maxWidth: '80%',
-                                padding: '8px 12px',
+                                maxWidth: '75%',
+                                padding: '10px 14px',
                                 fontSize: '0.95rem',
-                                lineHeight: '1.4',
+                                lineHeight: '1.5',
                                 position: 'relative',
-                                background: isMe ? '#dcf8c6' : '#ffffff', // WA Green vs White
-                                color: '#111b21',
+                                background: isMe 
+                                    ? 'linear-gradient(135deg, #6366F1, #4F46E5)' 
+                                    : 'rgba(31, 41, 55, 0.9)',
+                                color: isMe ? '#fff' : '#e2e8f0',
                                 alignSelf: isMe ? 'flex-end' : 'flex-start',
-                                borderRadius: isMe ? '8px 0px 8px 8px' : '0px 8px 8px 8px',
-                                marginTop: isFirstInGroup ? '8px' : '0', // Margin only between different senders
-                                boxShadow: '0 1px 0.5px rgba(0,0,0,0.13)'
+                                borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                                marginTop: isFirstInGroup ? '12px' : '2px',
+                                border: isMe ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                                boxShadow: isMe 
+                                    ? '0 4px 12px rgba(99,102,241,0.3)' 
+                                    : '0 2px 8px rgba(0,0,0,0.3)',
                             }}>
-                                {/* Optional decorative tail for first message in group */}
-                                {isFirstInGroup && (
-                                   <div style={{
-                                       position: 'absolute',
-                                       top: 0,
-                                       [isMe ? 'right' : 'left']: '-8px',
-                                       width: 0, height: 0,
-                                       border: '8px solid transparent',
-                                       borderTopColor: isMe ? '#dcf8c6' : '#ffffff',
-                                       borderRightColor: isMe ? 'transparent' : '#ffffff',
-                                       borderLeftColor: isMe ? '#dcf8c6' : 'transparent',
-                                       borderBottomColor: 'transparent',
-                                       zIndex: -1
-                                   }}></div>
-                                )}
-                                
                                 <span style={{ wordWrap: 'break-word' }}>{m.text}</span>
                                 
                                 <div style={{ 
                                     display: 'flex', justifyContent: 'flex-end', alignItems: 'center', 
-                                    gap: '4px', marginTop: '2px', float: 'right', marginLeft: '12px' 
+                                    gap: '4px', marginTop: '4px',
                                 }}>
-                                    <span style={{ fontSize: '0.65rem', color: '#667781', margin: '4px 0 0 0' }}>
+                                    <span style={{ fontSize: '0.65rem', color: isMe ? 'rgba(255,255,255,0.6)' : '#6b7280' }}>
                                         {new Date(m.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                     {isMe && (
-                                         <svg viewBox="0 0 16 15" width="16" height="15" style={{ marginTop: '3px' }}>
-                                             <path fill="#53bdeb" d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"></path>
+                                         <svg viewBox="0 0 16 15" width="14" height="14" style={{ marginTop: '1px' }}>
+                                             <path fill="rgba(255,255,255,0.7)" d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"></path>
                                          </svg>
                                     )}
                                 </div>
@@ -247,46 +246,47 @@ const ChatInterface = ({ otherUserId, otherUserEmail, onClose }) => {
                     <div ref={messagesEndRef} />
                 </div>
 
-                {/* WA Input Area */}
+                {/* Input Area - Dark Theme */}
                 <form onSubmit={sendMessage} style={{
-                    padding: '8px 12px',
-                    background: '#f0f2f5',
+                    padding: '12px 16px',
+                    background: 'rgba(13, 17, 23, 0.95)',
+                    borderTop: '1px solid rgba(255,255,255,0.06)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px'
+                    gap: '10px'
                 }}>
                     <input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Type a message"
+                        placeholder="Type a message..."
                         style={{
                             flex: 1,
-                            background: '#ffffff',
-                            border: 'none',
-                            padding: '12px 16px',
+                            background: '#1f2937',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            padding: '12px 18px',
                             fontSize: '0.95rem',
                             borderRadius: '24px',
-                            color: '#111b21',
+                            color: '#f8fafc',
                             outline: 'none',
-                            boxShadow: '0 1px 1px rgba(0,0,0,0.1)'
                         }}
                         autoFocus
                     />
                     <button type="submit" disabled={!input.trim()} style={{
-                        background: input.trim() ? '#00a884' : '#ccc',
+                        background: input.trim() ? 'linear-gradient(135deg, #6366F1, #D946EF)' : '#374151',
                         border: 'none',
-                        width: '44px',
-                        height: '44px',
+                        width: '46px',
+                        height: '46px',
                         borderRadius: '50%',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: 'white',
                         cursor: input.trim() ? 'pointer' : 'default',
-                        transition: 'background 0.2s',
-                        flexShrink: 0
+                        transition: 'all 0.2s',
+                        flexShrink: 0,
+                        boxShadow: input.trim() ? '0 4px 12px rgba(99,102,241,0.4)' : 'none'
                     }}>
-                        <Send size={18} style={{ marginLeft: '-2px' }} />
+                        <Send size={18} style={{ marginLeft: '-1px' }} />
                     </button>
                 </form>
             </div>

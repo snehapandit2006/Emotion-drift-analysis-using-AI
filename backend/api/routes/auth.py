@@ -112,19 +112,6 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
 
 @router.post("/token", response_model=dict)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # --- DEBUGGING ---
-    print(f"Login Attempt: username='{form_data.username}', password_len={len(form_data.password)}")
-    # -----------------
-    
-    # --- TEST USER IMPLEMENTATION ---
-    if form_data.username == "test@example.com" and form_data.password == "password":
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"sub": "test@example.com"}, expires_delta=access_token_expires
-        )
-        return {"access_token": access_token, "token_type": "bearer", "user_id": 1, "email": "test@example.com"}
-    # --------------------------------
-
     user = db.query(User).filter(User.email == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(

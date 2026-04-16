@@ -3,7 +3,10 @@ import nltk
 from nltk.corpus import stopwords
 import emoji
 
-nltk.download('stopwords', quiet=True)
+try:
+    nltk.download('stopwords', quiet=True)
+except Exception:
+    pass # Ignore network errors if already downloaded
 STOP_WORDS = set(stopwords.words('english'))
 
 def clean_text(text: str) -> str:

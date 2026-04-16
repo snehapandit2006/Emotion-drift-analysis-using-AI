@@ -230,6 +230,16 @@ async def chat_with_sentia(
     conv.updated_at = datetime.utcnow()
     db.commit()
 
+    prescribed_game = bot_payload.get("prescribed_game")
+    game_link = bot_payload.get("game_link")
+    binaural_link = bot_payload.get("binaural_link")
+
+    # Fallback: resolve game link from GAME_LIBRARY if not in bot_payload
+    if prescribed_game and not game_link:
+        from ml.llm_bridge import GAME_LIBRARY
+        if prescribed_game in GAME_LIBRARY:
+            game_link = GAME_LIBRARY[prescribed_game].get("link")
+
     return {
         "conversation_id": conv.id,
         "response": bot_text,
@@ -237,7 +247,10 @@ async def chat_with_sentia(
         "confidence": intel["confidence"],
         "trace": bot_payload["trace"],
         "first_chunk_b64": first_chunk_b64,
-        "tts_urls": tts_urls
+        "tts_urls": tts_urls,
+        "prescribed_game": prescribed_game,
+        "game_link": game_link,
+        "binaural_link": binaural_link,
     }
 
 @router.get("/audio/{filename}")

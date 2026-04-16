@@ -131,14 +131,38 @@ def get_sentia_intelligence(text: str, audio_path: str = None, user_id: int = 0,
                 translated = text
                 if any(ord(c) > 127 for c in text): 
                      translated = GoogleTranslator(source='auto', target='en').translate(text)
-                raw_out = classifier(translated)
-                if isinstance(raw_out, list) and len(raw_out) > 0:
-                    inner = raw_out[0]
-                    if isinstance(inner, list):
-                        best = max(inner, key=lambda x: x.get('score', 0))
-                        text_res = {"emotion": get_canonical_emotion(best.get('label')), "confidence": float(best.get('score', 0))}
-                    elif isinstance(inner, dict):
-                        text_res = {"emotion": get_canonical_emotion(inner.get('label')), "confidence": float(inner.get('score', 0))}
+                
+                import re
+                sentences = [s.strip() for s in re.split(r'[.!?\n]+', translated) if len(s.strip()) > 3]
+                if not sentences: sentences = [translated]
+                
+                raw_out = classifier(sentences)
+                
+                emotions_list = []
+                for out in raw_out:
+                    if isinstance(out, list):
+                        best = max(out, key=lambda x: x.get('score', 0))
+                    elif isinstance(out, dict):
+                        best = out
+                    else: continue
+                    emotions_list.append((get_canonical_emotion(best.get('label')), float(best.get('score', 0))))
+                
+                if emotions_list:
+                    drift_seq = []
+                    for e, c in emotions_list:
+                        if not drift_seq or drift_seq[-1] != e:
+                            drift_seq.append(e)
+                    drift_str = " → ".join(drift_seq) if drift_seq else emotions_list[-1][0]
+                    
+                    best_overall = emotions_list[-1]
+                    text_res = {
+                        "emotion": best_overall[0], 
+                        "confidence": best_overall[1], 
+                        "drift_string": drift_str if len(drift_seq) > 1 else best_overall[0],
+                        "drift_data": emotions_list,
+                        "sentences": sentences
+                    }
+
             except Exception as e:
                 print(f"Hub Text Error: {e}")
         return text_res
@@ -211,16 +235,25 @@ def get_sentia_intelligence(text: str, audio_path: str = None, user_id: int = 0,
         Base.metadata.create_all(bind=engine) # Ensure tables exist
         
         db = SessionLocal()
-        log = EmotionLog(
-            user_id=user_id,
-            text=text,
-            emotion=fused_emotion,
-            confidence=fused_conf,
-            source=source,
-            created_at=datetime.utcnow()
-        )
-        db.add(log)
-        db.commit()
+        
+        if text_results.get("sentences") and len(text_results["sentences"]) > 1:
+            for i, sent in enumerate(text_results["sentences"]):
+                if i < len(text_results.get("drift_data", [])):
+                    e, c = text_results["drift_data"][i]
+                    log = EmotionLog(
+                        user_id=user_id, text=sent, emotion=e, confidence=c, 
+                        source=source, created_at=datetime.utcnow()
+                    )
+                    db.add(log)
+            db.commit()
+        else:
+            log = EmotionLog(
+                user_id=user_id, text=text, emotion=fused_emotion, 
+                confidence=fused_conf, source=source, created_at=datetime.utcnow()
+            )
+            db.add(log)
+            db.commit()
+        
     except Exception as e:
         print(f"Hub Logging Error: {e}")
     finally:
@@ -237,7 +270,8 @@ def get_sentia_intelligence(text: str, audio_path: str = None, user_id: int = 0,
             pass # Handle if utility not in same path
 
     return {
-        "emotion": fused_emotion,
+        "emotion": text_results.get("drift_string", fused_emotion),
+        "base_emotion": fused_emotion,
         "confidence": fused_conf,
         "is_safety_risk": is_safety_risk,
         "domain": domain,
@@ -320,7 +354,7 @@ def get_bot_response(text: str, intel: dict, user_id: int, conversation_id: int 
     
     # 0. Safety Override
     if intel.get("is_safety_risk", False):
-        mirror = f"I hear the weight of this {intel.get('emotion', 'neutral')} you're carrying..." if intel.get('confidence', 0) > 0.5 else "I'm listening closely to what you're sharing."
+        mirror = f"I hear the weight of this {intel.get('base_emotion', 'neutral')} you're carrying..." if intel.get('confidence', 0) > 0.5 else "I'm listening closely to what you're sharing."
         return {
             "response": f"{mirror} Please reach out to a professional (988 in the US) or visit the nearest emergency room. You don't have to carry this alone.",
             "trace": "SAFETY_OVERRIDE"
@@ -350,7 +384,7 @@ def get_bot_response(text: str, intel: dict, user_id: int, conversation_id: int 
         state = dialogue_manager.get_state(user_id)
         context = dialogue_manager.get_dialogue_context(user_id)
         
-        llm_payload = generate_therapeutic_response(text, intel.get("emotion", "neutral"), context, hobbies=hobbies, games=games, history=history, ui_lang=ui_lang)
+        llm_payload = generate_therapeutic_response(text, intel.get("base_emotion", "neutral"), context, hobbies=hobbies, games=games, history=history, ui_lang=ui_lang)
         
         if llm_payload and "text" in llm_payload:
             # 1.5 Handle Game Prescription Persistence
@@ -388,17 +422,38 @@ def get_bot_response(text: str, intel: dict, user_id: int, conversation_id: int 
             # 2. Validate Stability
             is_valid, rejection_reason = validate_response_stability(llm_payload["text"], text)
             
-            if is_valid:
-                response_text = llm_payload["text"]
-                # 2. Extract and Update Intent (Merged)
-                new_intent = llm_payload.get("intent", "storytelling")
-                state["last_intent"] = new_intent
-                
-                dialogue_manager.track_probe(user_id, llm_payload.get("type", "general_probe"), response_text)
-                return {"response": response_text, "trace": "LLM_OK", "emotion": llm_payload.get("emotion")}
-            else:
-                trace = f"STABILITY_REJECTED_{rejection_reason.upper()}"
-                print(f"[TRACE] Stability Rejected: {rejection_reason}")
+                if is_valid:
+                    response_text = llm_payload["text"]
+                    new_intent = llm_payload.get("intent", "storytelling")
+                    state["last_intent"] = new_intent
+                    dialogue_manager.track_probe(user_id, llm_payload.get("type", "general_probe"), response_text)
+
+                    # 3. Resolve game link
+                    game_name = llm_payload.get("prescribed_game")
+                    game_link = None
+                    if game_name and game_name.upper() != "NONE":
+                        from .llm_bridge import GAME_LIBRARY
+                        ginfo = GAME_LIBRARY.get(game_name)
+                        if ginfo:
+                            game_link = ginfo.get("link")
+
+                    # 4. Binaural beats recommendation for distress emotions
+                    binaural_link = None
+                    distress_emotions = ["sadness", "fear", "anger"]
+                    if intel.get("base_emotion") in distress_emotions:
+                        binaural_link = "https://www.youtube.com/watch?v=WPni755-Krg"  # 432Hz Alpha Waves
+
+                    return {
+                        "response": response_text,
+                        "trace": "LLM_OK",
+                        "emotion": llm_payload.get("emotion"),
+                        "prescribed_game": game_name if game_name and game_name.upper() != "NONE" else None,
+                        "game_link": game_link,
+                        "binaural_link": binaural_link,
+                    }
+                else:
+                    trace = f"STABILITY_REJECTED_{rejection_reason.upper()}"
+                    print(f"[TRACE] Stability Rejected: {rejection_reason}")
         else:
             trace = "LLM_FAILED_EMPTY"
             

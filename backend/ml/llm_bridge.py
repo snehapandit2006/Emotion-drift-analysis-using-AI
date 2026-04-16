@@ -288,14 +288,36 @@ def generate_therapeutic_response(user_text: str, fused_emotion: str, dialogue_c
             "2. BREVITY: Keep your response short and conversational (MAX 2 sentences).\n"
             "3. NO AI TAGS: NEVER use ANY square brackets [ ] in your output speech. Just talk naturally.\n"
             "4. NO LINKS: NEVER include direct URLs or game links in your spoken text.\n"
-            "5. FORMAT: [EMOTION: category], [INTENT: category], [TYPE: category].\n"
-            "6. GROUNDING PROTOCOL: If panic/anxiety, pick a game name. Include [ACTION: PRESCRIBE_GAME: GameName] at the end.\n\n"
+            "5. REASONING: If you need to analyze the emotion, ALWAYS wrap your thought process in <think>...</think> tags. Never output thoughts directly.\n"
+            "6. FORMAT: [EMOTION: category], [INTENT: category], [TYPE: category].\n"
+            "7. GROUNDING PROTOCOL: If panic/anxiety/sadness OR if the user asks for a game/link, pick a game name. Include [ACTION: PRESCRIBE_GAME: GameName] at the end.\n\n"
             "MANDATORY FORMAT:\n"
+            "<think>\n"
+            "Your internal analysis and reasoning here.\n"
+            "</think>\n"
             "[EMOTION: category]\n"
             "[INTENT: category]\n"
             "[TYPE: probe_type]\n"
             "Your warm response text here. (ABSOLUTELY NO BRACKETS OR URLs HERE).\n"
-            "[ACTION: PRESCRIBE_GAME: GameName]"
+            "[ACTION: PRESCRIBE_GAME: GameName OR NONE]\n\n"
+            "EXAMPLE OUTPUT FOR 'hi':\n"
+            "<think>\n"
+            "The user said 'hi'. Emotion is neutral. I should respond with a brief greeting in English.\n"
+            "</think>\n"
+            "[EMOTION: neutral]\n"
+            "[INTENT: greeting]\n"
+            "[TYPE: general_probe]\n"
+            "Hello! How can I support you today? Let me know what's on your mind.\n"
+            "[ACTION: PRESCRIBE_GAME: NONE]\n\n"
+            "EXAMPLE OUTPUT FOR 'provide me a game link':\n"
+            "<think>\n"
+            "The user asked for a game link. I'll recommend Flow and use the action tag so the UI displays the button.\n"
+            "</think>\n"
+            "[EMOTION: neutral]\n"
+            "[INTENT: request]\n"
+            "[TYPE: direct_request]\n"
+            "I'd love to share one with you. Try Flow—it's a soothing color-matching puzzle that works wonders.\n"
+            "[ACTION: PRESCRIBE_GAME: Flow]"
         )
         
         payload = {
@@ -326,6 +348,13 @@ def generate_therapeutic_response(user_text: str, fused_emotion: str, dialogue_c
             
             # Clean response using centralized scrubber
             clean_resp = scrub_tech_tags(raw_text)
+            
+            # Heuristic Fallback: If the LLM failed to include [ACTION...] but mentioned a game
+            if not prescribed_game or prescribed_game.upper() == "NONE":
+                for g_name in GAME_LIBRARY.keys():
+                    if g_name.lower() in clean_resp.lower():
+                        prescribed_game = g_name
+                        break
             
             # 5. SALVAGE LOGIC: If cleaning destroyed everything, try to find text lines
             if not clean_resp and raw_text:
@@ -461,83 +490,10 @@ def handle_doctor_voice_query(query: str, db, doctor_id: int, context_patient_id
     if not patient_id:
         patient_id = context_patient_id
     
-    response_text = ""
+    # Extracted data context mapping
+    data_context = "No specific patient data retrieved for this query."
     
-    if patient_id:
-        logs = db.query(EmotionLog).filter(EmotionLog.user_id == patient_id).order_by(EmotionLog.created_at.desc()).limit(15).all()
-        
-        if not logs:
-            response_text = f"I couldn't find any recent emotional logs for patient {patient_id}. Please ensure the patient ID is correct or check the database."
-            return response_text
-            
-        history_data = [{"date": l.created_at.isoformat(), "emotion": l.emotion, "confidence": round(l.confidence, 2), "text": l.text} for l in reversed(logs)]
-        
-        if LLM_API_KEY:
-            url = "https://api.sarvam.ai/v1/chat/completions"
-            headers = {"api-subscription-key": LLM_API_KEY, "Content-Type": "application/json"}
-            prompt = (
-                "You are Sentia Voice, a clinical data assistant for a psychiatrist.\n"
-                f"The doctor just asked a voice query: '{query}'\n"
-                "CRITICAL RULES for TTS CLARITY:\n"
-                "1. YOU MUST RESPOND IN ENGLISH. ALWAYS use standard English script and vocabulary, unless the doctor explicitly speaks to you in Hindi.\n"
-                "2. DO NOT use any markdown formatting (like asterisks **, bold, or list characters) because your response will be read aloud by a voice engine. Speak in plain, natural sentences.\n"
-                "3. Keep it brief, conversational, and professional. Directly answer based exclusively on the patient data below.\n"
-                "4. If the emotional drift indicates high anxiety, prolonged sadness, or anger, recommend Music Therapy (e.g. 432Hz Binaural Beats).\n\n"
-                f"Patient ID {patient_id} Recent Logs:\n{json.dumps(history_data, indent=2)}"
-            )
-            print(f"[DOCTOR LLM DEBUG] Calling Sarvam API. Model: {LLM_MODEL} | API Key exists: {bool(LLM_API_KEY)}")
-            try:
-                payload = {
-                    "model": LLM_MODEL,
-                    "messages": [
-                        {"role": "system", "content": "You are Sentia Voice, a professional clinical assistant. You MUST respond in the NATIVE SCRIPT of the language (Devanagari for Hindi, Latin for English). NO ROMANIZED HINDI."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "temperature": 0.1,
-                    "max_tokens": 250
-                }
-                print(f"[DOCTOR LLM DEBUG] Sending Payload: {json.dumps(payload)}")
-                res = requests.post(url, headers=headers, json=payload, timeout=15)
-                print(f"[DOCTOR LLM DEBUG] Sarvam Status: {res.status_code}")
-                if res.status_code == 200:
-                    result = res.json()
-                    raw_text = result["choices"][0]["message"]["content"].strip()
-                    response_text = scrub_tech_tags(raw_text)
-                    response_text = strip_markdown(response_text)
-                    
-                    # LANGUAGE GUARDRAIL: If the model responded in Hindi despite English query,
-                    # fallback to a clean, English summary from the raw data.
-                    if contains_hindi(response_text):
-                        print(f"[DOCTOR LLM DEBUG] MODEL RESPONDED IN HINDI - Applying English fallback.")
-                        # Build a concise English summary from the structured log data
-                        emotions = [h.get('emotion', 'neutral') for h in history_data]
-                        from collections import Counter
-                        emotion_counts = Counter(emotions)
-                        top_emotion = emotion_counts.most_common(1)[0][0] if emotion_counts else 'neutral'
-                        log_count = len(history_data)
-                        response_text = (
-                            f"Patient {patient_id} has {log_count} recent emotional logs. "
-                            f"The dominant emotion recorded is {top_emotion}. "
-                        )
-                        if top_emotion in ['sadness', 'fear', 'anger']:
-                            response_text += "Given the elevated distress indicators, consider Music Therapy with 432Hz Binaural Beats."
-                        else:
-                            response_text += "Overall emotional state appears relatively stable."
-                    
-                    if response_text:
-                        print(f"[DOCTOR LLM DEBUG] Success. Summary Length: {len(response_text)}")
-                        return response_text
-                else:
-                    print(f"[DOCTOR LLM DEBUG] Sarvam Error Body: {res.text}")
-            except Exception as e:
-                print("[DOCTOR LLM DEBUG] Connection Error:", e)
-        
-        # If we got here, it means the LLM failed but we DID have a patient ID.
-        # Don't say "ID missing"; say "Summary failed".
-        response_text = f"I retrieved the logs for patient {patient_id}, but I'm having trouble generating a conversational summary right now. Please check their dashboard for the full data."
-        return response_text
-                
-    # Fallback if NO patient ID was found anywhere
+    # 1. Look up High Risk
     if "high" in q_lower and "risk" in q_lower:
         from sqlalchemy import or_
         patients = db.query(User).filter(User.doctor_id == doctor_id).all()
@@ -550,19 +506,66 @@ def handle_doctor_voice_query(query: str, db, doctor_id: int, context_patient_id
             )
         ).all()
         if not alerts: 
-            response_text = "There are currently no patients with HIGH emotional risk alerts."
+            data_context = "System shows no patients currently with HIGH emotional risk alerts."
         else:
             high_risk_ids = list(set([a.user_id for a in alerts]))
-            response_text = f"Yes, you have {len(high_risk_ids)} high emotional risk patients. Patient IDs: {', '.join(map(str, high_risk_ids))}."
-    else:
-        # Improved feedback if ID is missing but intended
-        if any(w in q_lower for w in ["summarize", "summarise", "summary", "history", "trend", "log", "patient", "pt", "id", "मरीज", "समरी"]):
-             response_text = "I heard you mention a patient or summary, but I couldn't catch the Patient ID. Please specify a number."
+            data_context = f"High Risk Patients found: IDs {', '.join(map(str, high_risk_ids))}."
+            
+    # 2. Look up Patient specific logs
+    elif patient_id:
+        logs = db.query(EmotionLog).filter(EmotionLog.user_id == patient_id).order_by(EmotionLog.created_at.desc()).limit(10).all()
+        if not logs:
+            data_context = f"No recent emotional logs found in database for patient ID {patient_id}."
         else:
-             response_text = "I am your Emotional Risk Assessment assistant. Please ask about a specific patient's history, log, or trends."
+            history_data = [{"date": l.created_at.isoformat(), "emotion": l.emotion, "confidence": round(l.confidence, 2)} for l in reversed(logs)]
+            data_context = f"Patient ID {patient_id} Recent Logs:\n{json.dumps(history_data, indent=2)}"
 
-    # FINAL SAFEGUARD: Ensure we never return an empty string
-    if not response_text or not response_text.strip():
-        response_text = "I processed the query but could not generate a specific summary. Please check the patient dashboard for details."
+    # 3. Call LLM for Conversational Human-like Response
+    response_text = ""
+    if LLM_API_KEY:
+        url = "https://api.sarvam.ai/v1/chat/completions"
+        headers = {"api-subscription-key": LLM_API_KEY, "Content-Type": "application/json"}
+        prompt = (
+            "You are Sentia Voice, an incredibly fast, highly intelligent, and conversational clinical AI assistant specifically designed for psychiatrists.\n"
+            f"The doctor just said: '{query}'\n\n"
+            "SYSTEM KNOWLEDGE / RETRIEVED DATA FOR THIS QUERY:\n"
+            f"{data_context}\n\n"
+            "CRITICAL RULES FOR RESPONSE:\n"
+            "1. BE CONVERSATIONAL & HUMAN: Speak naturally like a highly competent, warm human assistant (think J.A.R.V.I.S for doctors).\n"
+            "2. DIRECT ANSWERS: If the doctor just says 'hello' or a greeting, politely greet back and ask how you can assist. If they ask for data, summarize the provided SYSTEM KNOWLEDGE in 1-2 short sentences.\n"
+            "3. NO MARKDOWN: Do not use asterisks, bolding, special characters, or lists. It will be read via TTS.\n"
+            "4. KEEP IT BRIEF: Speak in short, concise sentences to minimize voice lag. Don't over-explain.\n"
+            "5. NO PREACHING: Never say 'Based on the logs...' or 'The database says...'. Just confidently deliver the insight directly.\n"
+            "6. ACTIONABLE: If distress is found (sadness/anxiety), briefly suggest an actionable focus like Music Therapy.\n"
+            "7. ALWAYS reply using standard English vocabulary and Latin script."
+        )
         
+        try:
+            payload = {
+                "model": LLM_MODEL,
+                "messages": [
+                    {"role": "system", "content": "You are a brilliant, conversational human-like virtual assistant for doctors. Respond naturally, maximum 2 sentences."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.4,
+                "max_tokens": 100
+            }
+            res = requests.post(url, headers=headers, json=payload, timeout=12)
+            if res.status_code == 200:
+                result = res.json()
+                raw_text = result["choices"][0]["message"]["content"].strip()
+                response_text = scrub_tech_tags(raw_text)
+                response_text = strip_markdown(response_text)
+            else:
+                print(f"[DOCTOR LLM DEBUG] Sarvam Error: {res.text}")
+        except Exception as e:
+            print("[DOCTOR LLM DEBUG] Exception:", e)
+
+    # Fallback Safeguard just in case API fails
+    if not response_text or not response_text.strip():
+        if patient_id:
+            response_text = f"I retrieved the data for patient {patient_id}, but I am having trouble generating a voice summary at the moment. Please check the dashboard."
+        else:
+            response_text = "I'm sorry, doctor. I encountered a network error while processing your request."
+            
     return response_text

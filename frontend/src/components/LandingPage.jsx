@@ -97,14 +97,15 @@ export default function LandingPage() {
                     <BrainCircuit size={28} />
                     <span>Emotion Drift</span>
                 </Link>
-                <div className="nav-links">
-                    <a href="#research" className="nav-item">Research</a>
-                    <a href="#systems" className="nav-item">Neural Systems</a>
-                    <a href="#technology" className="nav-item">Technology</a>
-                    <a href="#insights" className="nav-item">Insights</a>
+                <div className="landing-nav-links">
+                    <a href="#research" className="landing-nav-item">Research</a>
+                    <a href="#systems" className="landing-nav-item">Neural Systems</a>
+                    <a href="#technology" className="landing-nav-item">Technology</a>
+                    <a href="#insights" className="landing-nav-item">Insights</a>
 
+                    <Link to="/login" className="landing-nav-item">Log In</Link>
                     <Link to="/signup" className="glass-button primary">
-                        Join the Network
+                        Sign Up
                     </Link>
                 </div>
             </motion.nav>
@@ -131,8 +132,8 @@ export default function LandingPage() {
                     </motion.p>
 
                     <motion.div variants={blurVariants} className="cta-group">
-                        <Link to="/signup" className="glass-button primary">Initialize Session</Link>
-                        <Link to="/login" className="glass-button">View Platform <ArrowRight size={18} style={{ marginLeft: '8px' }} /></Link>
+                        <Link to="/signup" className="glass-button primary">Sign Up</Link>
+                        <Link to="/login" className="glass-button">Log In <ArrowRight size={18} style={{ marginLeft: '8px' }} /></Link>
                     </motion.div>
                 </motion.div>
             </section>
@@ -221,20 +222,20 @@ export default function LandingPage() {
             </section>
 
             {/* Research Domains Bento Grid */}
-            <section id="research" className="bento-section">
+            <section id="research" className="landing-bento-section">
                 <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
                     <h2 className="section-title serif-heading">Research Domains</h2>
                     <p style={{ color: 'var(--text-body)', fontSize: '1.2rem' }}>Pioneering intersections of neuroscience and artificial cognition.</p>
                 </div>
 
                 <motion.div 
-                    className="bento-grid"
+                    className="landing-bento-grid"
                     variants={containerVariants}
                     initial="hidden"
                     whileInView="visible"
                     viewport={{ once: true }}
                 >
-                    <motion.div variants={fadeUpVariants} className="bento-item large glass-panel" style={{ background: 'var(--glass-bg)' }}>
+                    <motion.div variants={fadeUpVariants} className="landing-bento-item large glass-panel" style={{ background: 'var(--glass-bg)' }}>
                         <BrainCircuit size={48} style={{ color: 'var(--text-heading)', marginBottom: '1rem' }} />
                         <div>
                             <h3 className="serif-heading">Emotional Intelligence Integration</h3>
@@ -242,19 +243,19 @@ export default function LandingPage() {
                         </div>
                     </motion.div>
                     
-                    <motion.div variants={fadeUpVariants} className="bento-item medium glass-panel">
+                    <motion.div variants={fadeUpVariants} className="landing-bento-item medium glass-panel">
                         <Network size={32} style={{ color: '#D946EF', marginBottom: '1rem' }} />
                         <h3 className="serif-heading">Neural AI Systems</h3>
                         <p>Architecting bio-mimetic network structures for processing.</p>
                     </motion.div>
 
-                    <motion.div variants={fadeUpVariants} className="bento-item glass-panel">
+                    <motion.div variants={fadeUpVariants} className="landing-bento-item glass-panel">
                         <Activity size={32} style={{ color: '#38BDF8', marginBottom: '1rem' }} />
                         <h3 className="serif-heading">Drift Analysis</h3>
                         <p>Quantifying cognitive state changes over temporal axes.</p>
                     </motion.div>
 
-                    <motion.div variants={fadeUpVariants} className="bento-item glass-panel">
+                    <motion.div variants={fadeUpVariants} className="landing-bento-item glass-panel">
                         <MessageSquare size={32} style={{ color: '#4ADE80', marginBottom: '1rem' }} />
                         <h3 className="serif-heading">Human-AI Interaction</h3>
                         <p>Frictionless interfaces bypassing traditional syntactical barriers.</p>
