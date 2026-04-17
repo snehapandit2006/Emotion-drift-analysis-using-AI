@@ -20,7 +20,7 @@ from routes import report_routes, self_emotion_routes, fusion_routes, behavioral
 # SINGLE FastAPI APP
 # -----------------------------
 app = FastAPI(title="Emotion Drift API")
-# Force Reload Anchor: 2026-02-26 22:50
+# Force Reload Anchor: 2026-04-17 08:50
 from ml.inference import BOT_MODEL_NAME
 print(f"Sentia AI: Phase 2 Active - Professional AI Voice Therapist (Model: {BOT_MODEL_NAME})")
 
