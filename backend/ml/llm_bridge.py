@@ -355,6 +355,10 @@ def generate_therapeutic_response(user_text: str, fused_emotion: str, dialogue_c
                     if g_name.lower() in clean_resp.lower():
                         prescribed_game = g_name
                         break
+                
+                # If still no game but mentioned "game" or "puzzle", default to Flow
+                if (not prescribed_game or prescribed_game.upper() == "NONE") and any(w in clean_resp.lower() for w in ["game", "puzzle"]):
+                    prescribed_game = "Flow"
             
             # 5. SALVAGE LOGIC: If cleaning destroyed everything, try to find text lines
             if not clean_resp and raw_text:

@@ -97,51 +97,44 @@ const SentiaFullScreenChat = ({ onClose }) => {
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [isTtsEnabled, setIsTtsEnabled] = useState(true);
     const [selectedVoice, setSelectedVoice] = useState('ishita');
-    const [viewMode, setViewMode] = useState('chat'); // 'chat' or 'viz'
-    const [mouthVolume, setMouthVolume] = useState(0);
+    const [viewMode, setViewMode] = useState('chat');
     const [showSidebar, setShowSidebar] = useState(false);
     const chatEndRef = useRef(null);
     const audioPlayerRef = useRef(null);
 
     // Web Speech API
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognitionRef = useRef(null);
-    const inputTextRef = useRef('');
-
-    useEffect(() => { inputTextRef.current = inputText; }, [inputText]);
 
     useEffect(() => {
-        if (SpeechRecognition) {
-            const recognition = new SpeechRecognition();
-            recognition.continuous = false;
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SR) {
+            const recognition = new SR();
+            recognition.continuous = true;
             recognition.lang = 'en-US';
             recognition.interimResults = true;
 
             recognition.onresult = (event) => {
-                const transcript = Array.from(event.results)
-                    .map(result => result[0])
-                    .map(result => result.transcript)
-                    .join('');
-                
-                setInputText(transcript);
-
-                if (event.results[0].isFinal) {
-                    setIsListening(false);
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript + ' ';
+                    }
+                }
+                if (finalTranscript) {
+                    setInputText(prev => prev + finalTranscript);
                 }
             };
 
-            recognition.onerror = (event) => {
-                console.error("Speech Recognition Error:", event.error);
+            recognition.onerror = (e) => {
+                console.error('Speech error:', e.error);
                 setIsListening(false);
             };
 
-            recognition.onend = () => {
-                setIsListening(false);
-            };
+            recognition.onend = () => setIsListening(false);
 
             recognitionRef.current = recognition;
         }
-    }, [SpeechRecognition]);
+    }, []);
 
     const toggleListening = () => {
         if (!recognitionRef.current) {
@@ -162,10 +155,7 @@ const SentiaFullScreenChat = ({ onClose }) => {
             try {
                 const { data } = await getSentiaConversations();
                 setConversations(data);
-                if (data.length > 0) {
-                    loadHistory(data[0].id);
-                }
-            } catch (err) { console.error(err); }
+            } catch (err) { console.error('Failed to load conversations:', err); }
         };
         init();
     }, []);
@@ -238,10 +228,21 @@ const SentiaFullScreenChat = ({ onClose }) => {
                 loadConversations();
             }
 
+            // Update the last user message with the drift analysis
+            setMessages(prev => {
+                const newMsgs = [...prev];
+                for (let i = newMsgs.length - 1; i >= 0; i--) {
+                    if (!newMsgs[i].isBot) {
+                        newMsgs[i].emotion = data.emotion;
+                        break;
+                    }
+                }
+                return newMsgs;
+            });
+
             const botMsg = {
                 text: data.response,
                 isBot: true,
-                emotion: data.emotion,
                 trace: data.trace,
                 gameLink: data.game_link,
                 prescribedGame: data.prescribed_game,
@@ -253,7 +254,11 @@ const SentiaFullScreenChat = ({ onClose }) => {
             window.dispatchEvent(new CustomEvent('refresh-dashboard'));
 
             if (isTtsEnabled) {
-                speak(data.response); // Async, do not block UI render
+                if (data.first_chunk_b64 || (data.tts_urls && data.tts_urls.length > 0)) {
+                    playChunks(data.first_chunk_b64, data.tts_urls);
+                } else {
+                    speak(data.response);
+                }
             }
 
         } catch (err) {
@@ -261,6 +266,58 @@ const SentiaFullScreenChat = ({ onClose }) => {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const playChunks = async (firstChunkB64, ttsUrls) => {
+        if (!isTtsEnabled) return;
+        
+        setIsSpeaking(true);
+        const urlsToPlay = [];
+        
+        if (firstChunkB64) {
+            urlsToPlay.push(`data:audio/wav;base64,${firstChunkB64}`);
+            if (ttsUrls && ttsUrls.length > 0) {
+                const restUrls = ttsUrls.slice(1).map(url => `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}${url}`);
+                urlsToPlay.push(...restUrls);
+            }
+        } else if (ttsUrls && ttsUrls.length > 0) {
+            const allUrls = ttsUrls.map(url => `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}${url}`);
+            urlsToPlay.push(...allUrls);
+        } else {
+            setIsSpeaking(false);
+            return;
+        }
+
+        let currentIndex = 0;
+
+        const playNext = () => {
+            if (currentIndex >= urlsToPlay.length) {
+                setIsSpeaking(false);
+                return;
+            }
+
+            const audio = new Audio(urlsToPlay[currentIndex]);
+            audioPlayerRef.current = audio;
+
+            audio.onended = () => {
+                currentIndex++;
+                playNext();
+            };
+
+            audio.onerror = () => {
+                console.error("Failed to play audio chunk:", urlsToPlay[currentIndex]);
+                currentIndex++;
+                playNext();
+            };
+
+            audio.play().catch(e => {
+                console.error("Audio play error:", e);
+                currentIndex++;
+                playNext();
+            });
+        };
+
+        playNext();
     };
 
     const speak = async (text) => {
@@ -345,6 +402,37 @@ const SentiaFullScreenChat = ({ onClose }) => {
                             VISUALIZER
                         </button>
                     </div>
+
+                    {/* TTS Toggle Button */}
+                    <button
+                        onClick={() => {
+                            const next = !isTtsEnabled;
+                            setIsTtsEnabled(next);
+                            if (!next && audioPlayerRef.current) {
+                                audioPlayerRef.current.pause();
+                                setIsSpeaking(false);
+                            }
+                        }}
+                        title={isTtsEnabled ? 'Mute Sentia voice' : 'Unmute Sentia voice'}
+                        style={{
+                            background: isTtsEnabled ? 'rgba(160,132,232,0.15)' : 'rgba(255,255,255,0.03)',
+                            border: isTtsEnabled ? '1px solid rgba(160,132,232,0.5)' : '1px solid var(--glass-border)',
+                            borderRadius: '12px',
+                            color: isTtsEnabled ? 'var(--accent-purple)' : 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            padding: '0.5rem 1rem',
+                            fontSize: '0.7rem',
+                            fontWeight: '800',
+                            letterSpacing: '1px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.3s'
+                        }}
+                    >
+                        {isTtsEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                        {isTtsEnabled ? 'VOICE ON' : 'VOICE OFF'}
+                    </button>
                     
                     <select 
                         value={selectedVoice} 
@@ -369,7 +457,11 @@ const SentiaFullScreenChat = ({ onClose }) => {
                         <div 
                             style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2rem', padding: '0 2rem', maxWidth: '800px', margin: '0 auto', width: '100%' }}
                         >
-                            {messages.map((msg, i) => (
+                            {messages.map((msg, i) => {
+                                const prevMsg = i > 0 ? messages[i - 1] : null;
+                                const userEmotion = msg.isBot && prevMsg && !prevMsg.isBot ? prevMsg.emotion : null;
+                                
+                                return (
                                 <motion.div 
                                     key={i}
                                     initial={{ opacity: 0, y: 10 }}
@@ -388,9 +480,9 @@ const SentiaFullScreenChat = ({ onClose }) => {
                                         boxShadow: msg.isBot ? 'none' : '0 10px 30px rgba(160, 132, 232, 0.2)'
                                     }}>
                                         <p style={{ margin: 0, lineHeight: 1.6, fontSize: '0.95rem' }}>{msg.text}</p>
-                                        {msg.emotion && msg.isBot && (
-                                            <div style={{ marginTop: '0.75rem', fontSize: '0.6rem', fontWeight: '900', color: 'var(--accent-green)', letterSpacing: '1px' }}>
-                                                ANALYSIS: {msg.emotion.toUpperCase()}
+                                        {userEmotion && msg.isBot && (
+                                            <div style={{ marginTop: '0.75rem', fontSize: '0.65rem', fontWeight: '900', color: 'var(--accent-purple)', letterSpacing: '1px', background: 'rgba(160, 132, 232, 0.1)', border: '1px solid rgba(160, 132, 232, 0.3)', padding: '6px 10px', borderRadius: '6px', display: 'inline-block' }}>
+                                                EMOTION DRIFT: {userEmotion.toUpperCase()}
                                             </div>
                                         )}
                                         {msg.gameLink && msg.isBot && (
@@ -438,7 +530,8 @@ const SentiaFullScreenChat = ({ onClose }) => {
                                         {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </div>
                                 </motion.div>
-                            ))}
+                                );
+                            })}
                             {isLoading && (
                                 <div style={{ alignSelf: 'flex-start', padding: '1.25rem', display: 'flex', gap: '4px' }}>
                                     <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-purple)' }} />
