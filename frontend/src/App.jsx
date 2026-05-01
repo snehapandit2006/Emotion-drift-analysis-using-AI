@@ -37,7 +37,8 @@ import {
   getSelfEmotionDistribution,
   getFusionAnalytics,
   getPatientTherapies,
-  updateProfile
+  updateProfile,
+  getWebSocketUrl
 } from "./api";
 // Assets
 import logoFinal from './assets/logo_final.png';
@@ -156,6 +157,7 @@ function Dashboard() {
   const [fusion, setFusion] = useState(null);
   const [therapies, setTherapies] = useState([]);
   const [activeTherapyId, setActiveTherapyId] = useState(null);
+  const [advancedAnalytics, setAdvancedAnalytics] = useState(null);
   
   // Use refs for audio objects so they don't trigger or get caught in re-renders
   const audioContextRef = useRef(null);
@@ -166,7 +168,11 @@ function Dashboard() {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [monitoring, setMonitoring] = useState(true);
-  const [viewMode, setViewMode] = useState('dashboard'); // 'dashboard', 'table', 'chat', 'settings', 'meditation', 'media', 'community'
+  const [viewMode, setViewMode] = useState('dashboard');
+  const [mapQuery, setMapQuery] = useState('mental health support');
+  const [selectedMapItem, setSelectedMapItem] = useState(null);
+  const [showRoute, setShowRoute] = useState(false);
+ // 'dashboard', 'table', 'chat', 'settings', 'meditation', 'media', 'community'
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const dashboardRef = useRef(null);
@@ -174,7 +180,7 @@ function Dashboard() {
   const load = useCallback(async () => {
     if (!user || !user.id) return;
     try {
-      const [t, d, dr, a, c, sh, sd, f, th] = await Promise.all([
+      const [t, d, dr, a, c, sh, sd, f, th, aa] = await Promise.all([
         getTimeline(range),
         getDistribution(),
         getDrift(),
@@ -183,7 +189,8 @@ function Dashboard() {
         getSelfEmotionHistory(range),
         getSelfEmotionDistribution(range),
         getFusionAnalytics(range === '1h' ? 0 : range === '24h' ? 1 : 7),
-        getPatientTherapies(user.id).catch(() => ({ data: [] }))
+        getPatientTherapies(user.id).catch(() => ({ data: [] })),
+        API.get("/analytics/advanced").then(res => res.data).catch(() => null)
       ]);
 
       setTimeline(t.data);
@@ -194,6 +201,7 @@ function Dashboard() {
       setSelfHistory(sh.data);
       setSelfDistribution(sd.data);
       setFusion(f.data);
+      if (aa) setAdvancedAnalytics(aa);
       
       setTherapies(prev => {
           const newTherapies = th.data || [];
@@ -211,14 +219,32 @@ function Dashboard() {
     load();
   }, [load]);
 
-  // Periodic sync every 30 seconds
+  // WebSocket connection for real-time updates
   useEffect(() => {
-    const interval = setInterval(() => {
-      console.log("Auto-syncing dashboard...");
-      load();
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [load]);
+    if (!user) return;
+    const token = localStorage.getItem('token');
+    const wsUrl = `${getWebSocketUrl()}/ws/dashboard?token=${token}`;
+    const ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => console.log("Dashboard WebSocket Connected");
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'intelligence_update' || data.type === 'risk_escalation') {
+           console.log("Real-time update received, refreshing dashboard...");
+           load();
+           if (data.type === 'risk_escalation') {
+               setAlerts(prev => [{message: data.data.message, created_at: new Date().toISOString(), metric_type: 'CRITICAL'}, ...prev]);
+           }
+        }
+      } catch (e) {
+        console.error("WS parse error", e);
+      }
+    };
+    ws.onerror = (e) => console.error("WS error", e);
+    
+    return () => ws.close();
+  }, [user, load]);
 
   // Listen for global refresh events (e.g. from Sentia or Mirror)
   useEffect(() => {
@@ -527,7 +553,7 @@ function Dashboard() {
           <div className={`nav-item ${viewMode === 'therapy' ? 'active' : ''}`} onClick={() => setViewMode('therapy')}>
             <Timer size={18} /> <span>Breathing Exercise</span>
           </div>
-          {user?.doctor_id && (
+          {user?.role === 'patient' && user?.doctor_id && (
               <div className={`nav-item ${viewMode === 'doctor-chat' ? 'active' : ''}`} onClick={() => setViewMode('doctor-chat')}>
                 <MessageSquare size={18} /> <span>Chat with Doctor</span>
               </div>
@@ -847,40 +873,168 @@ function Dashboard() {
                         <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Find therapists, clinics, and wellness centers near you.</p>
                       </div>
                     </div>
-                    <div style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--glass-border)', height: '480px', position: 'relative', background: '#0F1117', backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.1) 0%, transparent 60%), linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '100% 100%, 40px 40px, 40px 40px' }}>
-                        {/* Mock Map Pins */}
-                        <div style={{ position: 'absolute', top: '30%', left: '40%' }}>
-                            <div style={{ width: '12px', height: '12px', background: 'var(--accent-green)', borderRadius: '50%', boxShadow: '0 0 15px var(--accent-green)' }}></div>
-                            <div style={{ position: 'absolute', top: '-30px', left: '-50px', background: 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', color: '#fff', border: '1px solid var(--accent-green)', whiteSpace: 'nowrap' }}>Serenity Clinic</div>
-                        </div>
-                        <div style={{ position: 'absolute', top: '60%', left: '70%' }}>
-                            <div style={{ width: '12px', height: '12px', background: 'var(--accent-purple)', borderRadius: '50%', boxShadow: '0 0 15px var(--accent-purple)' }}></div>
-                            <div style={{ position: 'absolute', top: '-30px', left: '-60px', background: 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', color: '#fff', border: '1px solid var(--accent-purple)', whiteSpace: 'nowrap' }}>Dr. Mercer's Office</div>
-                        </div>
-                        <div style={{ position: 'absolute', top: '45%', left: '20%' }}>
-                            <div style={{ width: '12px', height: '12px', background: 'var(--accent-blue)', borderRadius: '50%', boxShadow: '0 0 15px var(--accent-blue)' }}></div>
-                            <div style={{ position: 'absolute', top: '-30px', left: '-40px', background: 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', color: '#fff', border: '1px solid var(--accent-blue)', whiteSpace: 'nowrap' }}>Wellness Center</div>
-                        </div>
-                        
-                        {/* Interactive Overlay */}
-                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15, 17, 23, 0.4)', backdropFilter: 'blur(2px)' }}>
-                            <a href="https://www.google.com/maps/search/mental+health+clinic+near+me" target="_blank" rel="noopener noreferrer" className="glass-panel" style={{ padding: '24px 32px', textAlign: 'center', textDecoration: 'none', transition: 'all 0.3s ease', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                <MapPin size={32} color="var(--accent-purple)" style={{ marginBottom: '12px' }} />
-                                <h3 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', color: '#fff', fontFamily: 'var(--font-heading)' }}>View Nearby Support</h3>
-                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Click to open interactive map in a new tab</p>
-                            </a>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
-                      <a href="https://www.google.com/maps/search/psychiatrist+near+me" target="_blank" rel="noopener noreferrer" className="glass-button" style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem' }}>
+                    
+                    {/* Category Selector Menu */}
+                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                      <button 
+                        onClick={() => { setMapQuery('psychiatrist near me'); setSelectedMapItem(null); setShowRoute(false); }}
+                        className={`glass-button ${mapQuery.includes('psychiatrist') ? 'primary' : ''}`}
+                        style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem' }}
+                      >
                         <MapPin size={14} style={{ marginRight: '6px' }} /> Find Psychiatrists
-                      </a>
-                      <a href="https://www.google.com/maps/search/mental+health+clinic+near+me" target="_blank" rel="noopener noreferrer" className="glass-button" style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem' }}>
+                      </button>
+                      <button 
+                        onClick={() => { setMapQuery('mental health clinic near me'); setSelectedMapItem(null); setShowRoute(false); }}
+                        className={`glass-button ${mapQuery.includes('clinic') ? 'primary' : ''}`}
+                        style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem' }}
+                      >
                         <MapPin size={14} style={{ marginRight: '6px' }} /> Mental Health Clinics
-                      </a>
-                      <a href="https://www.google.com/maps/search/yoga+wellness+center+near+me" target="_blank" rel="noopener noreferrer" className="glass-button" style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem' }}>
+                      </button>
+                      <button 
+                        onClick={() => { setMapQuery('yoga wellness center near me'); setSelectedMapItem(null); setShowRoute(false); }}
+                        className={`glass-button ${mapQuery.includes('wellness') ? 'primary' : ''}`}
+                        style={{ fontSize: '0.8rem', padding: '0.6rem 1.2rem' }}
+                      >
                         <MapPin size={14} style={{ marginRight: '6px' }} /> Wellness Centers
-                      </a>
+                      </button>
+                    </div>
+
+                    <div style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--glass-border)', height: '480px', position: 'relative', background: '#0F1117', backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.1) 0%, transparent 60%), linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '100% 100%, 40px 40px, 40px 40px' }}>
+                        
+                        {/* Mock User Location Center */}
+                        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 5 }}>
+                            <div className="pulse" style={{ width: '16px', height: '16px', background: '#fff', borderRadius: '50%', boxShadow: '0 0 20px #fff', border: '3px solid var(--accent-blue)' }}></div>
+                            <div style={{ position: 'absolute', top: '20px', left: '-20px', color: '#fff', fontSize: '10px', fontWeight: 'bold', whiteSpace: 'nowrap', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>You are here</div>
+                        </div>
+
+                        {/* SVG Routing Line */}
+                        {showRoute && selectedMapItem && (
+                          <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 4 }}>
+                            <defs>
+                              <linearGradient id="routeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#fff" stopOpacity="0.8" />
+                                <stop offset="100%" stopColor={selectedMapItem.color} stopOpacity="0.8" />
+                              </linearGradient>
+                              <filter id="glow">
+                                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                                <feMerge>
+                                  <feMergeNode in="coloredBlur"/>
+                                  <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                              </filter>
+                            </defs>
+                            <line 
+                              x1="50%" y1="50%" 
+                              x2={selectedMapItem.left} y2={selectedMapItem.top} 
+                              stroke="url(#routeGrad)" strokeWidth="4" strokeDasharray="8 8"
+                              filter="url(#glow)"
+                              className="route-animation"
+                            />
+                          </svg>
+                        )}
+
+                        {/* Dynamic Map Pins based on Category */}
+                        {mapQuery.includes('psychiatrist') ? (
+                          <>
+                            <div onClick={() => { setSelectedMapItem({ name: 'Dr. Mercer, MD', type: 'Psychiatrist', color: 'var(--accent-green)', top: '30%', left: '40%', rating: '4.9', distance: '1.2 miles', phone: '(555) 123-4567', address: '120 Neuro Ave, Suite 300' }); setShowRoute(false); }} style={{ position: 'absolute', top: '30%', left: '40%', cursor: 'pointer', zIndex: 10 }}>
+                                <div className="pulse" style={{ width: '14px', height: '14px', background: 'var(--accent-green)', borderRadius: '50%', boxShadow: '0 0 15px var(--accent-green)' }}></div>
+                                <div style={{ position: 'absolute', top: '-30px', left: '-50px', background: selectedMapItem?.name === 'Dr. Mercer, MD' ? 'var(--accent-green)' : 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', color: selectedMapItem?.name === 'Dr. Mercer, MD' ? '#000' : '#fff', border: '1px solid var(--accent-green)', whiteSpace: 'nowrap', fontWeight: 'bold' }}>Dr. Mercer, MD</div>
+                            </div>
+                            <div onClick={() => { setSelectedMapItem({ name: 'City Psychiatry', type: 'Clinic', color: 'var(--accent-purple)', top: '60%', left: '70%', rating: '4.7', distance: '3.4 miles', phone: '(555) 987-6543', address: '850 Wellness Blvd' }); setShowRoute(false); }} style={{ position: 'absolute', top: '60%', left: '70%', cursor: 'pointer', zIndex: 10 }}>
+                                <div className="pulse" style={{ width: '14px', height: '14px', background: 'var(--accent-purple)', borderRadius: '50%', boxShadow: '0 0 15px var(--accent-purple)' }}></div>
+                                <div style={{ position: 'absolute', top: '-30px', left: '-60px', background: selectedMapItem?.name === 'City Psychiatry' ? 'var(--accent-purple)' : 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', color: selectedMapItem?.name === 'City Psychiatry' ? '#fff' : '#fff', border: '1px solid var(--accent-purple)', whiteSpace: 'nowrap', fontWeight: 'bold' }}>City Psychiatry</div>
+                            </div>
+                            <div onClick={() => { setSelectedMapItem({ name: 'Dr. Chen', type: 'Psychiatrist', color: 'var(--accent-blue)', top: '45%', left: '20%', rating: '4.8', distance: '0.8 miles', phone: '(555) 456-7890', address: '45 Serenity Lane' }); setShowRoute(false); }} style={{ position: 'absolute', top: '45%', left: '20%', cursor: 'pointer', zIndex: 10 }}>
+                                <div className="pulse" style={{ width: '14px', height: '14px', background: 'var(--accent-blue)', borderRadius: '50%', boxShadow: '0 0 15px var(--accent-blue)' }}></div>
+                                <div style={{ position: 'absolute', top: '-30px', left: '-40px', background: selectedMapItem?.name === 'Dr. Chen' ? 'var(--accent-blue)' : 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', color: selectedMapItem?.name === 'Dr. Chen' ? '#fff' : '#fff', border: '1px solid var(--accent-blue)', whiteSpace: 'nowrap', fontWeight: 'bold' }}>Dr. Chen</div>
+                            </div>
+                          </>
+                        ) : mapQuery.includes('clinic') ? (
+                          <>
+                            <div onClick={() => { setSelectedMapItem({ name: 'Hope Clinic', type: 'Clinic', color: 'var(--accent-purple)', top: '25%', left: '55%', rating: '4.6', distance: '2.1 miles', phone: '(555) 333-2222', address: '200 Healing Way' }); setShowRoute(false); }} style={{ position: 'absolute', top: '25%', left: '55%', cursor: 'pointer', zIndex: 10 }}>
+                                <div className="pulse" style={{ width: '14px', height: '14px', background: 'var(--accent-purple)', borderRadius: '50%', boxShadow: '0 0 15px var(--accent-purple)' }}></div>
+                                <div style={{ position: 'absolute', top: '-30px', left: '-60px', background: selectedMapItem?.name === 'Hope Clinic' ? 'var(--accent-purple)' : 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', color: '#fff', border: '1px solid var(--accent-purple)', whiteSpace: 'nowrap', fontWeight: 'bold' }}>Hope Clinic</div>
+                            </div>
+                            <div onClick={() => { setSelectedMapItem({ name: 'Serenity Mental Health', type: 'Clinic', color: 'var(--accent-green)', top: '70%', left: '30%', rating: '4.5', distance: '4.5 miles', phone: '(555) 444-5555', address: '77 Peace Court' }); setShowRoute(false); }} style={{ position: 'absolute', top: '70%', left: '30%', cursor: 'pointer', zIndex: 10 }}>
+                                <div className="pulse" style={{ width: '14px', height: '14px', background: 'var(--accent-green)', borderRadius: '50%', boxShadow: '0 0 15px var(--accent-green)' }}></div>
+                                <div style={{ position: 'absolute', top: '-30px', left: '-40px', background: selectedMapItem?.name === 'Serenity Mental Health' ? 'var(--accent-green)' : 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', color: selectedMapItem?.name === 'Serenity Mental Health' ? '#000' : '#fff', border: '1px solid var(--accent-green)', whiteSpace: 'nowrap', fontWeight: 'bold' }}>Serenity Mental Health</div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div onClick={() => { setSelectedMapItem({ name: 'Zen Wellness Center', type: 'Wellness Center', color: 'var(--accent-blue)', top: '50%', left: '50%', rating: '4.9', distance: '1.0 miles', phone: '(555) 888-9999', address: '100 Zen Plaza' }); setShowRoute(false); }} style={{ position: 'absolute', top: '50%', left: '50%', cursor: 'pointer', zIndex: 10 }}>
+                                <div className="pulse" style={{ width: '14px', height: '14px', background: 'var(--accent-blue)', borderRadius: '50%', boxShadow: '0 0 15px var(--accent-blue)' }}></div>
+                                <div style={{ position: 'absolute', top: '-30px', left: '-50px', background: selectedMapItem?.name === 'Zen Wellness Center' ? 'var(--accent-blue)' : 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', color: '#fff', border: '1px solid var(--accent-blue)', whiteSpace: 'nowrap', fontWeight: 'bold' }}>Zen Wellness Center</div>
+                            </div>
+                            <div onClick={() => { setSelectedMapItem({ name: 'Lotus Yoga', type: 'Wellness Center', color: 'var(--accent-gold)', top: '35%', left: '75%', rating: '4.8', distance: '2.8 miles', phone: '(555) 777-6666', address: '33 Blossom St' }); setShowRoute(false); }} style={{ position: 'absolute', top: '35%', left: '75%', cursor: 'pointer', zIndex: 10 }}>
+                                <div className="pulse" style={{ width: '14px', height: '14px', background: 'var(--accent-gold)', borderRadius: '50%', boxShadow: '0 0 15px var(--accent-gold)' }}></div>
+                                <div style={{ position: 'absolute', top: '-30px', left: '-40px', background: selectedMapItem?.name === 'Lotus Yoga' ? 'var(--accent-gold)' : 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', color: selectedMapItem?.name === 'Lotus Yoga' ? '#000' : '#fff', border: '1px solid var(--accent-gold)', whiteSpace: 'nowrap', fontWeight: 'bold' }}>Lotus Yoga</div>
+                            </div>
+                          </>
+                        )}
+                        
+                        {/* Info Overlay */}
+                        <div style={{ position: 'absolute', bottom: '20px', left: '20px', background: 'rgba(26, 29, 38, 0.8)', backdropFilter: 'blur(8px)', padding: '12px 20px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)', fontSize: '0.9rem', fontWeight: '600' }}>
+                                <div className="dot-pulse" style={{ width: '8px', height: '8px', background: 'var(--accent-green)', borderRadius: '50%' }}></div>
+                                Active Radar: {mapQuery.includes('psychiatrist') ? 'Psychiatrists' : mapQuery.includes('clinic') ? 'Clinics' : 'Wellness'}
+                            </div>
+                        </div>
+
+                        {/* Location Details Panel Overlay */}
+                        <AnimatePresence>
+                          {selectedMapItem && (
+                            <motion.div 
+                              initial={{ x: 300, opacity: 0 }}
+                              animate={{ x: 0, opacity: 1 }}
+                              exit={{ x: 300, opacity: 0 }}
+                              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                              style={{ 
+                                position: 'absolute', top: '20px', right: '20px', bottom: '20px', width: '280px', 
+                                background: 'rgba(15, 17, 23, 0.95)', backdropFilter: 'blur(10px)',
+                                borderRadius: '16px', border: `1px solid ${selectedMapItem.color}`,
+                                padding: '24px', display: 'flex', flexDirection: 'column', zIndex: 20,
+                                boxShadow: `-10px 0 30px rgba(0,0,0,0.5)`
+                              }}
+                            >
+                              <button onClick={() => setSelectedMapItem(null)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                <X size={20} />
+                              </button>
+                              
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: selectedMapItem.color, boxShadow: `0 0 10px ${selectedMapItem.color}` }}></div>
+                                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-secondary)', fontWeight: '700' }}>{selectedMapItem.type}</span>
+                              </div>
+                              
+                              <h3 style={{ margin: '0 0 16px 0', fontSize: '1.4rem', color: '#fff', fontFamily: 'var(--font-heading)' }}>{selectedMapItem.name}</h3>
+                              
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
+                                <span style={{ background: 'rgba(255, 215, 0, 0.1)', color: '#FFD700', padding: '4px 8px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 'bold' }}>★ {selectedMapItem.rating}</span>
+                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{selectedMapItem.distance} away</span>
+                              </div>
+
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                  <MapPin size={18} color="var(--text-secondary)" style={{ marginTop: '2px' }} />
+                                  <span style={{ color: 'var(--text-main)', fontSize: '0.9rem', lineHeight: 1.5 }}>{selectedMapItem.address}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  <Activity size={18} color="var(--text-secondary)" />
+                                  <span style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>{selectedMapItem.phone}</span>
+                                </div>
+                              </div>
+
+                              <button 
+                                onClick={() => setShowRoute(!showRoute)}
+                                className="glass-button" 
+                                style={{ width: '100%', marginTop: 'auto', padding: '12px', background: showRoute ? 'rgba(255,255,255,0.05)' : selectedMapItem.color, color: showRoute ? 'var(--text-main)' : '#000', border: 'none' }}
+                              >
+                                {showRoute ? 'Clear Route' : 'Get Directions'}
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
                     </div>
                   </div>
                 </div>
@@ -915,7 +1069,7 @@ function Dashboard() {
                           </div>
                           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                              <p style={{ fontSize: '1.05rem', lineHeight: 1.6, color: 'var(--text-main)', margin: '0 0 24px 0' }}>
-                               Your state is <span style={{ color: 'var(--accent-green)', fontWeight: '600' }}>remarkably serene</span> today. Consistent meditation and voice logging have contributed to a 12% increase in stability.
+                               Your state is <span style={{ color: 'var(--accent-green)', fontWeight: '600' }}>remarkably serene</span> today. Consistent meditation and Sentia logging have contributed to a 12% increase in stability.
                              </p>
                              <div style={{ display: 'flex', gap: '16px' }}>
                                <div className="stat-sub-card">
@@ -936,7 +1090,7 @@ function Dashboard() {
                        <div className="sparkle-icon"><Sparkles size={18} color="#fff" /></div>
                        <h3 style={{ fontSize: '1.25rem', marginTop: '16px', marginBottom: '12px', fontWeight: '700' }}>Deep Insight</h3>
                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6, flex: 1, marginBottom: '24px' }}>
-                         "Your emotional drift is currently low. Introspection is high today—consider a voice session to capture the subtle nuances of this clarity."
+                         "Your emotional drift is currently low. Introspection is high today—consider a Sentia session to capture the subtle nuances of this clarity."
                        </p>
                        <button className="glass-button action-btn-purple" onClick={() => setViewMode('sentia')} style={{ width: '100%', padding: '12px' }}>
                          Start Deep Dive
@@ -998,7 +1152,36 @@ function Dashboard() {
                      </motion.div>
                   </div>
 
-                  {/* Horizontal Action Bars */}
+                   {/* ELITE ANALYTICS CARDS */}
+                   {advancedAnalytics && (
+                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '24px', marginBottom: '24px' }}>
+                       <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column' }}>
+                           <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '12px' }}>Emotional Recovery Rate</div>
+                           <div style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--accent-green)' }}>{advancedAnalytics.recovery_rate}</div>
+                           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '8px' }}>Bounce-back speed from distress</div>
+                       </div>
+                       <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column' }}>
+                           <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '12px' }}>Most Frequent Trigger</div>
+                           <div style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--accent-purple)' }}>{advancedAnalytics.frequent_trigger}</div>
+                           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '8px' }}>Based on recent context</div>
+                       </div>
+                       <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column' }}>
+                           <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '12px' }}>Hidden Emotion Score</div>
+                           <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#ff4757' }}>{advancedAnalytics.hidden_emotion_score}</div>
+                           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '8px' }}>Subconscious distress markers</div>
+                       </div>
+                       <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gridColumn: 'span 2' }}>
+                           <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '12px' }}>Repeated Topic Cloud</div>
+                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+                               {advancedAnalytics.topics.map((t, idx) => (
+                                   <div key={idx} style={{ padding: '6px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '16px', fontSize: '0.8rem', color: 'var(--text-main)' }}>{t}</div>
+                               ))}
+                           </div>
+                       </div>
+                   </div>
+                   )}
+
+                   {/* Horizontal Action Bars */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) minmax(200px, 1fr) minmax(200px, 1fr)', gap: '16px', marginTop: '0' }}>
                     <button className="glass-panel dash-action-btn" onClick={() => setViewMode('table')}>
                       <div className="dash-action-icon blue"><Activity size={20} color="#fff" /></div>
@@ -1006,7 +1189,7 @@ function Dashboard() {
                     </button>
                     <button className="glass-panel dash-action-btn" onClick={() => setViewMode('sentia')}>
                       <div className="dash-action-icon pink"><Activity size={20} color="#fff" /></div>
-                      <span>Voice Session</span>
+                      <span>Sentia Session</span>
                     </button>
                     <button className="glass-panel dash-action-btn" onClick={() => setViewMode('vitals')}>
                       <div className="dash-action-icon green"><Activity size={20} color="#fff" /></div>

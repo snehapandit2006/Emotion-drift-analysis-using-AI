@@ -292,9 +292,11 @@ export default function DriftInsights() {
           <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: '800', letterSpacing: '2px', textTransform: 'uppercase' }}>Recommended Actions</h2>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {profile.preventions.map((p, i) => (
-            <PreventionCard key={i} {...p} index={i} />
-          ))}
+          {profile.preventions
+            .filter(p => p.title !== 'Talk to Your Therapist' || user?.doctor_id)
+            .map((p, i) => (
+              <PreventionCard key={i} {...p} index={i} />
+            ))}
         </div>
       </div>
 

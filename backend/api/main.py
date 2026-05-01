@@ -409,3 +409,45 @@ def compare(range: str = "24h", current_user: User = Depends(get_current_user)):
             "previous_count": len(prev_logs)
         }
     }
+
+# -----------------------------
+# Advanced Analytics (Elite Dashboard)
+# -----------------------------
+@app.get("/analytics/advanced")
+def advanced_analytics(current_user: User = Depends(get_current_user)):
+    db = SessionLocal()
+    try:
+        from ml.dialogue_manager import manager as dm
+        state = dm.get_state(current_user.id)
+        
+        # 1. Hidden Emotion Score (Contradictions)
+        # For simplicity in MVP, we look if there's an active contradiction
+        has_contradiction = bool(state.get("contradiction"))
+        hidden_score = 85 if has_contradiction else 15
+        
+        # 2. Mood Stability Index
+        volatility = state.get("volatility", 0.0)
+        stability_index = round((1.0 - volatility) * 100)
+        
+        # 3. Emotional Recovery Rate (How fast they return to neutral/joy from distress)
+        # Approximation based on stability
+        recovery_rate = round(min(100, 40 + (stability_index * 0.5)))
+        
+        # 4. Repeated Topic Cloud
+        topics = ["Work Stress", "Relationship", "Sleep Anxiety", "Future", "Overthinking"]
+        # In a real app, extracted from ChromaDB/LLM
+        import random
+        # Just random subset for visual for now
+        
+        # 5. Most Frequent Trigger
+        trigger = "Lack of Sleep" if hidden_score > 50 else "Work Deadlines"
+        
+        return {
+            "recovery_rate": f"{recovery_rate}%",
+            "frequent_trigger": trigger,
+            "hidden_emotion_score": f"{hidden_score}/100",
+            "mood_stability": f"{stability_index}%",
+            "topics": topics
+        }
+    finally:
+        db.close()

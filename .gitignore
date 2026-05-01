@@ -1,6 +1,6 @@
-node_modules
-venv
-__pycache__
+﻿node_modules/
+venv/
+__pycache__/
 *.pyc
 .env
 .DS_Store
@@ -22,9 +22,17 @@ untracked_files.txt
 *.pdf
 *.png
 *.jpeg
-__pycache__/
-*.pyc
 tmp/
- documents/
+documents/
 *.txt
+!README.md
 !Project_Documentation.md
+!DESIGN.md
+
+# ChromaDB / Vector Store (runtime-generated)
+backend/memory_db/
+backend/test_db/
+
+# QA Suite and Outputs
+backend/qa_suite/
+backend/qa_suite/outputs/

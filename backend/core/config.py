@@ -44,7 +44,9 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5174",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://emotion-drift.vercel.app", # Placeholder for user's actual domain
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "https://emotion-drift.vercel.app",
     ]
 
     # LLM CONFIG
@@ -54,7 +56,7 @@ class Settings(BaseSettings):
     # GOOGLE FIT CONFIG
     GOOGLE_CLIENT_ID: str = os.environ.get("GOOGLE_CLIENT_ID", "335657228266-4pro0cc8215aivg0k85t4ht41tqnt9ko.apps.googleusercontent.com")
     GOOGLE_CLIENT_SECRET: str = os.environ.get("GOOGLE_CLIENT_SECRET", "")
-    GOOGLE_REDIRECT_URI: str = os.environ.get("GOOGLE_REDIRECT_URI", "http://localhost:8000/api/v1/auth/google/callback")
+    GOOGLE_REDIRECT_URI: str = os.environ.get("GOOGLE_REDIRECT_URI", "http://127.0.0.1:8000/auth/google/callback")
 
     class Config:
         env_file = ".env"

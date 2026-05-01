@@ -239,9 +239,9 @@ def classify_intent_light(user_text: str) -> str:
     if any(w in text_lower for w in ["no", "not", "actually"]): return "clarification"
     return "storytelling"
 
-def generate_therapeutic_response(user_text: str, fused_emotion: str, dialogue_context: str = "", hobbies: str = None, games: str = None, history: list = None, ui_lang: str = None) -> dict:
+def generate_therapeutic_response(user_text: str, fused_emotion: str, dialogue_context: str = "", hobbies: str = None, games: str = None, history: list = None, retrieved_memory: list = None, contradiction_reason: str = None, ui_lang: str = None) -> dict:
     """
-    Calls Sarvam API with structured policy injection and history awareness.
+    Calls Sarvam API with structured policy injection, history awareness, and emotionally-similar memory.
     """
     if not LLM_API_KEY:
         print("[LLM Bridge] WARNING: LLM_API_KEY is missing. Falling back to heuristic mode.")
@@ -263,6 +263,19 @@ def generate_therapeutic_response(user_text: str, fused_emotion: str, dialogue_c
                 history_str += f"{role}: {msg['content']}\n"
             history_str += "\n"
 
+        # 0.5 Format Retrieved Memory
+        memory_str = ""
+        if retrieved_memory:
+            memory_str = "RELEVANT PAST MEMORIES (Emotionally Similar):\n"
+            for mem in retrieved_memory:
+                memory_str += f"- [Past Emotion: {mem.get('emotion_state')}] {mem.get('text')}\n"
+            memory_str += "Use these past memories to show deep understanding, but do not recite them verbatim.\n\n"
+
+        # 0.6 Format Contradiction
+        contradiction_str = ""
+        if contradiction_reason:
+            contradiction_str = f"URGENT PERCEPTION: {contradiction_reason}\nUse this insight to craft a deeply perceptive response (e.g. 'Part of you says you're fine, but...').\n\n"
+
         # Personalized Logic
         hobby_str = f"The user enjoys: {hobbies}." if hobbies else ""
         games_str = f"The user plays these for anxiety: {games}." if games else ""
@@ -280,6 +293,13 @@ def generate_therapeutic_response(user_text: str, fused_emotion: str, dialogue_c
             f"{hobby_str} {games_str} {lang_anchor}\n" 
             "GAME LIBRARY (RESEARCH-BACKED):\n"
             f"{library_str}\n\n"
+            f"{memory_str}"
+            f"{contradiction_str}"
+            "STRICT THERAPEUTIC BOUNDARIES:\n"
+            "1. NO CASUAL DIAGNOSIS: Never diagnose the user with an illness casually.\n"
+            "2. NO ABSOLUTE CERTAINTY: Do not claim absolute certainty about the user's situation.\n"
+            "3. WARM, NOT CLINGY: Do not act like an overly dependent or needy friend. Maintain professional warmth.\n"
+            "4. NO GUILT-TRIPPING: Never guilt the user into staying or sharing more than they want to.\n\n"
             "CRITICAL RULES:\n"
             "1. LANGUAGE MIRROR: Reply in the EXACT SAME LANGUAGE and SCRIPT as the user.\n"
             "   - If user uses Roman letters (Hinglish/English), you MUST use Roman letters.\n"

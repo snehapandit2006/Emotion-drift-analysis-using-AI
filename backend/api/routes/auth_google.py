@@ -16,6 +16,9 @@ router = APIRouter(prefix="/auth/google", tags=["Google Auth"])
 
 # Scopes for Fitness data
 SCOPES = [
+    'openid',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/fitness.activity.read',
     'https://www.googleapis.com/auth/fitness.heart_rate.read',
     'https://www.googleapis.com/auth/fitness.blood_pressure.read',
@@ -31,6 +34,7 @@ def get_db():
 
 from jose import jwt, JWTError
 
+from fastapi import Response
 @router.get("/login")
 async def login(token: str, db: Session = Depends(get_db)):
     """
@@ -69,17 +73,23 @@ async def login(token: str, db: Session = Depends(get_db)):
     )
     
     # Generate authorization URL
-    # access_type='offline' is critical to get the refresh_token
-    # prompt='consent' ensures a new refresh_token is provided if the user has previously authorized
     auth_url, _ = flow.authorization_url(
         access_type='offline',
         prompt='consent',
         include_granted_scopes='true',
-        # Pass the user ID as state to identify the user on callback
         state=str(current_user.id)
     )
     
-    return RedirectResponse(auth_url)
+    # Store the PKCE verifier in a cookie and redirect
+    redirect_res = RedirectResponse(auth_url)
+    redirect_res.set_cookie(
+        key="code_verifier",
+        value=flow.code_verifier,
+        httponly=True,
+        max_age=600,  # 10 minutes
+        samesite="lax"
+    )
+    return redirect_res
 
 @router.get("/callback")
 async def callback(request: Request, db: Session = Depends(get_db)):
@@ -102,11 +112,18 @@ async def callback(request: Request, db: Session = Depends(get_db)):
         }
     }
     
+    # Retrieve the code verifier from cookie
+    code_verifier = request.cookies.get("code_verifier")
+    
     flow = Flow.from_client_config(
         client_config,
         scopes=SCOPES,
         redirect_uri=settings.GOOGLE_REDIRECT_URI
     )
+    
+    # Set the verifier back into the flow before fetching the token
+    if code_verifier:
+        flow.code_verifier = code_verifier
     
     try:
         flow.fetch_token(code=code)

@@ -11,6 +11,7 @@ from deep_translator import GoogleTranslator
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SRC_DIR = os.path.join(BASE_DIR, "..", "src")
 sys.path.append(SRC_DIR)
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 
 try:
     from preprocess import clean_text
@@ -25,29 +26,47 @@ from .dialogue_manager import manager as dialogue_manager
 # Everything MUST map to these 7 labels.
 SENTIA_LABELS = ["joy", "sadness", "anger", "fear", "surprise", "neutral", "disgust"]
 
+# GoEmotions to Base 7 Mapping
 SCHEMA_MAP = {
-    # Text Model (distilroberta)
-    "happy": "joy",
-    "love": "joy",
-    "relief": "joy",
+    # GoEmotions
+    "admiration": "joy",
+    "amusement": "joy",
+    "anger": "anger",
     "annoyance": "anger",
-    "optimism": "joy",
-    "remorse": "sadness",
-    "grief": "sadness",
-    "nervousness": "fear",
+    "approval": "neutral",
+    "caring": "joy",
     "confusion": "surprise",
     "curiosity": "surprise",
-    "admiration": "joy",
     "desire": "joy",
     "disappointment": "sadness",
     "disapproval": "disgust",
-    "realize": "surprise", # Meta-tag
+    "disgust": "disgust",
+    "embarrassment": "sadness",
+    "excitement": "joy",
+    "fear": "fear",
+    "gratitude": "joy",
+    "grief": "sadness",
+    "joy": "joy",
+    "love": "joy",
+    "nervousness": "fear",
+    "optimism": "joy",
+    "pride": "joy",
+    "realization": "surprise",
+    "relief": "joy",
+    "remorse": "sadness",
+    "sadness": "sadness",
+    "surprise": "surprise",
+    "neutral": "neutral",
+    
+    # Legacy text mappings
+    "happy": "joy",
+    "realize": "surprise", 
     "worry": "fear",
     "nervous": "fear",
-    "happy": "joy",
     "joyful": "joy",
     "sad": "sadness",
     "angry": "anger",
+    
     # Voice Model
     "happy_voice": "joy",
     "angry_voice": "anger",
@@ -79,20 +98,29 @@ def cosine_dist(v1, v2):
     if norm == 0: return 1.0
     return 1.0 - (dot / norm)
 
-# ---------- LOAD MODELS ----------
-MODEL_NAME = "j-hartmann/emotion-english-distilroberta-base"
+# ---------- LAZY LOAD MODELS ----------
+MODEL_NAME = "SamLowe/roberta-base-go_emotions"
 BOT_MODEL_NAME = "facebook/blenderbot-400M-distill"
-classifier = None
-chatbot = None
+_classifier = None
+_chatbot = None
 
-try:
-    print(f"Sentia Hub: Loading Primary Models...")
-    classifier = pipeline("text-classification", model=MODEL_NAME, return_all_scores=True)
-    # Blenderbot disabled to prevent resource exhaustion and crash-loops
-    chatbot = None 
-    print("Sentia Hub: Models ready.")
-except Exception as e:
-    print(f"CRITICAL: Sentia Hub failed to load models: {e}")
+def get_classifier():
+    global _classifier
+    if _classifier is None:
+        print(f"Sentia Hub: Loading Text Classifier ({MODEL_NAME})...")
+        try:
+            _classifier = pipeline("text-classification", model=MODEL_NAME, return_all_scores=True)
+        except Exception as e:
+            print(f"CRITICAL: Sentia Hub failed to load classifier: {e}")
+    return _classifier
+
+def get_chatbot():
+    global _chatbot
+    if _chatbot is None:
+        # Blenderbot disabled by default to prevent resource exhaustion
+        # but kept here if needed for specific routes.
+        _chatbot = None
+    return _chatbot
 
 # ---------- ATOMIC HUB ----------
 
@@ -124,26 +152,58 @@ def get_sentia_intelligence(text: str, audio_path: str = None, user_id: int = 0,
     # 1. PREDICT RAW (PARALLELIZED)
     from concurrent.futures import ThreadPoolExecutor
     
+    def split_into_clauses(text_str):
+        # 1. First split by standard punctuation
+        import re
+        initial_sentences = [s.strip() for s in re.split(r'[.!?\n]+', text_str) if len(s.strip()) > 3]
+        if not initial_sentences: 
+            initial_sentences = [text_str]
+            
+        # 2. Further split by conjunction shifts (clause-level)
+        conjunctions = [r'\bbut\b', r'\bhowever\b', r'\byet\b', r'\bstill\b', r'\balthough\b', r'\bthough\b']
+        pattern = re.compile('(' + '|'.join(conjunctions) + ')', re.IGNORECASE)
+        
+        final_chunks = []
+        for sent in initial_sentences:
+            parts = pattern.split(sent)
+            # Combine the conjunction with the subsequent text piece
+            current_chunk = ""
+            for p in parts:
+                if pattern.match(p):
+                    if current_chunk.strip():
+                        final_chunks.append(current_chunk.strip())
+                    current_chunk = p + " "
+                else:
+                    current_chunk += p
+            if current_chunk.strip():
+                final_chunks.append(current_chunk.strip())
+        
+        # 3. Filter tiny chunks
+        return [c for c in final_chunks if len(c) > 4]
+
     def get_text_emotion():
         text_res = {"emotion": "neutral", "confidence": 0.5}
-        if classifier:
+        cls = get_classifier()
+        if cls:
             try:
                 translated = text
                 if any(ord(c) > 127 for c in text): 
                      translated = GoogleTranslator(source='auto', target='en').translate(text)
                 
-                import re
-                sentences = [s.strip() for s in re.split(r'[.!?\n]+', translated) if len(s.strip()) > 3]
-                if not sentences: sentences = [translated]
+                sentences = split_into_clauses(translated)
                 
-                raw_out = classifier(sentences)
+                raw_out = cls(sentences)
                 
                 emotions_list = []
+                raw_tags = []
                 for out in raw_out:
                     if isinstance(out, list):
+                        # GoEmotions can return multiple, let's take top 1 for drift tracking
                         best = max(out, key=lambda x: x.get('score', 0))
+                        raw_tags.append(best.get('label'))
                     elif isinstance(out, dict):
                         best = out
+                        raw_tags.append(best.get('label'))
                     else: continue
                     emotions_list.append((get_canonical_emotion(best.get('label')), float(best.get('score', 0))))
                 
@@ -160,8 +220,11 @@ def get_sentia_intelligence(text: str, audio_path: str = None, user_id: int = 0,
                         "confidence": best_overall[1], 
                         "drift_string": drift_str if len(drift_seq) > 1 else best_overall[0],
                         "drift_data": emotions_list,
+                        "raw_tags": raw_tags,
                         "sentences": sentences
                     }
+                else:
+                    text_res = {"emotion": "neutral", "confidence": 0.5, "sentences": sentences}
 
             except Exception as e:
                 print(f"Hub Text Error: {e}")
@@ -259,7 +322,7 @@ def get_sentia_intelligence(text: str, audio_path: str = None, user_id: int = 0,
     finally:
         if 'db' in locals(): db.close()
 
-    # 6. CRISIS ESCALATION (moved here to ensure logging happens first)
+    # 6. CRISIS ESCALATION
     if is_safety_risk:
         # Anchor phrase for mirroring
         anchor = f"I hear the weight of this {fused_emotion} you're carrying..." if fused_conf > 0.5 else "I'm listening closely to what you're sharing..."
@@ -269,11 +332,31 @@ def get_sentia_intelligence(text: str, audio_path: str = None, user_id: int = 0,
         except ImportError:
             pass # Handle if utility not in same path
 
+    # 7. CONTRADICTION DETECTOR 🔥
+    def check_contradictions(t: str, e: str, c: float):
+        t_lower = t.lower()
+        explicit_ok_markers = ["i'm fine", "i am fine", "i'm okay", "im fine", "im okay", "doing good", "nothing is wrong", "i don't care", "i dont care", "it's whatever"]
+        implicit_distress_emotions = ["sadness", "anger", "fear", "grief", "disgust"]
+        
+        is_explicit_ok = any(m in t_lower for m in explicit_ok_markers)
+        is_implicit_distress = e in implicit_distress_emotions and c > 0.4
+        
+        if is_explicit_ok and is_implicit_distress:
+            return True, f"Contradiction: User explicitly claims to be okay ('{t[:20]}...'), but underlying ML analysis strongly detects {e}."
+        return False, ""
+
+    has_contradiction, contradiction_reason = check_contradictions(text, fused_emotion, fused_conf)
+    if has_contradiction:
+        state["contradiction"] = contradiction_reason
+        # Broadcast to WebSocket could happen here
+
     return {
         "emotion": text_results.get("drift_string", fused_emotion),
         "base_emotion": fused_emotion,
         "confidence": fused_conf,
         "is_safety_risk": is_safety_risk,
+        "has_contradiction": has_contradiction,
+        "contradiction_reason": contradiction_reason,
         "domain": domain,
         "context": context,
         "state": state
@@ -384,7 +467,24 @@ def get_bot_response(text: str, intel: dict, user_id: int, conversation_id: int 
         state = dialogue_manager.get_state(user_id)
         context = dialogue_manager.get_dialogue_context(user_id)
         
-        llm_payload = generate_therapeutic_response(text, intel.get("base_emotion", "neutral"), context, hobbies=hobbies, games=games, history=history, ui_lang=ui_lang)
+        from .memory import memory_manager
+        retrieved_memory = memory_manager.retrieve_context(
+            user_id=user_id,
+            query=text,
+            current_emotion=intel.get("base_emotion", "neutral")
+        )
+        
+        llm_payload = generate_therapeutic_response(
+            user_text=text, 
+            fused_emotion=intel.get("base_emotion", "neutral"), 
+            dialogue_context=context, 
+            hobbies=hobbies, 
+            games=games, 
+            history=history, 
+            retrieved_memory=retrieved_memory,
+            contradiction_reason=intel.get("contradiction_reason"),
+            ui_lang=ui_lang
+        )
         
         if llm_payload and "text" in llm_payload:
             # 1.5 Handle Game Prescription Persistence

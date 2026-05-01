@@ -147,6 +147,24 @@ async def chat_with_sentia(
     # 3. Get Intelligence
     intel = get_sentia_intelligence(text, audio_path=audio_path, user_id=current_user.id)
     
+    from api.routes.websocket import personal_manager
+    try:
+        await personal_manager.send_personal_message({
+            "type": "intelligence_update", 
+            "data": intel
+        }, current_user.id)
+        
+        if intel.get("is_safety_risk"):
+            await personal_manager.send_personal_message({
+                "type": "risk_escalation", 
+                "data": {"message": "SAFETY ESCALATION", "details": intel.get("base_emotion")}
+            }, current_user.id)
+            
+    except Exception as e:
+        print(f"WS Broadcast Error: {e}")
+    
+    from ml.memory import memory_manager
+    
     # 4. Persistence: User Message
     user_msg = SentiaMessage(
         conversation_id=conv.id,
@@ -156,6 +174,17 @@ async def chat_with_sentia(
         timestamp=datetime.utcnow()
     )
     db.add(user_msg)
+    db.commit()
+    db.refresh(user_msg)
+    
+    # Add to ChromaDB Memory
+    memory_manager.add_memory(
+        user_id=current_user.id,
+        message_id=user_msg.id,
+        text=text,
+        emotion_state=intel.get("emotion"),
+        topic="general"
+    )
 
     # 5. Generate Bot Response
     bot_payload = get_bot_response(text, intel, user_id=current_user.id, conversation_id=conv.id, ui_lang=ui_lang)

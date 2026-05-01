@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef, useContext, useCallback } from 'rea
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, ChevronLeft, ChevronRight, History,
-    Trash2, Send, Mic, Volume2, VolumeX, Sparkles, X,
-    LogOut, Terminal, MicOff, MonitorPlay, BrainCircuit, Network, Cpu, Activity, RefreshCw, Layers
+    Trash2, Send, Volume2, VolumeX, Sparkles, X,
+    LogOut, Terminal, MonitorPlay, BrainCircuit, Network, Cpu, Activity, RefreshCw, Layers
 } from 'lucide-react';
 import {
     getSentiaConversations,
@@ -93,7 +93,6 @@ const SentiaFullScreenChat = ({ onClose }) => {
     ]);
     const [inputText, setInputText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [isListening, setIsListening] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [isTtsEnabled, setIsTtsEnabled] = useState(true);
     const [selectedVoice, setSelectedVoice] = useState('ishita');
@@ -102,53 +101,7 @@ const SentiaFullScreenChat = ({ onClose }) => {
     const chatEndRef = useRef(null);
     const audioPlayerRef = useRef(null);
 
-    // Web Speech API
-    const recognitionRef = useRef(null);
 
-    useEffect(() => {
-        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SR) {
-            const recognition = new SR();
-            recognition.continuous = true;
-            recognition.lang = 'en-US';
-            recognition.interimResults = true;
-
-            recognition.onresult = (event) => {
-                let finalTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript + ' ';
-                    }
-                }
-                if (finalTranscript) {
-                    setInputText(prev => prev + finalTranscript);
-                }
-            };
-
-            recognition.onerror = (e) => {
-                console.error('Speech error:', e.error);
-                setIsListening(false);
-            };
-
-            recognition.onend = () => setIsListening(false);
-
-            recognitionRef.current = recognition;
-        }
-    }, []);
-
-    const toggleListening = () => {
-        if (!recognitionRef.current) {
-            alert("Speech recognition is not supported in your browser.");
-            return;
-        }
-        if (isListening) {
-            recognitionRef.current.stop();
-        } else {
-            setInputText('');
-            recognitionRef.current.start();
-            setIsListening(true);
-        }
-    };
 
     useEffect(() => {
         const init = async () => {
@@ -557,12 +510,10 @@ const SentiaFullScreenChat = ({ onClose }) => {
                                         value={inputText}
                                         onChange={(e) => setInputText(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                                        placeholder="Transmit data sequence..."
+                                        placeholder="Type your message here..."
                                         style={{ flex: 1, background: 'none', border: 'none', color: 'white', padding: '1rem', outline: 'none', fontSize: '1rem' }}
                                     />
-                                    <button onClick={toggleListening} style={{ background: 'none', border: 'none', color: isListening ? 'var(--emotion-anger)' : 'var(--text-secondary)', cursor: 'pointer', padding: '0.5rem' }}>
-                                        <Mic size={20} />
-                                    </button>
+
                                     <button 
                                         onClick={handleSend}
                                         className="glass-button primary"
