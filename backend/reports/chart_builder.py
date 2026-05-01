@@ -1,11 +1,11 @@
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import os
 from analysis.drift import get_emotion_stats
 
-
 def build_charts(db, user_id, start, end, report_id):
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
     stats = get_emotion_stats(db, user_id, start, end)
 
     os.makedirs("reports/results", exist_ok=True)

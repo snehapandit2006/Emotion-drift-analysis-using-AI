@@ -2,9 +2,8 @@ import os
 import sys
 from datetime import datetime
 import numpy as np
-import torch
 from collections import Counter
-from transformers import pipeline
+# from transformers import pipeline
 from deep_translator import GoogleTranslator
 
 # ---------- PATH FIX ----------
@@ -18,7 +17,7 @@ try:
 except ImportError:
     clean_text = lambda x: x
 
-from .audio_analysis import predict_voice_emotion
+# from .audio_analysis import predict_voice_emotion
 from .llm_bridge import generate_therapeutic_response, generate_structured_fallback, classify_intent_light
 from .dialogue_manager import manager as dialogue_manager
 
@@ -109,6 +108,7 @@ def get_classifier():
     if _classifier is None:
         print(f"Sentia Hub: Loading Text Classifier ({MODEL_NAME})...")
         try:
+            from transformers import pipeline
             _classifier = pipeline("text-classification", model=MODEL_NAME, return_all_scores=True)
         except Exception as e:
             print(f"CRITICAL: Sentia Hub failed to load classifier: {e}")
@@ -234,6 +234,7 @@ def get_sentia_intelligence(text: str, audio_path: str = None, user_id: int = 0,
         voice_res = {"emotion": "neutral", "confidence": 0.0}
         if audio_path and os.path.exists(audio_path):
             try:
+                from .audio_analysis import predict_voice_emotion
                 raw_voice = predict_voice_emotion(audio_path)
                 best_voice = max(raw_voice, key=raw_voice.get)
                 voice_res = {"emotion": get_canonical_emotion(best_voice), "confidence": float(raw_voice[best_voice])}
