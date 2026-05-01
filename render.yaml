@@ -39,7 +39,7 @@ services:
   # ─── Frontend (Vite/React on Render) ──────────────────────────────────────
   - type: web
     name: emotion-drift-frontend
-    env: node
+    env: static
     region: ohio
     plan: free
     rootDir: frontend
