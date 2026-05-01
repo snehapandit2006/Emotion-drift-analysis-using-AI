@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
-import speech_recognition as sr
 import io
 
 from db.database import get_db
