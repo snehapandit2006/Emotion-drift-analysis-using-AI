@@ -1,14 +1,19 @@
+databases:
+  - name: emotion-drift-db
+    databaseName: emotion_drift
+    user: emotion_admin
+    plan: free
+
 services:
-  # Backend Service (Python/FastAPI)
+  # ─── Backend (FastAPI on Render) ───────────────────────────────────────────
   - type: web
     name: emotion-drift-api
-    runtime: python
-    buildCommand: |
-      cd backend
-      pip install -r requirements.txt
-    startCommand: |
-      cd backend
-      gunicorn -w 4 -k uvicorn.workers.UvicornWorker api.main:app
+    env: python
+    region: ohio
+    plan: free
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn -w 4 -k uvicorn.workers.UvicornWorker api.main:app --bind 0.0.0.0:$PORT"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -16,30 +21,41 @@ services:
           property: connectionString
       - key: SECRET_KEY
         generateValue: true
-      - key: WEB_CONCURRENCY
-        value: "4"
+      - key: PYTHONPATH
+        value: "."
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: "3.11.0"
+      - key: LLM_API_KEY
+        sync: false   # Set manually in Render dashboard
+      - key: LLM_MODEL
+        value: "sarvam-m"
+      - key: GOOGLE_CLIENT_ID
+        sync: false   # Set manually in Render dashboard
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false   # Set manually in Render dashboard
+      - key: GOOGLE_REDIRECT_URI
+        value: "https://emotion-drift-api.onrender.com/auth/google/callback"
 
-  # Frontend Service (Node.js/Static Site)
+  # ─── Frontend (Vite/React on Render) ──────────────────────────────────────
   - type: web
     name: emotion-drift-frontend
-    runtime: node
-    buildCommand: |
-      cd frontend
-      npm install
-      npm run build
-    startCommand: |
-      cd frontend
-      npm run preview -- --host --port $PORT
+    env: node
+    region: ohio
+    plan: free
+    rootDir: frontend
+    buildCommand: "npm install && npm run build"
+    staticPublishPath: "./dist"
+    headers:
+      - path: "/*"
+        name: "Cache-Control"
+        value: "no-cache"
+    routes:
+      - type: rewrite
+        source: "/*"
+        destination: "/index.html"
     envVars:
       - key: VITE_API_URL
         fromService:
           type: web
           name: emotion-drift-api
           envVarKey: RENDER_EXTERNAL_URL
-
-databases:
-  - name: emotion-drift-db
-    databaseName: emotion_drift
-    user: emotion_user
