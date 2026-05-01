@@ -29,7 +29,7 @@ from core.config import settings
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_origin_regex=r"https://.*\.vercel\.app", # Allow Vercel preview and production deployments
+    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.onrender\.com", # Allow Vercel and Render deployments
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
