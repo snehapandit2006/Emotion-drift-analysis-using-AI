@@ -1,8 +1,4 @@
-import cv2
-import numpy as np
 import base64
-from transformers import pipeline
-from PIL import Image
 import io
 
 class FaceEmotionAnalyzer:
@@ -28,6 +24,7 @@ class FaceEmotionAnalyzer:
 
         print(f"Loading Face Emotion Model: {target_model}...")
         try:
+            from transformers import pipeline
             # Initialize the pipeline for image classification
             # Transformers pipeline handles resizing automatically based on model config
             cls._pipeline = pipeline("image-classification", model=target_model)
@@ -50,6 +47,7 @@ class FaceEmotionAnalyzer:
             image_bytes = base64.b64decode(base64_image)
             
             # Convert to PIL Image for transformers
+            from PIL import Image
             image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
             # 2. Predict using Pipeline
