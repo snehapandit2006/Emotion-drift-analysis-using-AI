@@ -66,24 +66,24 @@ class TextRequest(BaseModel):
 
 # -----------------------------
 # Startup
-# -----------------------------
+# Global to store startup error
+STARTUP_ERROR = None
+
 @app.on_event("startup")
 def startup():
+    global STARTUP_ERROR
     try:
         init_db()
         print("Database initialized successfully.")
     except Exception as e:
-        print(f"CRITICAL STARTUP ERROR in init_db: {e}")
+        STARTUP_ERROR = str(e)
         import traceback
-        traceback.print_exc()
+        STARTUP_ERROR += "\n" + traceback.format_exc()
+        print(f"CRITICAL STARTUP ERROR in init_db: {e}")
 
-
-# -----------------------------
-# Health
-# -----------------------------
 @app.get("/")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "db_error": STARTUP_ERROR}
 
 
 # -----------------------------
