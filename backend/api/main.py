@@ -69,7 +69,13 @@ class TextRequest(BaseModel):
 # -----------------------------
 @app.on_event("startup")
 def startup():
-    init_db()
+    try:
+        init_db()
+        print("Database initialized successfully.")
+    except Exception as e:
+        print(f"CRITICAL STARTUP ERROR in init_db: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 # -----------------------------
