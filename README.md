@@ -1,5 +1,9 @@
 # Emotion-drift-analysis-using-AI
 
+🌍 **Live Demo:**
+* **Frontend Application:** [https://emotion-drift-frontend.onrender.com](https://emotion-drift-frontend.onrender.com)
+* **Backend API (Health Check):** [https://emotion-drift-api.onrender.com](https://emotion-drift-api.onrender.com)
+
 A web-based AI system for **emotion analysis and monitoring** that combines **interpersonal text emotion analysis** with **individual facial emotion tracking**, designed for both **internship-level evaluation** and **product-style demos**.
 
 This project is built with a clear separation of concerns, ethical safeguards, and explainable AI principles.
