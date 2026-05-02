@@ -9,7 +9,6 @@ services:
   - type: web
     name: emotion-drift-api
     env: python
-    region: ohio
     plan: free
     rootDir: backend
     buildCommand: "pip install -r requirements.txt"
