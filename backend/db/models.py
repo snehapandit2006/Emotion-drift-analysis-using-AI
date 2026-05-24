@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, Date, Float, JSON
 from datetime import datetime
 from .database import Base
 from sqlalchemy.orm import relationship
@@ -233,7 +233,7 @@ class VitalAlert(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", backref="vital_alerts")
- class DailyCheckIn(Base):
+class DailyCheckIn(Base):
     __tablename__ = 'daily_checkins'
 
     id = Column(Integer, primary_key=True, index=True)
