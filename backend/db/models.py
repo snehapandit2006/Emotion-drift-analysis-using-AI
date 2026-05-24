@@ -233,3 +233,14 @@ class VitalAlert(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", backref="vital_alerts")
+ class DailyCheckIn(Base):
+    __tablename__ = 'daily_checkins'
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True)
+    date = Column(Date)
+    mood_level = Column(Integer)
+    sleep_hours = Column(Float)
+    sleep_quality = Column(String)
+    triggers = Column(JSON)
+    created_at = Column(DateTime)

@@ -117,3 +117,17 @@ class ChatRoomSchema(ChatRoomBase):
     messages: List[CommunityMessageSchema] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+class DailyCheckInCreate(BaseModel):
+    mood_level: int
+    sleep_hours: float
+    sleep_quality: str
+    triggers: List[str]
+
+class DailyCheckInResponse(DailyCheckInCreate):
+    id: int
+    user_id: int
+    date: date
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
