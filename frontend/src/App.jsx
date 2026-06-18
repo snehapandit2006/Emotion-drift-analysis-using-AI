@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SupportDashboard from "./components/SupportDashboard";
 import LandingPage from "./components/LandingPage";
 import NeuralBackground from "./components/NeuralBackground";
-import { Download, Table as TableIcon, Activity, LogOut, MessageSquare, Sun, Moon, Shield, Menu, X, Play, Timer, Music, Settings, Layout, Sparkles, Layers, Users, User, Camera, Headphones, Compass, MapPin, BookHeart, ShieldAlert } from 'lucide-react';
+import { Download, Table as TableIcon, Activity, LogOut, MessageSquare, Sun, Moon, Shield, Menu, X, Play, Timer, Music, Settings, Layout, Sparkles, Layers, Users, User, Camera, Headphones, Compass, MapPin, Book, BookHeart, ShieldAlert } from 'lucide-react';
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
@@ -65,6 +65,7 @@ const CommunityChat = lazy(() => import("./components/CommunityChat"));
 const VitalsDashboard = lazy(() => import("./components/VitalsDashboard"));
 const MedicalLogTable = lazy(() => import("./components/MedicalLogTable"));
 const DriftInsights = lazy(() => import("./components/DriftInsights"));
+const Journal = lazy(() => import("./components/Journal"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 
@@ -544,6 +545,9 @@ function Dashboard() {
           <div className={`nav-item ${viewMode === 'sentia' ? 'active' : ''}`} onClick={() => setViewMode('sentia')}>
             <Sparkles size={18} /> <span>Virtual Therapist</span>
           </div>
+          <div className={`nav-item ${viewMode === 'journal' ? 'active' : ''}`} onClick={() => setViewMode('journal')}>
+            <Book size={18} /> <span>Mood Journal</span>
+          </div>
           <div className={`nav-item ${viewMode === 'community' ? 'active' : ''}`} onClick={() => setViewMode('community')}>
             <MessageSquare size={18} /> <span>Community Chat</span>
           </div>
@@ -728,6 +732,15 @@ function Dashboard() {
                   </button>
                   <Suspense fallback={<div>Loading Vitals Dashboard...</div>}>
                     <VitalsDashboard />
+                  </Suspense>
+                </div>
+              ) : viewMode === 'journal' ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+                    &larr; Back to Dashboard
+                  </button>
+                  <Suspense fallback={<div>Loading Mood Journal...</div>}>
+                    <Journal />
                   </Suspense>
                 </div>
               ) : viewMode === 'face' ? (
