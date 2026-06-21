@@ -117,17 +117,15 @@ Backend (FastAPI)
 * Confidence-weighted trends
 * Emotional drift detection
 
-### 4. Late Fusion Analytics
+### 7. Late Fusion Analytics
 
 * Text and face emotions are **never fused at capture time**
 * Fusion occurs at the analytics layer using historical data
 * Enables detection of:
-
   * Emotional suppression
   * Emotional alignment/misalignment
   * Stability vs volatility
 
----
 
 ## 🧪 Fusion Strategy (Explainable AI)
 
