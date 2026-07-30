@@ -1,292 +1,202 @@
-# Emotion-drift-analysis-using-AI
+# Sentia — AI-Powered Cognitive Companion & Emotion Drift System
 
-🌍 **Live Demo:**
-* **Frontend Application:** [https://emotion-drift-frontend.onrender.com](https://emotion-drift-frontend.onrender.com)
-* **Backend API (Health Check):** [https://emotion-drift-api.onrender.com](https://emotion-drift-api.onrender.com)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Frontend_App-blueviolet?style=for-the-badge&logo=render)](https://emotion-drift-frontend.onrender.com)
+[![API Status](https://img.shields.io/badge/API_Status-FastAPI_Backend-emerald?style=for-the-badge&logo=fastapi)](https://emotion-drift-api.onrender.com)
+[![License](https://img.shields.io/badge/License-Educational-orange?style=for-the-badge)](#-license)
 
-A web-based AI system for **emotion analysis and monitoring** that combines **interpersonal text emotion analysis** with **individual facial emotion tracking**, designed for both **internship-level evaluation** and **product-style demos**.
-
-This project is built with a clear separation of concerns, ethical safeguards, and explainable AI principles.
+> **Sentia** is an AI-powered cognitive companion designed to provide personalized well-being support. Unlike traditional mental wellness tools that analyze interactions in isolation, Sentia builds a structured, longitudinal understanding of users over time using cognitive reasoning, long-term memory, and multimodal emotion fusion.
 
 ---
 
-## 🚀 Project Overview
+## 🌟 Evolution Story: From Emotion Analysis to Cognitive System
 
-Human emotions are complex and rarely expressed through a single channel. Text alone often hides emotional intent, while facial cues reveal affective states but lack context. This system addresses that gap by designing **two parallel emotion pipelines** that meet only at the analytics layer.
+```
+Phase 1: Simple Emotion Drift Analyzer
+[Chat & Face Inputs] ──> [Independent Classifier] ──> [Basic Volatility / Drift Charts]
 
-### Core Idea
+                        │
+                        ▼  Architecture Redesign
+                        │
 
-* **Text Emotion** → What is being expressed in conversations
-* **Face Emotion** → What the individual is experiencing internally
-* **Sentia Virtual Therapist** → AI-powered emotional companion and support
-* **Vital Health** → Physical indicators (Heart Rate, SpO2) as emotional proxies
-* **Fusion** → Long-term patterns and alignment, not instant judgments
+Phase 2: Sentia Cognitive AI Platform
+[Multimodal Inputs] ──> [FastAPI Orchestration] ──> [Cognitive Intelligence Layer] ──> [Long-Term Memory & Personalization]
+ (Text, Face, Voice,                                (Traits, States, Attention,             (PostgreSQL Persistence)
+  Vitals & SpO₂)                                     Recovery Models & Narrative)
+```
+
+1. **Initial Scope:** Sentia began as a baseline **Emotion Drift Analyzer**, classifying chat text and webcam snapshots into discrete emotional categories.
+2. **The Insight:** Emotion alone is insufficient for meaningful psychological support. Two users can express identical emotions while having completely different cognitive patterns, stress triggers, and coping mechanisms.
+3. **The Architectural Shift:** The system was redesigned around a core **Cognitive Intelligence Layer** that transforms raw, real-time interactions into structured observations, long-term memory profiles, and explainable psychological trait/state analysis.
 
 ---
 
 ## 🧠 System Architecture
 
+Sentia follows a **layered modular design** with strict separation of concerns across 5 core tiers:
+
 ```
-Frontend (React)
-│
-├── ChatAnalyzer
-│    └── Text-based emotion analysis of conversations
-│
-├── Sentia (Virtual Therapist)
-│    └── AI-driven chat with voice and emotional support
-│
-├── SelfEmotionMonitor
-│    └── Webcam-based facial emotion capture (individual)
-│
-├── Vitals & Fitness Dashboard
-│    └── Real-time vital monitoring and health data
-│
-├── Media Hub
-│    └── Spotify, YouTube, and Relaxation games (Tetris)
-│
-├── Dashboard
-│    ├── Emotion timelines
-│    ├── Distribution graphs
-│    ├── Drift & stability analysis
-│    └── Fused emotional insights
-│
-Backend (FastAPI)
-│
-├── Routes
-│    ├── /chat-analysis        (text emotion)
-│    ├── /sentia-chat          (virtual therapist)
-│    ├── /fitness-vitals       (health data)
-│    └── /self-emotion/capture (face emotion)
-│
-├── Inference
-│    ├── text_emotion.py
-│    ├── face_emotion.py
-│    └── vital_analyzer.py
-│
-├── Analysis
-│    ├── fusion.py   (late fusion & reasoning)
-│    └── trends.py   (drift, volatility, stability)
-│
-├── Database
-│    ├── chat_emotion_logs
-│    ├── face_emotion_logs
-│    └── vital_sign_logs
-│
-└── Analytics Layer
-     └── Temporal fusion of text + face + health histories
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                                CLIENT LAYER (React)                               │
+│  Chat Interface • Voice Assistant • Self-Emotion Monitor • Vitals Hub • Media Hub │
+└────────────────────────────────────────┬─────────────────────────────────────────┘
+                                         │  HTTP / WebSockets / REST
+┌────────────────────────────────────────▼─────────────────────────────────────────┐
+│                               FASTAPI BACKEND                                     │
+│     API Routing • Authentication • Validation • Rate Limiting • Orchestration    │
+└────────────────────────────────────────┬─────────────────────────────────────────┘
+                                         │
+┌────────────────────────────────────────▼─────────────────────────────────────────┐
+│                              AI PROCESSING LAYER                                 │
+│  Text NLP Classifier • CNN Facial Emotion • Audio/Voice Model • Vital Analyzer   │
+└────────────────────────────────────────┬─────────────────────────────────────────┘
+                                         │
+┌────────────────────────────────────────▼─────────────────────────────────────────┐
+│                         COGNITIVE INTELLIGENCE LAYER                             │
+│ Observation Extraction • Memory Store • Cognitive Pattern Engine • Personalization│
+└────────────────────────────────────────┬─────────────────────────────────────────┘
+                                         │
+┌────────────────────────────────────────▼─────────────────────────────────────────┐
+│                              PERSISTENCE LAYER                                    │
+│   PostgreSQL / SQLite • Cognitive Snapshots • Emotion Logs • Medical Records      │
+└──────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Layer Breakdown
+
+1. **Client Layer (React + Vite):** Modern, high-performance UI offering full-screen interactive chat, voice streaming, facial snapshot analysis, real-time vital monitoring, and interactive CBT worksheets.
+2. **FastAPI Backend (Orchestration):** Lightweight routes responsible for request validation, security, dependency injection, and coordinating service workflows.
+3. **AI Processing Layer:** Independent, modality-specific models processing text, facial expressions, audio acoustic features, and physical vitals (Heart Rate & SpO₂).
+4. **Cognitive Intelligence Layer (Core Engine):**
+   - **Observation Window:** Converts raw messages into structured psychological signals.
+   - **Trait Analysis (Slow-changing):** Evaluates baseline tendencies like Perfectionism, Avoidance, and Rumination.
+   - **State Analysis (Fast-changing):** Measures real-time states including Burnout, Motivation Level, Stress Adaptation, and Cognitive Flexibility.
+   - **Attention Map:** Tracks relative cognitive focus across Academics, Career, Health, Relationships, Identity, and Family.
+   - **Recovery Model:** Learns individual stress triggers, effective coping strategies (*helps* vs *hurts*), and support preferences (*guidance* vs *listening*).
+   - **Clinical Narrative Generator:** Synthesizes explainable, human-readable insights using LLM summarization.
+5. **Persistence Layer (SQLAlchemy / PostgreSQL / SQLite):** Secure, time-series data storage for cognitive snapshots, emotion logs, and prescription records.
 
 ---
 
-## 🔑 Key Features
+## ✨ Key Features & Capabilities
 
-### 1. Chat Emotion Analysis
+### 💬 1. Sentia Virtual AI Companion
+* **Cognitive Memory:** Retains context across sessions to detect recurring themes and emotional trajectories.
+* **Voice & Multimodal Support:** Seamless voice-to-voice interaction powered by real-time speech processing.
+* **Personalized Response Tuning:** Adapts tone based on user support preferences (e.g., structured guidance vs. empathetic listening).
 
-* Text-only emotion detection
-* Designed for analyzing conversations with other people
-* Stored for long-term trend analysis
+### 📊 2. Cognitive Pattern & Drift Analysis
+* **Statistical Drift Tracking:** Calculates z-score variations across user attention domains (Academics, Career, Health, etc.).
+* **Cognitive Distortion Detection:** Identifies catastrophic thinking, rigid perfectionism, and rumination using MiniLM sentence embeddings and clinical NLP filters.
+* **CBT Reflection Worksheets:** Interactive cognitive-behavioral therapy tools allowing users to log activating events, thoughts, and restructuring strategies.
 
-### 2. Sentia Virtual Therapist
+### 🎭 3. Self-Emotion Snapshot Monitoring
+* **Webcam Snapshot Capture:** Privacy-first, consent-based facial expression sampling (no continuous video streaming).
+* **Individual Emotion Detection:** Classifies internal affective states independently from conversational text.
 
-* AI-powered emotional companion with personalized chat
-* Integrated voice interaction for more natural support
-* Real-time emotional feedback and coping suggestions
+### 💓 4. Vitals & Masking Detection
+* **Physical Vital Monitoring:** Tracks Heart Rate and SpO₂ levels as physiological proxies for anxiety and stress.
+* **Physiological Masking Alerts:** Detects instances where text/facial sentiment remains neutral while heart rate spikes (>100 bpm), signaling suppressed distress.
 
-### 3. Self Emotion Monitoring
-
-* Webcam-based **snapshot capture** (not continuous streaming)
-* Individual emotion detection using facial cues
-* Explicit user consent and camera toggles
-
-### 4. Vitals & Health Monitoring
-
-* Real-time monitoring of heart rate and SpO2 levels
-* Critical vital alarms and voice alerts
-* Integration with fitness data for a holistic view of well-being
-
-### 5. Media & Relaxation Hub
-
-* Embedded Spotify and YouTube players for music/video therapy
-* Built-in Tetris game for cognitive distraction and stress relief
-* Seamless integration into the therapeutic workflow
-
-### 6. Emotion Dashboard
-
-* Timeline view of emotional states
-* Emotion distribution over selected time ranges
-* Confidence-weighted trends
-* Emotional drift detection
-
-### 4. Late Fusion Analytics
-
-* Text and face emotions are **never fused at capture time**
-* Fusion occurs at the analytics layer using historical data
-* Enables detection of:
-
-  * Emotional suppression
-  * Emotional alignment/misalignment
-  * Stability vs volatility
-
----
-
-## 🧪 Fusion Strategy (Explainable AI)
-
-This system uses **Late Fusion**, not early embedding fusion.
-
-Why?
-
-* Models remain independent and debuggable
-* Easier to explain in interviews and evaluations
-* Allows re-analysis as models improve
-
-### Example Insight
-
-> Facial sadness increased over time while chat sentiment remained neutral → possible emotional masking detected.
-
-This is presented as an **observed pattern**, not a psychological diagnosis.
-
----
-
-## 🗄️ Data Storage Design
-
-### Face Emotion Log Schema
-
-```
-id | user_id | emotion | confidence | timestamp
-```
-
-### Why this matters
-
-* Enables time-series analysis
-* Supports drift detection
-* Allows future reprocessing with improved models
-
----
-
-## ⚖️ Ethics & Privacy
-
-* Webcam is **OFF by default**
-* Explicit user consent required
-* Snapshot-based capture only
-* No background recording
-* UI uses phrases like:
-
-  * "Observed emotional indicators"
-  * "Detected patterns"
-
-This avoids false certainty and ethical overreach.
+### 🧘 5. Media & Wellness Hub
+* **Therapeutic Audio:** Integrated binaural beats and custom frequency soundscapes.
+* **Relaxation Games:** Built-in Tetris, 2048, and Flow Free for cognitive distraction and emotional regulation.
+* **Media Player:** Embedded Spotify and YouTube integration for guided relaxation.
 
 ---
 
 ## 🛠️ Tech Stack
 
-**Frontend**
+### Frontend
+- **Framework:** React 18 (Vite)
+- **State Management:** Zustand & Context API
+- **Styling & Motion:** CSS Modules, Framer Motion
+- **Visualizations:** Chart.js, Recharts, Three.js (3D Brain Visualization)
+- **Icons & UI:** Lucide React, React Icons
 
-* React (Vite)
-* Zustand
-* Axios
-* Framer Motion (Animations)
-* React Icons
-* Chart.js / Recharts
+### Backend & Orchestration
+- **Framework:** FastAPI (Python 3.10+)
+- **ORM & DB:** SQLAlchemy (SQLite for development, PostgreSQL for production)
+- **Authentication:** JWT tokens, Google OAuth 2.0
+- **Server:** Uvicorn / Gunicorn
 
-**Backend**
-
-* FastAPI
-* Python
-* SQLAlchemy
-
-**ML / AI**
-
-* NLP-based text emotion classifier
-* CNN-based facial emotion recognition
-* Rule-based + statistical fusion
+### Machine Learning & AI
+- **NLP & Cognitive Embeddings:** `sentence-transformers/all-MiniLM-L6-v2`, HuggingFace Transformers
+- **Text Emotion Classifier:** TF-IDF + Scikit-Learn Ensemble
+- **Facial Emotion Recognition:** PyTorch CNN model
+- **LLM Synthesis & Voice:** Sarvam AI API for Hinglish & English clinical dialogue
 
 ---
 
-## 🎯 Use Cases
+## 🔬 Engineering & Design Principles
 
-* Academic mini-project evaluation
-* Internship / placement interviews
-* Emotion analytics demo
-* Research-oriented prototypes
-
----
-
-## 🎬 Demo Flow
-
-1. **Cinematic Landing & Discovery**
-   * Experience the "Cinematic Neural" aesthetic with global backgrounds.
-   * Access various modules via a modern, gesture-friendly UI.
-
-2. **Sentia: Your AI Therapist**
-   * Engage in supportive conversations with voice integration.
-   * Receive immediate emotional validation and resources.
-
-3. **Vital Signs & Monitoring**
-   * Monitor physical health indicators in real-time.
-   * Set up critical alarms for heart rate and SpO2.
-
-4. **Chat & Face Analysis**
-   * Parallel analysis of text and facial expressions.
-   * Ethical, snapshot-based capture and logging.
-
-5. **Dashboard & Analytics**
-   * Explore long-term patterns via intuitive charts.
-   * View fused insights across physical and emotional domains.
-
-4. **Support & Safety Insights**
-   
-   * Access via the shield icon 🛡️ in the dashboard
-   * View non-clinical severity assessment (Low/Medium/High)
-   * Access Tele-MANAS helpline details directly
-   * Find nearby psychologists (requires manual consent)
-
-This flow demonstrates **real-time inference**, **ethical design**, and **long-term analytics** in under three minutes.
+1. **Separation of Concerns:** API handlers (`backend/routes/`) remain lightweight (~10–20 lines) and delegate all domain computation to dedicated service modules (`backend/analysis/`).
+2. **Modality Decoupling:** Text, facial, audio, and physical vital processors operate independently. Any single ML model can be upgraded or swapped without breaking the core application.
+3. **Deterministic Scoring + LLM Summarization:** Psychological trait/state scores and confidence metrics are calculated deterministically via rules and semantic similarity matrixes. The LLM is strictly used as a natural language summarizer, eliminating algorithmic hallucinations.
+4. **Explainable AI Audit Trails:** Every cognitive score includes transparent source breakdowns and linguistic evidence trails for clinical auditability.
 
 ---
 
+## 🚀 Getting Started Locally
 
+### Prerequisites
+- Python 3.10+
+- Node.js 18+
+- npm or yarn
 
-## 🛡️ Emotional Risk Awareness & Support
+### 1. Backend Setup
 
-This system includes a **Support & Safety Layer** designed to analyze long-term emotional health indicators without making medical diagnoses.
+```bash
+# Navigate to backend directory
+cd backend
 
-### Pattern Recognition (Not Diagnosis)
-The system calculates "Severity Levels" based purely on mathematical drift and volatility:
-*   **Low**: Normal emotional fluctuations.
-*   **Medium**: Sustained negative drift.
-*   **High**: Sustained drift + high volatility.
+# Create and activate virtual environment
+python -m venv venv
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
 
-### Support Resources
-If high emotional risk patterns are detected, the system provides:
-*   **Tele-MANAS Helpline**: Direct display of India's 24x7 Mental Health Helpline (14416).
-*   **Psychologist Finder**: (Optional) Consent-based lookup for nearby professionals.
-*   **Coping Guidance**: Static, non-prescriptive suggestions for seeking human support.
+# Install dependencies
+pip install -r requirements.txt
+
+# Create .env file with appropriate keys
+cp .env.example .env
+
+# Run FastAPI development server
+uvicorn api.main:app --reload --port 8000
+```
+
+The API documentation will be available at `http://localhost:8000/docs`.
+
+### 2. Frontend Setup
+
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start Vite development server
+npm run dev
+```
+
+Open `http://localhost:5173` in your browser.
 
 ---
 
-## 🚧 Limitations
+## 🛡️ Ethics, Privacy & Safety Safeguards
 
-* Facial emotion detection is probabilistic and culturally sensitive
-* Not a diagnostic or clinical system
-* Accuracy depends on lighting and camera quality
-
----
-
-## 🔮 Future Enhancements
-
-* Multimodal audio emotion analysis
-* Personal baseline calibration
-* On-device inference
-* Cross-cultural emotion modeling
+- **Privacy by Design:** Camera capture requires explicit user permission and operates strictly on explicit snapshot requests.
+- **Non-Clinical Boundaries:** System output is presented as *observed indicators* and *behavioral patterns*, never medical diagnoses.
+- **Safety Net Integration:** Automatic detection of high severity indicators surfaces non-invasive crisis helpline resources (including Tele-MANAS 14416).
 
 ---
 
 ## 📄 License
 
-This project is intended for educational and research purposes.
-👉 For detailed system rationale, see [DESIGN.md](DESIGN.md)
+This project is built for educational, research, and placement demonstration purposes.
 
 ---
 
-**Built with care, caution, and a healthy distrust of emotion classifiers.**
+**Crafted with care, cognitive engineering, and architectural maintainability by Sneha Pandit.**
