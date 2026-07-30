@@ -59,6 +59,19 @@ def generate_sarvam_tts_internal(text, output_path, speaker="ishita"):
         except Exception as e:
             print(f"[TTS WRITE ERROR] {e}")
 
+def run_pattern_analysis_bg(user_id: int):
+    """Background helper to trigger cognitive analysis after chat."""
+    from db.database import SessionLocal
+    from analysis.cognitive_features import run_pattern_analysis
+    db = SessionLocal()
+    try:
+        run_pattern_analysis(user_id, db)
+        print(f"[COGNITIVE MODEL] Pattern analysis updated in background for user {user_id}")
+    except Exception as e:
+        print(f"[COGNITIVE MODEL ERROR] Background pattern analysis failed: {e}")
+    finally:
+        db.close()
+
 class SentiaMessageSchema(BaseModel):
     id: int
     role: str
@@ -258,6 +271,9 @@ async def chat_with_sentia(
     # Update conversation timestamp
     conv.updated_at = datetime.utcnow()
     db.commit()
+
+    # Trigger rule-based Cognitive Profile updates in the background
+    background_tasks.add_task(run_pattern_analysis_bg, current_user.id)
 
     prescribed_game = bot_payload.get("prescribed_game")
     game_link = bot_payload.get("game_link")

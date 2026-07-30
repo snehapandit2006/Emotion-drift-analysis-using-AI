@@ -161,6 +161,13 @@ export const getVitalAlerts = () => API.get("/fitness/alerts");
 export const acknowledgeVitalAlert = (id) => API.post(`/fitness/alerts/${id}/acknowledge`);
 export const getDoctorVitalAlerts = () => API.get("/fitness/alerts/doctor");
 
+// Personal Cognitive Model v2
+export const getCognitiveLatest = () => API.get("/analysis/cognitive/latest");
+export const getCognitiveHistory = () => API.get("/analysis/cognitive/history");
+export const triggerCognitiveAnalysis = () => API.post("/analysis/cognitive/trigger");
+export const submitCBTReflection = (data) => API.post("/analysis/cognitive/reflection", data);
+export const getCBTReflections = () => API.get("/analysis/cognitive/reflection");
+
 export const getWebSocketUrl = () => {
     let url = API_URL;
     if (url.startsWith('http://')) {

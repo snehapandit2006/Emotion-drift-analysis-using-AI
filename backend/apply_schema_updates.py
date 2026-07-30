@@ -64,6 +64,15 @@ def apply_updates():
                     print("Column already exists: google_refresh_token")
                 else:
                     print(f"Error adding google_refresh_token: {e}")
+            # 5. Add signal_source_breakdown column to cognitive_snapshots
+            try:
+                cursor.execute("ALTER TABLE cognitive_snapshots ADD COLUMN signal_source_breakdown VARCHAR DEFAULT '{}'")
+                print("Added column: signal_source_breakdown to cognitive_snapshots")
+            except sqlite3.OperationalError as e:
+                if "duplicate column name" in str(e):
+                    print("Column already exists: signal_source_breakdown")
+                else:
+                    print(f"Error adding signal_source_breakdown: {e}")
             
             conn.commit()
             conn.close()

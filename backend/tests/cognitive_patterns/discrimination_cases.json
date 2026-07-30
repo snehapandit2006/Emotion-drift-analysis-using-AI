@@ -1,0 +1,149 @@
+[
+  {
+    "id": 1,
+    "pattern": "catastrophizing",
+    "type": "positive",
+    "text": "I failed this one quiz, so I'm definitely going to drop out of university, get disowned, and end up homeless.",
+    "expected_detection": true
+  },
+  {
+    "id": 2,
+    "pattern": "catastrophizing",
+    "type": "near-miss",
+    "text": "I failed the midterm, which means I need to study much harder for the final if I want to pass the class.",
+    "expected_detection": false
+  },
+  {
+    "id": 3,
+    "pattern": "catastrophizing",
+    "type": "ambiguous",
+    "text": "Things are not looking good for my grades right now.",
+    "expected_detection": null
+  },
+  {
+    "id": 4,
+    "pattern": "avoidance",
+    "type": "positive",
+    "text": "I am completely ignoring my manager's emails and calls because seeing them makes me feel like I can't breathe.",
+    "expected_detection": true
+  },
+  {
+    "id": 5,
+    "pattern": "avoidance",
+    "type": "near-miss",
+    "text": "I am turning off my work email for the weekend to have a healthy boundary and spend time with family.",
+    "expected_detection": false
+  },
+  {
+    "id": 6,
+    "pattern": "avoidance",
+    "type": "ambiguous",
+    "text": "I will reply to this message later.",
+    "expected_detection": null
+  },
+  {
+    "id": 7,
+    "pattern": "rumination",
+    "type": "positive",
+    "text": "I've been replaying that 5-second awkward moment with the cashier for four hours, analyzing why I always mess up interactions.",
+    "expected_detection": true
+  },
+  {
+    "id": 8,
+    "pattern": "rumination",
+    "type": "near-miss",
+    "text": "I've been reviewing my notes and thoughts from that client presentation to prepare a better deck for next week.",
+    "expected_detection": false
+  },
+  {
+    "id": 9,
+    "pattern": "rumination",
+    "type": "ambiguous",
+    "text": "I've been thinking about what happened earlier today.",
+    "expected_detection": null
+  },
+  {
+    "id": 10,
+    "pattern": "perfectionism",
+    "type": "positive",
+    "text": "If I don't get exactly 100% on this project, it's absolute garbage and I am a failure as a developer.",
+    "expected_detection": true
+  },
+  {
+    "id": 11,
+    "pattern": "perfectionism",
+    "type": "near-miss",
+    "text": "I want to do a high-quality job on this project and test all the edge cases before releasing it to users.",
+    "expected_detection": false
+  },
+  {
+    "id": 12,
+    "pattern": "perfectionism",
+    "type": "ambiguous",
+    "text": "I want this to be done well.",
+    "expected_detection": null
+  },
+  {
+    "id": 13,
+    "pattern": "self_criticism",
+    "type": "positive",
+    "text": "I messed up the dinner recipe. I am a completely stupid, useless, and pathetic human being who can't do anything right.",
+    "expected_detection": true
+  },
+  {
+    "id": 14,
+    "pattern": "self_criticism",
+    "type": "near-miss",
+    "text": "I messed up the dinner recipe because I got distracted, so next time I'll set a timer to remember.",
+    "expected_detection": false
+  },
+  {
+    "id": 15,
+    "pattern": "self_criticism",
+    "type": "ambiguous",
+    "text": "I'm not very happy with myself today.",
+    "expected_detection": null
+  },
+  {
+    "id": 16,
+    "pattern": "catastrophizing",
+    "type": "positive",
+    "text": "This chest tightness means I have a terminal illness and will die before next week.",
+    "expected_detection": true
+  },
+  {
+    "id": 17,
+    "pattern": "catastrophizing",
+    "type": "near-miss",
+    "text": "My chest feels tight, so I should book a check-up with my doctor to make sure everything is okay.",
+    "expected_detection": false
+  },
+  {
+    "id": 18,
+    "pattern": "rumination",
+    "type": "positive",
+    "text": "Why do I always ruin my relationships? I keep going over all my past breakups, wondering what is wrong with my personality.",
+    "expected_detection": true
+  },
+  {
+    "id": 19,
+    "pattern": "rumination",
+    "type": "near-miss",
+    "text": "I am reflecting on my past relationships to understand my boundaries and communication style better.",
+    "expected_detection": false
+  },
+  {
+    "id": 20,
+    "pattern": "perfectionism",
+    "type": "positive",
+    "text": "I cannot allow anyone to see my draft. If there's even one spelling mistake, they will think I'm an idiot.",
+    "expected_detection": true
+  },
+  {
+    "id": 21,
+    "pattern": "perfectionism",
+    "type": "near-miss",
+    "text": "I will proofread my report to catch spelling errors before submitting it.",
+    "expected_detection": false
+  }
+]

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, Date, Float, JSON
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey
 from datetime import datetime
 from .database import Base
 from sqlalchemy.orm import relationship
@@ -233,14 +233,93 @@ class VitalAlert(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", backref="vital_alerts")
-class DailyCheckIn(Base):
-    __tablename__ = 'daily_checkins'
+
+
+class CognitiveSnapshot(Base):
+    __tablename__ = "cognitive_snapshots"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, index=True)
-    date = Column(Date)
-    mood_level = Column(Integer)
-    sleep_hours = Column(Float)
-    sleep_quality = Column(String)
-    triggers = Column(JSON)
-    created_at = Column(DateTime)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    
+    # Observation Window
+    messages_analyzed = Column(Integer, default=0)
+    days_covered = Column(Integer, default=0)
+    
+    # 1. Psychological Traits (Slow-changing: 0.0 to 1.0)
+    perfectionism = Column(Float, default=0.0)
+    perfectionism_confidence = Column(Float, default=0.0)
+    
+    avoidance_trait = Column(Float, default=0.0)
+    avoidance_confidence = Column(Float, default=0.0)
+    
+    rumination_tendency = Column(Float, default=0.0)
+    rumination_confidence = Column(Float, default=0.0)
+    
+    # 2. Psychological States (Fast-changing: 0.0 to 1.0)
+    burnout_state = Column(Float, default=0.0)
+    burnout_confidence = Column(Float, default=0.0)
+    
+    motivation_level = Column(Float, default=0.0)
+    motivation_confidence = Column(Float, default=0.0)
+    
+    stress_adaptation = Column(Float, default=0.0)
+    stress_adaptation_confidence = Column(Float, default=0.0)
+
+    cognitive_flexibility = Column(Float, default=0.5)
+    cognitive_flexibility_confidence = Column(Float, default=0.0)
+    
+    # 3. Attention Map (Relative allocation percentages, summing to 1.0)
+    attention_academics = Column(Float, default=0.0)
+    attention_career = Column(Float, default=0.0)
+    attention_health = Column(Float, default=0.0)
+    attention_relationships = Column(Float, default=0.0)
+    attention_identity = Column(Float, default=0.0)
+    attention_family = Column(Float, default=0.0)
+    
+    # 4. Recovery Model
+    stress_trigger = Column(String, nullable=True) # e.g. "uncertainty", "conflict"
+    helps = Column(String, default="[]")           # JSON string of coping helps list
+    hurts = Column(String, default="[]")           # JSON string of coping hurts list
+    recovery_effectiveness = Column(String, default="{}") # JSON dict of activity -> score
+    recovery_speed = Column(String, default="medium") # "slow" | "medium" | "fast"
+    support_preference = Column(String, default="general") # "guidance" | "listening"
+    
+    # 5. Explanatory Feature Signals (Audit Trail)
+    negative_repetition_count = Column(Integer, default=0)
+    avoidance_phrases_count = Column(Integer, default=0)
+    catastrophic_phrases_count = Column(Integer, default=0)
+    self_critical_phrases_count = Column(Integer, default=0)
+    social_mentions_count = Column(Integer, default=0)
+    coping_mentions_count = Column(Integer, default=0)
+    
+    # Explainable source breakdown JSON
+    signal_source_breakdown = Column(String, default="{}")
+    
+    # Narrative
+    notes = Column(String, nullable=True) # LLM narrative generator output
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", backref="cognitive_snapshots")
+
+
+class CBTReflection(Base):
+    __tablename__ = "cbt_reflections"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    
+    what_happened = Column(String)  # Activating event
+    what_thought = Column(String)   # Beliefs / automatic thoughts
+    what_felt = Column(String)      # Emotional reactions
+    what_done = Column(String)      # Behavioral response
+    what_next = Column(String)      # Outcome / cognitive restructuring
+    
+    # Intensities (1-10)
+    thought_intensity = Column(Integer, default=5)
+    emotion_intensity = Column(Integer, default=5)
+    
+    associated_pattern = Column(String, nullable=True) # e.g., "rumination", "avoidance"
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", backref="cbt_reflections")
+

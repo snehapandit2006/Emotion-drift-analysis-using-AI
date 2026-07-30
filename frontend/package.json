@@ -23,7 +23,7 @@
     "react-apple-login": "^1.1.6",
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1",
-    "react-router-dom": "^7.13.0",
+    "react-router-dom": "^7.11.0",
     "react-youtube": "^10.1.0",
     "recharts": "^2.8.0",
     "three": "^0.182.0"
@@ -33,7 +33,7 @@
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^5.1.1",
-    "eslint": "^9.39.1",
+    "eslint": "^10.8.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",

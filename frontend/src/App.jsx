@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SupportDashboard from "./components/SupportDashboard";
 import LandingPage from "./components/LandingPage";
 import NeuralBackground from "./components/NeuralBackground";
-import { Download, Table as TableIcon, Activity, LogOut, MessageSquare, Sun, Moon, Shield, Menu, X, Play, Timer, Music, Settings, Layout, Sparkles, Layers, Users, User, Camera, Headphones, Compass, MapPin, BookHeart, ShieldAlert } from 'lucide-react';
+import { Download, Table as TableIcon, Activity, LogOut, MessageSquare, Sun, Moon, Shield, Menu, X, Play, Timer, Music, Settings, Layout, Sparkles, Layers, Users, User, Camera, Headphones, Compass, MapPin, BookHeart, ShieldAlert, BrainCircuit } from 'lucide-react';
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
@@ -65,6 +65,7 @@ const CommunityChat = lazy(() => import("./components/CommunityChat"));
 const VitalsDashboard = lazy(() => import("./components/VitalsDashboard"));
 const MedicalLogTable = lazy(() => import("./components/MedicalLogTable"));
 const DriftInsights = lazy(() => import("./components/DriftInsights"));
+const CognitiveModel = lazy(() => import("./components/CognitiveModel"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 
@@ -576,6 +577,9 @@ function Dashboard() {
           <div className={`nav-item ${viewMode === 'map' ? 'active' : ''}`} onClick={() => setViewMode('map')}>
             <MapPin size={18} /> <span>Nearby Help</span>
           </div>
+          <div className={`nav-item ${viewMode === 'cognitive' ? 'active' : ''}`} onClick={() => setViewMode('cognitive')}>
+            <BrainCircuit size={18} /> <span>Cognitive Model</span>
+          </div>
           <div className={`nav-item ${viewMode === 'settings' ? 'active' : ''}`} onClick={() => setViewMode('settings')}>
             <Settings size={18} /> <span>Settings</span>
           </div>
@@ -1037,6 +1041,15 @@ function Dashboard() {
 
                     </div>
                   </div>
+                </div>
+              ) : viewMode === 'cognitive' ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <button className="text-btn" onClick={() => setViewMode('dashboard')} style={{ marginBottom: '1rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+                    &larr; Back to Dashboard
+                  </button>
+                  <Suspense fallback={<div>Loading Cognitive Model...</div>}>
+                    <CognitiveModel />
+                  </Suspense>
                 </div>
               ) : (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ paddingBottom: '80px', display: 'flex', flexDirection: 'column', gap: '24px' }}>

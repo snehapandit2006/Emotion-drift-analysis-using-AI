@@ -1,0 +1,77 @@
+[
+  {
+    "text": "I failed one exam. My future is ruined. I'll never get a job. My life is over.",
+    "expected_pattern": "catastrophizing",
+    "expected_score_min": 0.75
+  },
+  {
+    "text": "If this relationship ends, I will be alone forever and no one will ever love me again.",
+    "expected_pattern": "catastrophizing",
+    "expected_score_min": 0.70
+  },
+  {
+    "text": "My boss didn't reply to my email immediately. They are definitely going to fire me tomorrow.",
+    "expected_pattern": "catastrophizing",
+    "expected_score_min": 0.70
+  },
+  {
+    "text": "I don't want to think about it. Let's talk about something else. Whatever, it doesn't matter.",
+    "expected_pattern": "avoidance",
+    "expected_score_min": 0.70
+  },
+  {
+    "text": "I'm skipping the interview. I'm just going to sleep all day and ignore their calls.",
+    "expected_pattern": "avoidance",
+    "expected_score_min": 0.65
+  },
+  {
+    "text": "I am ignoring my emails and phone messages because facing them makes me too anxious.",
+    "expected_pattern": "avoidance",
+    "expected_score_min": 0.70
+  },
+  {
+    "text": "I keep replaying that conversation in my head. I can't stop thinking about what they said. Every day I think about it again.",
+    "expected_pattern": "rumination",
+    "expected_score_min": 0.75
+  },
+  {
+    "text": "Why did I say that? I've been overthinking that meeting for hours, analyzing every single word I said.",
+    "expected_pattern": "rumination",
+    "expected_score_min": 0.70
+  },
+  {
+    "text": "I am stuck in a loop of thinking about my past mistakes and I cannot move on from it.",
+    "expected_pattern": "rumination",
+    "expected_score_min": 0.70
+  },
+  {
+    "text": "I must get a perfect score on my exams, otherwise I am not smart enough and am a complete failure.",
+    "expected_pattern": "perfectionism",
+    "expected_score_min": 0.75
+  },
+  {
+    "text": "If my work is not absolutely flawless, it is completely garbage. I cannot accept anything less than 100%.",
+    "expected_pattern": "perfectionism",
+    "expected_score_min": 0.75
+  },
+  {
+    "text": "I am terrified of making even a single mistake because it means I am incompetent.",
+    "expected_pattern": "perfectionism",
+    "expected_score_min": 0.70
+  },
+  {
+    "text": "I am such a disappointment. I hate myself for being so weak and constantly failing everyone.",
+    "expected_pattern": "self_criticism",
+    "expected_score_min": 0.75
+  },
+  {
+    "text": "I am completely useless and incompetent. I can't do anything right.",
+    "expected_pattern": "self_criticism",
+    "expected_score_min": 0.75
+  },
+  {
+    "text": "I blame myself entirely for this mess. I am just a stupid and lazy person.",
+    "expected_pattern": "self_criticism",
+    "expected_score_min": 0.70
+  }
+]
