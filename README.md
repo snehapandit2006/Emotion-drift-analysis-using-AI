@@ -193,6 +193,18 @@ Open `http://localhost:5173` in your browser.
 
 ---
 
+## Project Metrics
+
+⭐ 2 Stars
+🍴 8 Forks
+👥 Multiple Contributors
+📌 GSSoC Open Source Project
+🔀 Community Pull Requests
+📄 Active Issue Tracking
+🚀 Production Deployment
+
+---
+
 ## 📄 License
 
 This project is built for educational, research, and placement demonstration purposes.
