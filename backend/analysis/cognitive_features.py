@@ -373,7 +373,8 @@ def generate_evidence(texts: list[str], pattern: str, score: float, features: di
         boosters = ["ruined", "destroyed", "homeless", "broke", "never find", "die", "terminal", "disaster", "catastrophe", "doomed", "always", "never"]
         matched_boosters = [w for w in boosters if w in combined_text]
         if matched_boosters:
-            evidence.append(f"Catastrophic absolute phrasing: {', '.join(f'\"{w}\"' for w in matched_boosters)}")
+            formatted_boosters = ", ".join(f'"{w}"' for w in matched_boosters)
+            evidence.append(f"Catastrophic absolute phrasing: {formatted_boosters}")
         if features.get("catastrophic_phrases_count", 0) > 0:
             evidence.append(f"Linguistic indicators of catastrophe detected ({features['catastrophic_phrases_count']} matches)")
             
@@ -381,7 +382,8 @@ def generate_evidence(texts: list[str], pattern: str, score: float, features: di
         boosters = ["flawless", "garbage", "100%", "trash", "perfect", "idiot", "incompetent", "mistake"]
         matched_boosters = [w for w in boosters if w in combined_text]
         if matched_boosters:
-            evidence.append(f"Rigid perfectionist language: {', '.join(f'\"{w}\"' for w in matched_boosters)}")
+            formatted_boosters = ", ".join(f'"{w}"' for w in matched_boosters)
+            evidence.append(f"Rigid perfectionist language: {formatted_boosters}")
         if features.get("self_critical_phrases_count", 0) > 0:
             evidence.append("Self-directed high standard demands detected")
             
@@ -389,7 +391,8 @@ def generate_evidence(texts: list[str], pattern: str, score: float, features: di
         boosters = ["replaying", "overthinking", "stuck in a loop", "analyzing every", "loop of thinking"]
         matched_boosters = [w for w in boosters if w in combined_text]
         if matched_boosters:
-            evidence.append(f"Mental loop patterns: {', '.join(f'\"{w}\"' for w in matched_boosters)}")
+            formatted_boosters = ", ".join(f'"{w}"' for w in matched_boosters)
+            evidence.append(f"Mental loop patterns: {formatted_boosters}")
         if features.get("negative_repetition_count", 0) > 0:
             evidence.append(f"High negative concept repetition rate ({features['negative_repetition_count']} instances)")
             
@@ -397,7 +400,8 @@ def generate_evidence(texts: list[str], pattern: str, score: float, features: di
         boosters = ["useless", "incompetent", "stupid", "lazy", "disappointment", "hate myself", "pathetic"]
         matched_boosters = [w for w in boosters if w in combined_text]
         if matched_boosters:
-            evidence.append(f"Self-directed criticism labels: {', '.join(f'\"{w}\"' for w in matched_boosters)}")
+            formatted_boosters = ", ".join(f'"{w}"' for w in matched_boosters)
+            evidence.append(f"Self-directed criticism labels: {formatted_boosters}")
         if features.get("self_critical_phrases_count", 0) > 0:
             evidence.append(f"Self-deprecating cognitive patterns ({features['self_critical_phrases_count']} instances)")
             
@@ -405,7 +409,8 @@ def generate_evidence(texts: list[str], pattern: str, score: float, features: di
         boosters = ["ignoring", "skipping", "avoiding", "ignore", "don't want to think"]
         matched_boosters = [w for w in boosters if w in combined_text]
         if matched_boosters:
-            evidence.append(f"Behavioral withdrawal markers: {', '.join(f'\"{w}\"' for w in matched_boosters)}")
+            formatted_boosters = ", ".join(f'"{w}"' for w in matched_boosters)
+            evidence.append(f"Behavioral withdrawal markers: {formatted_boosters}")
         if features.get("avoidance_phrases_count", 0) > 0:
             evidence.append(f"Linguistic markers of emotional escape/avoidance ({features['avoidance_phrases_count']} matches)")
 
