@@ -43,9 +43,12 @@ services:
     buildCommand: "npm install && npm run build"
     staticPublishPath: "./dist"
     headers:
+      - path: "/assets/*"
+        name: "Cache-Control"
+        value: "public, max-age=31536000, immutable"
       - path: "/*"
         name: "Cache-Control"
-        value: "no-cache"
+        value: "no-cache, no-store, must-revalidate"
     routes:
       - type: rewrite
         source: "/*"

@@ -175,8 +175,9 @@ export default function CognitiveModel() {
             <span style={S.badge(COLOR.violet)}>COGNITIVE SNAPSHOTS</span>
             <span style={S.badge(COLOR.emerald)}>EXPLAINABLE SCORING</span>
             <span style={S.badge(COLOR.sky)}>CBT MATRIX v3.0</span>
+            <span style={S.badge(COLOR.amber)}>COMING SOON</span>
           </div>
-          <h1 style={S.h1}>Personal Cognitive Model</h1>
+          <h1 style={S.h1}>Personal Cognitive System (PCS)</h1>
           <p style={S.sub}>Longitudinal cognitive snapshots mapped from real-time communication behaviors and clinical reframing tasks.</p>
           {profile?.messages_analyzed !== undefined && (
             <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>

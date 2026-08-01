@@ -17,7 +17,6 @@ import {
 } from "recharts";
 import { motion, AnimatePresence } from 'framer-motion';
 // Eager load critical components
-import SupportDashboard from "./components/SupportDashboard";
 import LandingPage from "./components/LandingPage";
 import NeuralBackground from "./components/NeuralBackground";
 import { Download, Table as TableIcon, Activity, LogOut, MessageSquare, Sun, Moon, Shield, Menu, X, Play, Timer, Music, Settings, Layout, Sparkles, Layers, Users, User, Camera, Headphones, Compass, MapPin, BookHeart, ShieldAlert, BrainCircuit } from 'lucide-react';
@@ -578,7 +577,11 @@ function Dashboard() {
             <MapPin size={18} /> <span>Nearby Help</span>
           </div>
           <div className={`nav-item ${viewMode === 'cognitive' ? 'active' : ''}`} onClick={() => setViewMode('cognitive')}>
-            <BrainCircuit size={18} /> <span>Cognitive Model</span>
+            <BrainCircuit size={18} />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: '1.2' }}>
+              <span>PCS (Cognitive Model)</span>
+              <span style={{ fontSize: '0.65rem', color: '#a084e8', fontWeight: '700', letterSpacing: '0.5px' }}>Coming Soon</span>
+            </div>
           </div>
           <div className={`nav-item ${viewMode === 'settings' ? 'active' : ''}`} onClick={() => setViewMode('settings')}>
             <Settings size={18} /> <span>Settings</span>
