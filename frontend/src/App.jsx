@@ -65,6 +65,7 @@ const VitalsDashboard = lazy(() => import("./components/VitalsDashboard"));
 const MedicalLogTable = lazy(() => import("./components/MedicalLogTable"));
 const DriftInsights = lazy(() => import("./components/DriftInsights"));
 const CognitiveModel = lazy(() => import("./components/CognitiveModel"));
+const SupportDashboard = lazy(() => import("./components/SupportDashboard"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 
@@ -1273,7 +1274,7 @@ function MainContent() {
           } />
           <Route path="/support-dashboard" element={
             <RequireAuth>
-              <SupportDashboard />
+              <Suspense fallback={null}><SupportDashboard /></Suspense>
             </RequireAuth>
           } />
           <Route path="/doctor-dashboard" element={
