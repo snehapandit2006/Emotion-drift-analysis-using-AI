@@ -1,7 +1,7 @@
 # Sentia — AI-Powered Cognitive Companion & Emotion Drift System
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-Frontend_App-blueviolet?style=for-the-badge&logo=render)](https://emotion-drift-frontend.onrender.com)
-[![API Status](https://img.shields.io/badge/API_Status-FastAPI_Backend-emerald?style=for-the-badge&logo=fastapi)](https://emotion-drift-api.onrender.com)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Frontend_App-blueviolet?style=for-the-badge&logo=render)](https://sentia-unsm.vercel.app/)
+[![API Status](https://img.shields.io/badge/API_Status-FastAPI_Backend-emerald?style=for-the-badge&logo=fastapi)](https://sentia-lx9u.onrender.com)
 [![License](https://img.shields.io/badge/License-Educational-orange?style=for-the-badge)](#-license)
 
 > **Sentia** is an AI-powered cognitive companion designed to provide personalized well-being support. Unlike traditional mental wellness tools that analyze interactions in isolation, Sentia builds a structured, longitudinal understanding of users over time using cognitive reasoning, long-term memory, and multimodal emotion fusion.
