@@ -100,19 +100,21 @@ class SignupRequest(BaseModel):
 
 @router.post("/signup", response_model=dict)
 def signup(payload: SignupRequest, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == payload.email).first()
+    clean_email = payload.email.strip()
+    db_user = db.query(User).filter(User.email.ilike(clean_email)).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
     hashed_password = get_password_hash(payload.password)
-    new_user = User(email=payload.email, hashed_password=hashed_password, role=payload.role)
+    new_user = User(email=clean_email, hashed_password=hashed_password, role=payload.role)
     db.add(new_user)
     db.commit()
     return {"msg": "User created successfully"}
 
 @router.post("/token", response_model=dict)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == form_data.username).first()
+    clean_username = form_data.username.strip()
+    user = db.query(User).filter(User.email.ilike(clean_username)).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

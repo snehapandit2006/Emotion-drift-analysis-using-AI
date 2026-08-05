@@ -11,12 +11,14 @@ ALGORITHM = settings.ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
 def verify_password(plain_password, hashed_password):
-    # Ensure bytes for bcrypt
-    if isinstance(plain_password, str):
-        plain_password = plain_password.encode('utf-8')
-    if isinstance(hashed_password, str):
-        hashed_password = hashed_password.encode('utf-8')
-    return bcrypt.checkpw(plain_password, hashed_password)
+    try:
+        if isinstance(plain_password, str):
+            plain_password = plain_password.encode('utf-8')
+        if isinstance(hashed_password, str):
+            hashed_password = hashed_password.encode('utf-8')
+        return bcrypt.checkpw(plain_password, hashed_password)
+    except Exception:
+        return False
 
 def get_password_hash(password):
     if isinstance(password, str):
